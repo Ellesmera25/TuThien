@@ -76,7 +76,7 @@ function mapDonation(row: Record<string, unknown>): DonationItem {
 export async function getCampaigns(): Promise<Campaign[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return mockCampaigns;
+    return [];
   }
 
   const { data, error } = await supabase
@@ -84,11 +84,12 @@ export async function getCampaigns(): Promise<Campaign[]> {
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error || !data || data.length === 0) {
-    return mockCampaigns;
+  if (error) {
+    console.error(error);
+    return [];
   }
 
-  return (data as Array<Record<string, unknown>>).map(mapCampaign);
+  return (data ?? []).map(mapCampaign);
 }
 
 export async function getCampaignBySlug(slug: string): Promise<Campaign | null> {
@@ -101,9 +102,7 @@ export async function getTransparencyItems(
 ): Promise<TransparencyItem[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return campaignSlug
-      ? mockTransparencyItems.filter((item) => item.campaignSlug === campaignSlug)
-      : mockTransparencyItems;
+    return [];
   }
 
   let query = supabase
@@ -118,26 +117,19 @@ export async function getTransparencyItems(
 
   const { data, error } = await query;
 
-  if (error || !data) {
-    return campaignSlug
-      ? mockTransparencyItems.filter((item) => item.campaignSlug === campaignSlug)
-      : mockTransparencyItems;
+  if (error) {
+    console.error(error);
+    return [];
   }
 
-  const normalized = (data as Array<Record<string, unknown>>).map(
-    mapTransparency,
-  );
-  return normalized.length > 0
-    ? normalized
-    : campaignSlug
-      ? mockTransparencyItems.filter((item) => item.campaignSlug === campaignSlug)
-      : mockTransparencyItems;
+  return (data ?? []).map(mapTransparency);
 }
+
 
 export async function getRecentDonations(): Promise<DonationItem[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return mockRecentDonations;
+    return [];
   }
 
   const { data, error } = await supabase
@@ -146,11 +138,12 @@ export async function getRecentDonations(): Promise<DonationItem[]> {
     .order("created_at", { ascending: false })
     .limit(10);
 
-  if (error || !data || data.length === 0) {
-    return mockRecentDonations;
+  if (error) {
+    console.error(error);
+    return [];
   }
 
-  return (data as Array<Record<string, unknown>>).map(mapDonation);
+  return (data ?? []).map(mapDonation);
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
