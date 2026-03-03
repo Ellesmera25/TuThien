@@ -1,0 +1,54 @@
+
+> webtuthien@0.1.0 dev
+> next dev -H 0.0.0.0 -p 3000
+
+   ▲ Next.js 15.2.4
+   - Local:        http://localhost:3000
+   - Network:      http://0.0.0.0:3000
+
+ ✓ Starting...
+ ✓ Ready in 3.3s
+ ○ Compiling / ...
+ ✓ Compiled / in 8.2s (1053 modules)
+ GET / 200 in 9968ms
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 918ms (653 modules)
+ GET /favicon.ico 200 in 1757ms
+ GET / 200 in 683ms
+ GET / 200 in 158ms
+ GET /favicon.ico 200 in 230ms
+ ○ Compiling /quan-tri ...
+ ✓ Compiled /quan-tri in 1348ms (1079 modules)
+ GET /quan-tri 200 in 1849ms
+ GET /quan-tri 200 in 89ms
+ ○ Compiling /minh-bach ...
+ ✓ Compiled /chien-dich in 2.4s (1077 modules)
+ GET /minh-bach 200 in 2876ms
+ GET /quyen-gop 200 in 2341ms
+ GET /chien-dich 200 in 1498ms
+ GET /quyen-gop 200 in 68ms
+ GET /quyen-gop 200 in 48ms
+ GET /quyen-gop 200 in 56ms
+ GET /minh-bach 200 in 47ms
+ GET /quan-tri 200 in 88ms
+ ○ Compiling /dang-nhap ...
+ ✓ Compiled /dang-ky in 2.9s (1087 modules)
+ GET /dang-ky 200 in 3343ms
+ GET /quan-tri 200 in 2164ms
+ GET /dang-nhap?next=%2Fquan-tri 200 in 3826ms
+ GET /minh-bach 200 in 1483ms
+ GET /dang-nhap?next=%2Fquan-tri 200 in 110ms
+ GET /minh-bach 200 in 124ms
+ GET /quan-tri 200 in 106ms
+ GET /minh-bach 200 in 119ms
+ GET /quan-tri 200 in 95ms
+ GET /minh-bach 200 in 114ms
+ GET /quan-tri 200 in 94ms
+ GET /quan-tri 200 in 51ms
+ GET /quan-tri 200 in 73ms
+ GET /quan-tri 200 in 51ms
+ GET /dang-nhap?next=%2Fquan-tri 200 in 35ms
+ GET /dang-nhap?next=%2Fquan-tri 200 in 34ms
+ GET /dang-ky 200 in 60ms
+ GET /dang-ky 200 in 505ms
+ GET /favicon.ico 200 in 282ms

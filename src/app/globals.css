@@ -1,0 +1,173 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface: #ffffff;
+  --ink: #111426;
+  --line: rgba(17, 20, 38, 0.1);
+  --brand: #f54a00;
+  --brand-soft: #ff9f2e;
+  --accent-cool: #1fb6ff;
+  --card-shadow: 0 30px 80px -42px rgba(17, 20, 38, 0.48);
+}
+
+* {
+  border-color: var(--line);
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 500px at -8% -14%, rgba(245, 74, 0, 0.18), transparent 64%),
+    radial-gradient(980px 380px at 110% -8%, rgba(31, 182, 255, 0.16), transparent 66%),
+    radial-gradient(800px 300px at 48% 120%, rgba(255, 159, 46, 0.14), transparent 70%),
+    linear-gradient(180deg, #fff7ef 0%, #ffffff 46%, #eef4ff 100%);
+  color: var(--ink);
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(17, 20, 38, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(17, 20, 38, 0.03) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), transparent 82%);
+  z-index: -2;
+}
+
+::selection {
+  background: rgba(245, 74, 0, 0.22);
+  color: #111426;
+}
+
+main {
+  min-height: calc(100vh - 168px);
+}
+
+.neo-panel {
+  border-radius: 1.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: linear-gradient(
+    160deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.7) 60%,
+    rgba(255, 255, 255, 0.84) 100%
+  );
+  backdrop-filter: blur(12px);
+  box-shadow: var(--card-shadow);
+}
+
+.neo-panel-strong {
+  border-radius: 1.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background:
+    radial-gradient(620px 220px at -10% 0%, rgba(255, 255, 255, 0.2), transparent 60%),
+    linear-gradient(138deg, #131a34 0%, #1d2751 46%, #f54a00 128%);
+  color: #fff;
+  box-shadow: 0 38px 80px -34px rgba(17, 20, 38, 0.82);
+}
+
+.neo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 74, 0, 0.28);
+  background: linear-gradient(
+    110deg,
+    rgba(245, 74, 0, 0.16) 0%,
+    rgba(255, 159, 46, 0.22) 100%
+  );
+  color: #922f07;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.neo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0.7rem 1.25rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 220ms ease;
+}
+
+.neo-btn-primary {
+  color: #fff;
+  background: linear-gradient(105deg, #f54a00 0%, #ff9f2e 100%);
+  box-shadow: 0 24px 56px -28px rgba(245, 74, 0, 0.68);
+}
+
+.neo-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.neo-btn-ghost {
+  color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.neo-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.fade-up {
+  animation: fade-up 0.55s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.stagger-1 {
+  animation-delay: 0.08s;
+}
+
+.stagger-2 {
+  animation-delay: 0.16s;
+}
+
+.stagger-3 {
+  animation-delay: 0.24s;
+}
+
+.orbit-dot {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(1px);
+  animation: orbit 11s ease-in-out infinite;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes orbit {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, 12px, 0) scale(1.08);
+  }
+}
