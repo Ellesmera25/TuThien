@@ -10,7 +10,7 @@ create table if not exists campaigns (
   raised_amount bigint not null default 0 check (raised_amount >= 0),
   status text not null default 'active' check (status in ('active', 'completed', 'paused')),
   end_date date not null,
-  cover_tag text not null default 'Dang cap nhat',
+  cover_tag text not null default 'Đang cập nhật',
   created_at timestamptz not null default now()
 );
 
@@ -112,14 +112,14 @@ create trigger on_auth_user_created
 
 insert into campaigns (slug, title, summary, target_amount, raised_amount, status, end_date, cover_tag)
 values
-  ('nuoc-sach-lin-ho', 'Nuoc sach cho ban Lin Ho', 'Lap be loc va duong ong cho 120 ho dan.', 150000000, 92000000, 'active', '2026-04-15', 'Y Ty, Lao Cai'),
-  ('hoc-bong-em-den-truong-2026', 'Hoc bong Em den truong 2026', 'Trao hoc bong va bo dung cu hoc tap cho 500 hoc sinh.', 300000000, 145000000, 'active', '2026-06-30', 'Mien Trung'),
-  ('bep-an-0-dong-nhi-dong-2', 'Bep an 0 dong - Benh vien Nhi Dong 2', 'Cung cap suat an cho benh nhi va gia dinh.', 200000000, 210000000, 'completed', '2026-01-20', 'TP.HCM')
+  ('nuoc-sach-lin-ho', 'Nước sạch cho bản Lìn Hồ', 'Lắp bể lọc và đường ống cho 120 hộ dân.', 150000000, 92000000, 'active', '2026-04-15', 'Y Tý, Lào Cai'),
+  ('hoc-bong-em-den-truong-2026', 'Học bổng Em đến trường 2026', 'Trao học bổng và bộ dụng cụ học tập cho 500 học sinh.', 300000000, 145000000, 'active', '2026-06-30', 'Miền Trung'),
+  ('bep-an-0-dong-nhi-dong-2', 'Bếp ăn 0 đồng - Bệnh viện Nhi Đồng 2', 'Cung cấp suất ăn cho bệnh nhi và gia đình.', 200000000, 210000000, 'completed', '2026-01-20', 'TP.HCM')
 on conflict (slug) do nothing;
 
 insert into disbursements (campaign_slug, title, description, amount, spent_at, proof_url)
 values
-  ('bep-an-0-dong-nhi-dong-2', 'Mua thuc pham dot 1', 'Nhap thuc pham cho 1.600 suat an.', 52300000, '2026-01-06', '#'),
-  ('nuoc-sach-lin-ho', 'Mua ong dan nuoc PE', 'Ong PE 32mm cho cum dan cu so 2.', 37000000, '2026-02-10', '#'),
-  ('hoc-bong-em-den-truong-2026', 'Dat may dong phuc', '200 bo dong phuc cho hoc sinh tieu hoc.', 28500000, '2026-02-21', '#')
+  ('bep-an-0-dong-nhi-dong-2', 'Mua thực phẩm đợt 1', 'Nhập thực phẩm cho 1.600 suất ăn.', 52300000, '2026-01-06', '#'),
+  ('nuoc-sach-lin-ho', 'Mua ống dẫn nước PE', 'Ống PE 32mm cho cụm dân cư số 2.', 37000000, '2026-02-10', '#'),
+  ('hoc-bong-em-den-truong-2026', 'Đặt may đồng phục', '200 bộ đồng phục cho học sinh tiểu học.', 28500000, '2026-02-21', '#')
 on conflict do nothing;

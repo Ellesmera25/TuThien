@@ -30,12 +30,12 @@ export function AuthCard({ mode, nextPath = "/tai-khoan" }: AuthCardProps) {
     setMessage("");
 
     if (!supabase) {
-      setError("Chua cau hinh Supabase env. Khong the dang nhap dang ky.");
+      setError("Chưa cấu hình Supabase env. Không thể đăng nhập đăng ký.");
       return;
     }
 
     if (password.length < 6) {
-      setError("Mat khau toi thieu 6 ky tu.");
+      setError("Mật khẩu tối thiểu 6 ký tự.");
       return;
     }
 
@@ -55,7 +55,9 @@ export function AuthCard({ mode, nextPath = "/tai-khoan" }: AuthCardProps) {
       if (signUpError) {
         setError(signUpError.message);
       } else {
-        setMessage("Dang ky thanh cong. Vui long kiem tra email de xac nhan tai khoan.");
+        setMessage(
+          "Đăng ký thành công. Vui lòng kiểm tra email để xác nhận tài khoản.",
+        );
       }
 
       setLoading(false);
@@ -81,24 +83,26 @@ export function AuthCard({ mode, nextPath = "/tai-khoan" }: AuthCardProps) {
   return (
     <section className="mx-auto max-w-md">
       <div className="neo-panel p-6 sm:p-7">
-        <p className="neo-badge">{isSignUp ? "Create Account" : "Welcome Back"}</p>
+        <p className="neo-badge">
+          {isSignUp ? "Create Account" : "Welcome Back"}
+        </p>
         <h1 className="mt-3 font-display text-3xl font-bold text-ink">
-          {isSignUp ? "Dang ky thanh vien" : "Dang nhap tai khoan"}
+          {isSignUp ? "Đăng ký thành viên" : "Đăng nhập tài khoản"}
         </h1>
         <p className="mt-2 text-sm text-slate-600">
           {isSignUp
-            ? "Tao tai khoan de theo doi lich su dong gop va cap nhat chien dich."
-            : "Dang nhap de quan ly thong tin tai khoan va truy cap trang quan tri."}
+            ? "Tạo tài khoản để theo dõi lịch sử đóng góp và cập nhật chiến dịch."
+            : "Đăng nhập để quản lý thông tin tài khoản và truy cập trang quản trị."}
         </p>
 
         <form onSubmit={handleSubmit} className="mt-5 space-y-4">
           {isSignUp ? (
-            <Field label="Ho ten">
+            <Field label="Họ tên">
               <input
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 className={inputClass}
-                placeholder="Nguyen Van A"
+                placeholder="Nguyễn Văn A"
                 required
               />
             </Field>
@@ -115,7 +119,7 @@ export function AuthCard({ mode, nextPath = "/tai-khoan" }: AuthCardProps) {
             />
           </Field>
 
-          <Field label="Mat khau">
+          <Field label="Mật khẩu">
             <input
               type="password"
               value={password}
@@ -143,20 +147,20 @@ export function AuthCard({ mode, nextPath = "/tai-khoan" }: AuthCardProps) {
             className="neo-btn neo-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading
-              ? "Dang xu ly..."
+              ? "Đang xử lý..."
               : isSignUp
-                ? "Tao tai khoan"
-                : "Dang nhap"}
+                ? "Tạo tài khoản"
+                : "Đăng nhập"}
           </button>
         </form>
 
         <p className="mt-4 text-sm text-slate-600">
-          {isSignUp ? "Da co tai khoan?" : "Chua co tai khoan?"}{" "}
+          {isSignUp ? "Đã có tài khoản?" : "Chưa có tài khoản?"}{" "}
           <Link
             href={isSignUp ? "/dang-nhap" : "/dang-ky"}
             className="font-semibold text-primary hover:text-orange-700"
           >
-            {isSignUp ? "Dang nhap" : "Dang ky ngay"}
+            {isSignUp ? "Đăng nhập" : "Đăng ký ngay"}
           </Link>
         </p>
       </div>

@@ -30,11 +30,11 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "TuThien.vn - Nen tang tu thien minh bach",
+    default: "TuThien.vn - Nền tảng từ thiện minh bạch",
     template: "%s | TuThien.vn",
   },
   description:
-    "Nen tang ket noi nha hao tam voi cac chien dich xa hoi, theo doi minh bach tung khoan dong gop.",
+    "Nền tảng kết nối nhà hảo tâm với các chiến dịch xã hội, theo dõi minh bạch từng khoản đóng góp.",
 };
 
 export default function RootLayout({

@@ -8,9 +8,9 @@ type CampaignCardProps = {
 };
 
 const statusLabel: Record<Campaign["status"], string> = {
-  active: "Dang gay quy",
-  completed: "Da hoan thanh",
-  paused: "Tam dung",
+  active: "Đang gây quỹ",
+  completed: "Đã hoàn thành",
+  paused: "Tạm dừng",
 };
 
 const statusTone: Record<Campaign["status"], string> = {
@@ -40,13 +40,17 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           </span>
         </div>
 
-        <h3 className="mt-3 font-display text-xl font-bold text-ink">{campaign.title}</h3>
-        <p className="mt-2 line-clamp-2 text-sm text-slate-600">{campaign.summary}</p>
+        <h3 className="mt-3 font-display text-xl font-bold text-ink">
+          {campaign.title}
+        </h3>
+        <p className="mt-2 line-clamp-2 text-sm text-slate-600">
+          {campaign.summary}
+        </p>
 
         <div className="mt-5 space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
-            <span>{formatPercent(progress)} hoan thanh</span>
-            <span>Han {formatDate(campaign.endDate)}</span>
+            <span>{formatPercent(progress)} hoàn thành</span>
+            <span>Hạn {formatDate(campaign.endDate)}</span>
           </div>
           <div className="h-2.5 rounded-full bg-slate-100">
             <div
@@ -61,7 +65,9 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             <p className="font-display text-lg font-bold text-ink">
               {formatVnd(campaign.raisedAmount)}
             </p>
-            <p className="text-xs text-slate-500">Muc tieu {formatVnd(campaign.targetAmount)}</p>
+            <p className="text-xs text-slate-500">
+              Mục tiêu {formatVnd(campaign.targetAmount)}
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -69,13 +75,13 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
               href={`/chien-dich/${campaign.slug}`}
               className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-slate-700 transition hover:border-primary hover:text-primary"
             >
-              Chi tiet
+              Chi tiết
             </Link>
             <Link
               href={`/quyen-gop?campaign=${campaign.slug}`}
               className="rounded-full bg-gradient-to-r from-primary to-accent px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-white transition hover:brightness-110"
             >
-              Ung ho
+              Ủng hộ
             </Link>
           </div>
         </div>

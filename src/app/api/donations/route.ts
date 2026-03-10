@@ -8,8 +8,13 @@ function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-function isValidPayload(payload: Partial<DonationPayload>): payload is DonationPayload {
-  if (typeof payload.donorName !== "string" || payload.donorName.trim() === "") {
+function isValidPayload(
+  payload: Partial<DonationPayload>,
+): payload is DonationPayload {
+  if (
+    typeof payload.donorName !== "string" ||
+    payload.donorName.trim() === ""
+  ) {
     return false;
   }
 
@@ -32,7 +37,10 @@ export async function POST(request: Request) {
   const body = (await request.json()) as Partial<DonationPayload>;
 
   if (!isValidPayload(body)) {
-    return NextResponse.json({ error: "Du lieu quyen gop khong hop le." }, { status: 400 });
+    return NextResponse.json(
+      { error: "Dữ liệu quyên góp không hợp lệ." },
+      { status: 400 },
+    );
   }
 
   const supabase = getSupabaseServiceClient();
@@ -86,7 +94,7 @@ export async function POST(request: Request) {
 
   if (error) {
     return NextResponse.json(
-      { error: "Khong the tao phieu quyen gop. Vui long thu lai." },
+      { error: "Không thể tạo phiếu quyên góp. Vui lòng thử lại." },
       { status: 500 },
     );
   }

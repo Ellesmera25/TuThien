@@ -30,19 +30,19 @@ export default async function HomePage() {
             </p>
 
             <h1 className="fade-up max-w-3xl font-display text-4xl font-bold leading-tight sm:text-6xl">
-              Minh bach nhu fintech, nhan van nhu cong dong.
+              Minh bạch như fintech, nhân văn như cộng đồng.
             </h1>
             <p className="fade-up stagger-1 max-w-2xl text-sm text-slate-100 sm:text-base">
-              TuThien.vn ket noi nha hao tam va nhung du an can ho tro, voi giao
-              dien moi hien dai, ro rang va de theo doi tren moi thiet bi.
+              TuThien.vn kết nối nhà hảo tâm và những dự án cần hỗ trợ, với giao
+              diện mới hiện đại, rõ ràng và dễ theo dõi trên mọi thiết bị.
             </p>
 
             <div className="fade-up stagger-2 flex flex-wrap gap-3">
               <Link href="/quyen-gop" className="neo-btn neo-btn-primary">
-                Ung ho ngay
+                Ủng hộ ngay
               </Link>
               <Link href="/minh-bach" className="neo-btn neo-btn-ghost">
-                Xem minh bach
+                Xem minh bạch
               </Link>
             </div>
           </div>
@@ -64,7 +64,7 @@ export default async function HomePage() {
                     {item.donorName}
                   </p>
                   <p className="text-xs text-white/80">
-                    Ung ho{" "}
+                    Ủng hộ{" "}
                     <span className="font-bold">{formatVnd(item.amount)}</span>{" "}
                     - {formatDate(item.createdAt)}
                   </p>
@@ -77,22 +77,22 @@ export default async function HomePage() {
 
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          label="Tong da gay quy"
+          label="Tổng đã gây quỹ"
           value={formatVnd(summary.totalRaised)}
           tone="warm"
         />
         <MetricCard
-          label="Tong muc tieu"
+          label="Tổng mục tiêu"
           value={formatVnd(summary.totalTarget)}
           tone="cool"
         />
         <MetricCard
-          label="Chien dich dang chay"
+          label="Chiến dịch đang chạy"
           value={`${summary.activeCampaignCount}`}
           tone="mint"
         />
         <MetricCard
-          label="Nha hao tam tham gia"
+          label="Nhà hảo tâm tham gia"
           value={`${summary.donorCount}`}
           tone="neutral"
         />
@@ -103,14 +103,14 @@ export default async function HomePage() {
           <div>
             <p className="neo-badge">Open Campaigns</p>
             <h2 className="mt-2 font-display text-3xl font-bold text-ink">
-              Chien dich dang nhan ung ho
+              Chiến dịch đang nhận ủng hộ
             </h2>
           </div>
           <Link
             href="/chien-dich"
             className="neo-btn rounded-full border border-slate-300 bg-white text-slate-700 hover:border-primary hover:text-primary"
           >
-            Xem tat ca
+            Xem tất cả
           </Link>
         </div>
 
@@ -123,25 +123,25 @@ export default async function HomePage() {
 
       <section className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
         <article className="neo-panel p-6">
-          <p className="neo-badge">Van hanh minh bach</p>
+          <p className="neo-badge">Vận hành minh bạch</p>
           <h3 className="mt-3 font-display text-2xl font-bold text-ink">
-            Quy trinh 3 lop doi soat
+            Quy trình 3 lớp đối soát
           </h3>
           <div className="mt-4 grid gap-3 sm:grid-cols-3">
             <StepCard
               index="01"
-              title="Kiem chung"
-              content="Doi ngu tiep nhan, xac minh nhu cau va muc tieu tai chinh."
+              title="Kiểm chứng"
+              content="Đội ngũ tiếp nhận, xác minh nhu cầu và mục tiêu tài chính."
             />
             <StepCard
               index="02"
-              title="Cong khai"
-              content="Tien do va tong dong gop cap nhat lien tuc theo thoi gian."
+              title="Công khai"
+              content="Tiến độ và tổng đóng góp cập nhật liên tục theo thời gian."
             />
             <StepCard
               index="03"
-              title="Bao cao"
-              content="Moi khoan chi duoc luu vao trang minh bach kem doi soat."
+              title="Báo cáo"
+              content="Mọi khoản chi được lưu vào trang minh bạch kèm đối soát."
             />
           </div>
         </article>
@@ -151,16 +151,16 @@ export default async function HomePage() {
             Ready to support
           </p>
           <h3 className="mt-2 font-display text-2xl font-bold text-ink">
-            Bat dau dong hanh ngay hom nay
+            Bắt đầu đồng hành ngay hôm nay
           </h3>
           <p className="mt-2 text-sm text-slate-600">
-            Chon chien dich phu hop va gui dong gop trong 1 phut.
+            Chọn chiến dịch phù hợp và gửi đóng góp trong 1 phút.
           </p>
           <Link
             href="/quyen-gop"
             className="neo-btn neo-btn-primary mt-5 w-full"
           >
-            Mo form quyen gop
+            Mở form quyên góp
           </Link>
         </article>
       </section>

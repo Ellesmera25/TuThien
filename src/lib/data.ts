@@ -125,7 +125,6 @@ export async function getTransparencyItems(
   return (data ?? []).map(mapTransparency);
 }
 
-
 export async function getRecentDonations(): Promise<DonationItem[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {

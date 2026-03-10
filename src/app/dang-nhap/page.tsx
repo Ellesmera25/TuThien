@@ -7,8 +7,8 @@ type LoginPageProps = {
 };
 
 export const metadata: Metadata = {
-  title: "Dang nhap",
-  description: "Dang nhap tai khoan thanh vien TuThien.vn",
+  title: "Đăng nhập",
+  description: "Đăng nhập tài khoản thành viên TuThien.vn",
 };
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {

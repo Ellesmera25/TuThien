@@ -81,7 +81,7 @@ export const mockTransparencyItems: TransparencyItem[] = [
 export const mockRecentDonations: DonationItem[] = [
   {
     id: "dn_001",
-    donorName: "Nguyen Minh A",
+    donorName: "Nguyễn Minh A",
     amount: 500_000,
     createdAt: "2026-02-28T14:15:00+07:00",
     campaignSlug: "nuoc-sach-lin-ho",
@@ -89,21 +89,21 @@ export const mockRecentDonations: DonationItem[] = [
   },
   {
     id: "dn_002",
-    donorName: "Tran Thu B",
+    donorName: "Trần Thu B",
     amount: 1_200_000,
     createdAt: "2026-02-28T09:20:00+07:00",
     campaignSlug: "hoc-bong-em-den-truong-2026",
   },
   {
     id: "dn_003",
-    donorName: "Le Duc C",
+    donorName: "Lê Đức C",
     amount: 300_000,
     createdAt: "2026-02-27T19:10:00+07:00",
     campaignSlug: "nuoc-sach-lin-ho",
   },
   {
     id: "dn_004",
-    donorName: "Pham Nhi D",
+    donorName: "Phạm Nhi D",
     amount: 2_000_000,
     createdAt: "2026-02-26T11:08:00+07:00",
     campaignSlug: "bep-an-0-dong-nhi-dong-2",
