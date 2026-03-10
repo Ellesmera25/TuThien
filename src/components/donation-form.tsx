@@ -43,7 +43,7 @@ export function DonationForm({
 
     const parsedAmount = Number(state.amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount < minimumDonation) {
-      setError("So tien toi thieu la 10.000d.");
+      setError("Số tiền tối thiểu là 10.000đ.");
       return;
     }
 
@@ -69,14 +69,14 @@ export function DonationForm({
       };
 
       if (!response.ok) {
-        setError(payload.error ?? "Khong the gui quyen gop. Vui long thu lai.");
+        setError(payload.error ?? "Không thể gửi quyên góp. Vui lòng thử lại.");
         return;
       }
 
       setResult(
         payload.demo
-          ? `Da ghi nhan ban demo (${payload.id ?? "N/A"}).`
-          : `Da tao phieu quyen gop thanh cong (${payload.id ?? "N/A"}).`,
+          ? `Đã ghi nhận bản demo (${payload.id ?? "N/A"}).`
+          : `Đã tạo phiếu quyên góp thành công (${payload.id ?? "N/A"}).`,
       );
       setState((prev) => ({
         ...prev,
@@ -86,7 +86,7 @@ export function DonationForm({
         message: "",
       }));
     } catch {
-      setError("Mat ket noi may chu. Vui long thu lai.");
+      setError("Mất kết nối máy chủ. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
     }
@@ -95,12 +95,16 @@ export function DonationForm({
   return (
     <form onSubmit={submitDonation} className="neo-panel space-y-5 p-6 sm:p-7">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="font-display text-lg font-bold text-ink">Thong tin quyen gop</p>
+        <p className="font-display text-lg font-bold text-ink">
+          Thông tin quyên góp
+        </p>
         <span className="neo-badge">Secure Form</span>
       </div>
 
       <div className="grid gap-2">
-        <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">Muc nhanh</p>
+        <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+          Mức nhanh
+        </p>
         <div className="flex flex-wrap gap-2">
           {quickAmounts.map((amount) => (
             <button
@@ -113,14 +117,14 @@ export function DonationForm({
                   : "border-slate-200 bg-white text-slate-600 hover:border-primary/40 hover:text-primary"
               }`}
             >
-              {Number(amount).toLocaleString("vi-VN")}d
+              {Number(amount).toLocaleString("vi-VN")}đ
             </button>
           ))}
         </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Ho ten">
+        <Field label="Họ tên">
           <input
             required
             value={state.donorName}
@@ -128,7 +132,7 @@ export function DonationForm({
               setState((prev) => ({ ...prev, donorName: event.target.value }))
             }
             className={inputClass}
-            placeholder="Nguyen Van A"
+            placeholder="Nguyễn Văn A"
           />
         </Field>
 
@@ -147,15 +151,18 @@ export function DonationForm({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Chien dich">
+        <Field label="Chiến dịch">
           <select
             value={state.campaignSlug}
             onChange={(event) =>
-              setState((prev) => ({ ...prev, campaignSlug: event.target.value }))
+              setState((prev) => ({
+                ...prev,
+                campaignSlug: event.target.value,
+              }))
             }
             className={inputClass}
           >
-            <option value="">Ung ho quy chung</option>
+            <option value="">Ủng hộ quỹ chung</option>
             {campaigns.map((campaign) => (
               <option key={campaign.slug} value={campaign.slug}>
                 {campaign.title}
@@ -164,7 +171,7 @@ export function DonationForm({
           </select>
         </Field>
 
-        <Field label="So tien (VND)">
+        <Field label="Số tiền (VND)">
           <input
             required
             inputMode="numeric"
@@ -178,7 +185,7 @@ export function DonationForm({
         </Field>
       </div>
 
-      <Field label="Phuong thuc thanh toan">
+      <Field label="Phương thức thanh toán">
         <select
           value={state.paymentMethod}
           onChange={(event) =>
@@ -189,13 +196,13 @@ export function DonationForm({
           }
           className={inputClass}
         >
-          <option value="bank_transfer">Chuyen khoan ngan hang</option>
-          <option value="momo">Vi MoMo</option>
+          <option value="bank_transfer">Chuyển khoản ngân hàng</option>
+          <option value="momo">Ví MoMo</option>
           <option value="zalo_pay">ZaloPay</option>
         </select>
       </Field>
 
-      <Field label="Loi nhan (khong bat buoc)">
+      <Field label="Lời nhắn (không bắt buộc)">
         <textarea
           rows={4}
           value={state.message}
@@ -203,7 +210,7 @@ export function DonationForm({
             setState((prev) => ({ ...prev, message: event.target.value }))
           }
           className={inputClass}
-          placeholder="Gui loi dong vien..."
+          placeholder="Gửi lời động viên..."
         />
       </Field>
 
@@ -223,7 +230,7 @@ export function DonationForm({
         disabled={submitting}
         className="neo-btn neo-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
       >
-        {submitting ? "Dang gui..." : "Xac nhan quyen gop"}
+        {submitting ? "Đang gửi..." : "Xác nhận quyên góp"}
       </button>
     </form>
   );

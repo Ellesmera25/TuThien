@@ -10,8 +10,8 @@ import {
 } from "@/lib/supabase/auth-server";
 
 export const metadata: Metadata = {
-  title: "Tai khoan",
-  description: "Thong tin tai khoan thanh vien",
+  title: "Tài khoản",
+  description: "Thông tin tài khoản thành viên",
 };
 
 export default async function AccountPage() {
@@ -21,7 +21,7 @@ export default async function AccountPage() {
   }
 
   const fullName =
-    (user.user_metadata.full_name as string | undefined) ?? "Thanh vien";
+    (user.user_metadata.full_name as string | undefined) ?? "Thành viên";
   const recentDonations = await getMyRecentDonations(user.email ?? "");
 
   return (
@@ -29,19 +29,19 @@ export default async function AccountPage() {
       <section className="neo-panel p-6 sm:p-7">
         <p className="neo-badge">Member Profile</p>
         <h1 className="mt-3 font-display text-3xl font-bold text-ink">
-          Xin chao, {fullName}
+          Xin chào, {fullName}
         </h1>
         <p className="mt-2 text-sm text-slate-600">Email: {user.email}</p>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
           <Link href="/quyen-gop" className="neo-btn neo-btn-primary">
-            Tao dong gop moi
+            Tạo đóng góp mới
           </Link>
           <Link
             href="/quan-tri"
             className="neo-btn rounded-full border border-slate-300 bg-white text-slate-700 hover:border-primary hover:text-primary"
           >
-            Mo quan tri
+            Mở quản trị
           </Link>
           <AuthSignOutButton />
         </div>
@@ -49,12 +49,12 @@ export default async function AccountPage() {
 
       <section className="neo-panel p-6">
         <h2 className="font-display text-2xl font-bold text-ink">
-          Lich su dong gop
+          Lịch sử đóng góp
         </h2>
         {recentDonations.length === 0 ? (
           <p className="mt-3 text-sm text-slate-600">
-            Chua co du lieu dong gop. Ban co the tao dong gop moi tai trang
-            quyen gop.
+            Chưa có dữ liệu đóng góp. Bạn có thể tạo đóng góp mới tại trang
+            quyên góp.
           </p>
         ) : (
           <ul className="mt-4 space-y-3">
@@ -65,7 +65,7 @@ export default async function AccountPage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold text-ink">
-                    {donation.campaign_slug ?? "Quy chung"}
+                    {donation.campaign_slug ?? "Quỹ chung"}
                   </p>
                   <p className="text-sm font-bold text-primary">
                     {formatVnd(donation.amount)}

@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import { AuthCard } from "@/components/auth-card";
 
 export const metadata: Metadata = {
-  title: "Dang ky",
-  description: "Dang ky tai khoan thanh vien TuThien.vn",
+  title: "Đăng ký",
+  description: "Đăng ký tài khoản thành viên TuThien.vn",
 };
 
 export default function RegisterPage() {

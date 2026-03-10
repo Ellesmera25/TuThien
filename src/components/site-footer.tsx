@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 const links = [
-  { href: "/", label: "Trang chu" },
-  { href: "/chien-dich", label: "Chien dich" },
-  { href: "/quyen-gop", label: "Quyen gop" },
-  { href: "/minh-bach", label: "Minh bach" },
+  { href: "/", label: "Trang chủ" },
+  { href: "/chien-dich", label: "Chiến dịch" },
+  { href: "/quyen-gop", label: "Quyên góp" },
+  { href: "/minh-bach", label: "Minh bạch" },
 ];
 
 export function SiteFooter() {
@@ -17,17 +17,21 @@ export function SiteFooter() {
               TuThien<span className="text-primary">.vn</span>
             </p>
             <p className="mt-3 max-w-md text-sm text-slate-600">
-              Nen tang gay quy minh bach, toi uu cho ca desktop va mobile, giup
-              cong dong theo doi moi dong gop theo cach ro rang nhat.
+              Nền tảng gây quỹ minh bạch, tối ưu cho cả desktop và mobile, giúp
+              cộng đồng theo dõi mọi đóng góp theo cách rõ ràng nhất.
             </p>
           </div>
 
           <div className="space-y-2 text-sm text-slate-600">
             <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-              Dieu huong
+              Điều hướng
             </p>
             {links.map((item) => (
-              <Link key={item.href} href={item.href} className="block hover:text-primary">
+              <Link
+                key={item.href}
+                href={item.href}
+                className="block hover:text-primary"
+              >
                 {item.label}
               </Link>
             ))}
@@ -35,16 +39,16 @@ export function SiteFooter() {
 
           <div className="space-y-2 text-sm text-slate-600">
             <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-              Lien he
+              Liên hệ
             </p>
             <p>hello@tuthien.vn</p>
             <p>0899 000 111</p>
-            <p>TP.HCM - Viet Nam</p>
+            <p>TP.HCM - Việt Nam</p>
           </div>
         </div>
 
         <div className="mt-7 border-t border-white/70 pt-4 text-xs text-slate-500">
-          2026 TuThien.vn. Transparency-first donation platform.
+          2026 TuThien.vn. Nền tảng quyên góp ưu tiên minh bạch.
         </div>
       </div>
     </footer>

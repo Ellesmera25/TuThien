@@ -4,10 +4,10 @@ import { getCurrentUser } from "@/lib/supabase/auth-server";
 import { AuthSignOutButton } from "@/components/auth-sign-out-button";
 
 const navItems = [
-  { href: "/", label: "Trang chu" },
-  { href: "/chien-dich", label: "Chien dich" },
-  { href: "/quyen-gop", label: "Quyen gop" },
-  { href: "/minh-bach", label: "Minh bach" },
+  { href: "/", label: "Trang chủ" },
+  { href: "/chien-dich", label: "Chiến dịch" },
+  { href: "/quyen-gop", label: "Quyên góp" },
+  { href: "/minh-bach", label: "Minh bạch" },
 ];
 
 export async function SiteHeader() {
@@ -44,7 +44,7 @@ export async function SiteHeader() {
                 href="/quan-tri"
                 className="rounded-full px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-ink"
               >
-                Quan tri
+                Quản trị
               </Link>
             </nav>
 
@@ -55,7 +55,7 @@ export async function SiteHeader() {
                     href="/tai-khoan"
                     className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-slate-700 transition hover:border-primary hover:text-primary"
                   >
-                    Tai khoan
+                    Tài khoản
                   </Link>
                   <AuthSignOutButton />
                 </>
@@ -65,10 +65,10 @@ export async function SiteHeader() {
                     href="/dang-nhap"
                     className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-slate-700 transition hover:border-primary hover:text-primary"
                   >
-                    Dang nhap
+                    Đăng nhập
                   </Link>
                   <Link href="/dang-ky" className="neo-btn neo-btn-primary">
-                    Dang ky
+                    Đăng ký
                   </Link>
                 </>
               )}
@@ -90,7 +90,7 @@ export async function SiteHeader() {
             href={user ? "/tai-khoan" : "/dang-nhap"}
             className="shrink-0 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-soft"
           >
-            {user ? "Tai khoan" : "Dang nhap"}
+            {user ? "Tài khoản" : "Đăng nhập"}
           </Link>
         </nav>
       </div>

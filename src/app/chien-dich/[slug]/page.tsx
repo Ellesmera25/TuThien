@@ -16,8 +16,8 @@ export async function generateMetadata({
   const campaign = await getCampaignBySlug(slug);
 
   return {
-    title: campaign?.title ?? "Chi tiet chien dich",
-    description: campaign?.summary ?? "Thong tin chien dich",
+    title: campaign?.title ?? "Chi tiết chiến dịch",
+    description: campaign?.summary ?? "Thông tin chiến dịch",
   };
 }
 
@@ -55,8 +55,8 @@ export default async function CampaignDetailPage({
         <div className="mt-7 grid gap-4 md:grid-cols-[1fr_0.95fr]">
           <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm">
             <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-100">
-              <span>{Math.round(progress)}% hoan thanh</span>
-              <span>Ket thuc: {formatDate(campaign.endDate)}</span>
+              <span>{Math.round(progress)}% hoàn thành</span>
+              <span>Kết thúc: {formatDate(campaign.endDate)}</span>
             </div>
             <div className="mt-3 h-3 rounded-full bg-white/20">
               <div
@@ -72,11 +72,11 @@ export default async function CampaignDetailPage({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <MiniStat
-              label="Da tiep nhan"
+              label="Đã tiếp nhận"
               value={formatVnd(campaign.raisedAmount)}
             />
             <MiniStat
-              label="Muc tieu"
+              label="Mục tiêu"
               value={formatVnd(campaign.targetAmount)}
             />
           </div>
@@ -86,16 +86,16 @@ export default async function CampaignDetailPage({
           href={`/quyen-gop?campaign=${campaign.slug}`}
           className="neo-btn neo-btn-primary mt-7"
         >
-          Ung ho chien dich nay
+          Ủng hộ chiến dịch này
         </Link>
       </section>
 
       <section className="neo-panel p-6">
         <h2 className="font-display text-2xl font-bold text-ink">
-          Nhat ky giai ngan
+          Nhật ký giải ngân
         </h2>
         {logs.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-600">Chua co khoan chi nao.</p>
+          <p className="mt-3 text-sm text-slate-600">Chưa có khoản chi nào.</p>
         ) : (
           <ul className="mt-5 space-y-3">
             {logs.map((log, index) => (
@@ -116,7 +116,7 @@ export default async function CampaignDetailPage({
                 </div>
                 <p className="mt-1 text-sm text-slate-600">{log.description}</p>
                 <p className="mt-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
-                  Ngay chi: {formatDate(log.spentAt)}
+                  Ngày chi: {formatDate(log.spentAt)}
                 </p>
               </li>
             ))}

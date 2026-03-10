@@ -29,7 +29,7 @@ export function AuthSignOutButton() {
       disabled={loading}
       className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-slate-600 transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-70"
     >
-      {loading ? "Dang thoat..." : "Dang xuat"}
+      {loading ? "Đang thoát..." : "Đăng xuất"}
     </button>
   );
 }

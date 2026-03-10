@@ -4,8 +4,8 @@ import { CampaignCard } from "@/components/campaign-card";
 import { getCampaigns } from "@/lib/data";
 
 export const metadata: Metadata = {
-  title: "Chien dich",
-  description: "Danh sach cac chien dich tu thien dang va da trien khai.",
+  title: "Chiến dịch",
+  description: "Danh sách các chiến dịch từ thiện đang và đã triển khai.",
 };
 
 export default async function CampaignListPage() {
@@ -25,17 +25,17 @@ export default async function CampaignListPage() {
           Campaign Directory
         </p>
         <h1 className="mt-3 max-w-3xl font-display text-4xl font-bold text-white sm:text-5xl">
-          Tat ca chien dich
+          Tất cả chiến dịch
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-slate-100 sm:text-base">
-          Theo doi tien do va dong gop cho cac chien dich dang mo. Moi card du
-          an hien thi ro muc tieu, so da gay quy va han ket thuc.
+          Theo dõi tiến độ và đóng góp cho các chiến dịch đang mở. Mỗi card dự
+          án hiển thị rõ mục tiêu, số đã gây quỹ và hạn kết thúc.
         </p>
 
         <div className="mt-6 flex flex-wrap gap-2">
-          <StatusPill label={`Dang mo: ${activeCount}`} />
-          <StatusPill label={`Da hoan thanh: ${completedCount}`} />
-          <StatusPill label={`Tong chien dich: ${campaigns.length}`} />
+          <StatusPill label={`Đang mở: ${activeCount}`} />
+          <StatusPill label={`Đã hoàn thành: ${completedCount}`} />
+          <StatusPill label={`Tổng chiến dịch: ${campaigns.length}`} />
         </div>
       </header>
 
