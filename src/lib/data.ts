@@ -1,6 +1,7 @@
 import {
   mockCampaigns,
   mockRecentDonations,
+  mockReels,
   mockTransparencyItems,
 } from "@/lib/mock-data";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
@@ -8,6 +9,7 @@ import type {
   Campaign,
   DashboardSummary,
   DonationItem,
+  ReelItem,
   TransparencyItem,
 } from "@/lib/types";
 
@@ -73,10 +75,31 @@ function mapDonation(row: Record<string, unknown>): DonationItem {
   };
 }
 
+function mapReel(row: Record<string, unknown>): ReelItem {
+  const tone = toStringValue(row.cover_tone, "warm");
+  const safeTone: ReelItem["coverTone"] =
+    tone === "cool" || tone === "mint" || tone === "violet" ? tone : "warm";
+
+  return {
+    id: toStringValue(row.id, crypto.randomUUID()),
+    campaignSlug: toStringValue(row.campaign_slug, ""),
+    title: toStringValue(row.title, "Reel chưa đặt tên"),
+    caption: toStringValue(row.caption, ""),
+    creatorName: toStringValue(row.creator_name, "TuThien.vn"),
+    location: toStringValue(row.location, "Đang cập nhật"),
+    videoUrl: toStringValue(row.video_url, "") || null,
+    coverTone: safeTone,
+    views: toNumber(row.views),
+    likes: toNumber(row.likes),
+    comments: toNumber(row.comments),
+    createdAt: toStringValue(row.created_at, new Date().toISOString()),
+  };
+}
+
 export async function getCampaigns(): Promise<Campaign[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return [];
+    return mockCampaigns;
   }
 
   const { data, error } = await supabase
@@ -86,10 +109,11 @@ export async function getCampaigns(): Promise<Campaign[]> {
 
   if (error) {
     console.error(error);
-    return [];
+    return mockCampaigns;
   }
 
-  return (data ?? []).map(mapCampaign);
+  const campaigns = (data ?? []).map(mapCampaign);
+  return campaigns.length > 0 ? campaigns : mockCampaigns;
 }
 
 export async function getCampaignBySlug(slug: string): Promise<Campaign | null> {
@@ -102,7 +126,9 @@ export async function getTransparencyItems(
 ): Promise<TransparencyItem[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return [];
+    return campaignSlug
+      ? mockTransparencyItems.filter((item) => item.campaignSlug === campaignSlug)
+      : mockTransparencyItems;
   }
 
   let query = supabase
@@ -119,16 +145,19 @@ export async function getTransparencyItems(
 
   if (error) {
     console.error(error);
-    return [];
+    return campaignSlug
+      ? mockTransparencyItems.filter((item) => item.campaignSlug === campaignSlug)
+      : mockTransparencyItems;
   }
 
-  return (data ?? []).map(mapTransparency);
+  const items = (data ?? []).map(mapTransparency);
+  return items.length > 0 ? items : mockTransparencyItems;
 }
 
 export async function getRecentDonations(): Promise<DonationItem[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return [];
+    return mockRecentDonations;
   }
 
   const { data, error } = await supabase
@@ -139,10 +168,32 @@ export async function getRecentDonations(): Promise<DonationItem[]> {
 
   if (error) {
     console.error(error);
-    return [];
+    return mockRecentDonations;
   }
 
-  return (data ?? []).map(mapDonation);
+  const donations = (data ?? []).map(mapDonation);
+  return donations.length > 0 ? donations : mockRecentDonations;
+}
+
+export async function getReels(): Promise<ReelItem[]> {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    return mockReels;
+  }
+
+  const { data, error } = await supabase
+    .from("reels")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error(error);
+    return mockReels;
+  }
+
+  const reels = (data ?? []).map(mapReel);
+  return reels.length > 0 ? reels : mockReels;
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {

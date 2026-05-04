@@ -1,4 +1,9 @@
-import type { Campaign, DonationItem, TransparencyItem } from "@/lib/types";
+import type {
+  Campaign,
+  DonationItem,
+  ReelItem,
+  TransparencyItem,
+} from "@/lib/types";
 
 export const mockCampaigns: Campaign[] = [
   {
@@ -107,5 +112,50 @@ export const mockRecentDonations: DonationItem[] = [
     amount: 2_000_000,
     createdAt: "2026-02-26T11:08:00+07:00",
     campaignSlug: "bep-an-0-dong-nhi-dong-2",
+  },
+];
+
+export const mockReels: ReelItem[] = [
+  {
+    id: "reel_water_001",
+    campaignSlug: "nuoc-sach-lin-ho",
+    title: "Dòng nước đầu tiên về bản",
+    caption:
+      "Đội tình nguyện kiểm tra tuyến ống mới, chuẩn bị đưa nước sạch đến 120 hộ dân.",
+    creatorName: "TuThien Field Team",
+    location: "Y Tý, Lào Cai",
+    coverTone: "cool",
+    views: 18_400,
+    likes: 2_130,
+    comments: 184,
+    createdAt: "2026-03-03T09:30:00+07:00",
+  },
+  {
+    id: "reel_school_001",
+    campaignSlug: "hoc-bong-em-den-truong-2026",
+    title: "Một bộ đồng phục, thêm một ngày đến lớp",
+    caption:
+      "Những phần học bổng đầu tiên được đóng gói cho học sinh vùng cao trước năm học mới.",
+    creatorName: "Quỹ Em Đến Trường",
+    location: "Miền Trung",
+    coverTone: "warm",
+    views: 26_900,
+    likes: 3_820,
+    comments: 241,
+    createdAt: "2026-03-01T16:45:00+07:00",
+  },
+  {
+    id: "reel_kitchen_001",
+    campaignSlug: "bep-an-0-dong-nhi-dong-2",
+    title: "Bữa trưa 0 đồng trong khu điều trị",
+    caption:
+      "Mỗi phần ăn được chuẩn bị nóng trong ngày và ghi nhận vào bảng minh bạch của chiến dịch.",
+    creatorName: "Bếp Ăn Nhi Đồng 2",
+    location: "TP.HCM",
+    coverTone: "mint",
+    views: 31_200,
+    likes: 4_460,
+    comments: 318,
+    createdAt: "2026-02-25T11:10:00+07:00",
   },
 ];

@@ -42,6 +42,21 @@ create table if not exists disbursements (
   created_at timestamptz not null default now()
 );
 
+create table if not exists reels (
+  id uuid primary key default gen_random_uuid(),
+  campaign_slug text not null,
+  title text not null,
+  caption text not null,
+  creator_name text not null default 'TuThien.vn',
+  location text not null default 'Đang cập nhật',
+  video_url text,
+  cover_tone text not null default 'warm' check (cover_tone in ('warm', 'cool', 'mint', 'violet')),
+  views bigint not null default 0 check (views >= 0),
+  likes bigint not null default 0 check (likes >= 0),
+  comments bigint not null default 0 check (comments >= 0),
+  created_at timestamptz not null default now()
+);
+
 create table if not exists profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   full_name text,
@@ -51,10 +66,13 @@ create table if not exists profiles (
 
 create index if not exists idx_donations_user_id on donations (user_id);
 create index if not exists idx_donations_created_at on donations (created_at desc);
+create index if not exists idx_reels_created_at on reels (created_at desc);
+create index if not exists idx_reels_campaign_slug on reels (campaign_slug);
 
 alter table campaigns enable row level security;
 alter table donations enable row level security;
 alter table disbursements enable row level security;
+alter table reels enable row level security;
 alter table profiles enable row level security;
 
 drop policy if exists "campaigns are readable" on campaigns;
@@ -66,6 +84,12 @@ create policy "campaigns are readable"
 drop policy if exists "disbursements are readable" on disbursements;
 create policy "disbursements are readable"
   on disbursements for select
+  to anon, authenticated
+  using (true);
+
+drop policy if exists "reels are readable" on reels;
+create policy "reels are readable"
+  on reels for select
   to anon, authenticated
   using (true);
 
@@ -122,4 +146,11 @@ values
   ('bep-an-0-dong-nhi-dong-2', 'Mua thực phẩm đợt 1', 'Nhập thực phẩm cho 1.600 suất ăn.', 52300000, '2026-01-06', '#'),
   ('nuoc-sach-lin-ho', 'Mua ống dẫn nước PE', 'Ống PE 32mm cho cụm dân cư số 2.', 37000000, '2026-02-10', '#'),
   ('hoc-bong-em-den-truong-2026', 'Đặt may đồng phục', '200 bộ đồng phục cho học sinh tiểu học.', 28500000, '2026-02-21', '#')
+on conflict do nothing;
+
+insert into reels (campaign_slug, title, caption, creator_name, location, cover_tone, views, likes, comments)
+values
+  ('nuoc-sach-lin-ho', 'Dòng nước đầu tiên về bản', 'Đội tình nguyện kiểm tra tuyến ống mới, chuẩn bị đưa nước sạch đến 120 hộ dân.', 'TuThien Field Team', 'Y Tý, Lào Cai', 'cool', 18400, 2130, 184),
+  ('hoc-bong-em-den-truong-2026', 'Một bộ đồng phục, thêm một ngày đến lớp', 'Những phần học bổng đầu tiên được đóng gói cho học sinh vùng cao trước năm học mới.', 'Quỹ Em Đến Trường', 'Miền Trung', 'warm', 26900, 3820, 241),
+  ('bep-an-0-dong-nhi-dong-2', 'Bữa trưa 0 đồng trong khu điều trị', 'Mỗi phần ăn được chuẩn bị nóng trong ngày và ghi nhận vào bảng minh bạch của chiến dịch.', 'Bếp Ăn Nhi Đồng 2', 'TP.HCM', 'mint', 31200, 4460, 318)
 on conflict do nothing;

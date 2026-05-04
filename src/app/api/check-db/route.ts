@@ -11,7 +11,7 @@ export async function GET() {
     });
   }
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from("donations")
     .select("id")
     .limit(1);

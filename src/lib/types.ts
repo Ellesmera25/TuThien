@@ -31,6 +31,21 @@ export type DonationItem = {
   note?: string | null;
 };
 
+export type ReelItem = {
+  id: string;
+  campaignSlug: string;
+  title: string;
+  caption: string;
+  creatorName: string;
+  location: string;
+  videoUrl?: string | null;
+  coverTone: "warm" | "cool" | "mint" | "violet";
+  views: number;
+  likes: number;
+  comments: number;
+  createdAt: string;
+};
+
 export type DonationPayload = {
   donorName: string;
   email: string;

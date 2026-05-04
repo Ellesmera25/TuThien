@@ -6,6 +6,7 @@ import { AuthSignOutButton } from "@/components/auth-sign-out-button";
 const navItems = [
   { href: "/", label: "Trang chủ" },
   { href: "/chien-dich", label: "Chiến dịch" },
+  { href: "/reels", label: "Reels" },
   { href: "/quyen-gop", label: "Quyên góp" },
   { href: "/minh-bach", label: "Minh bạch" },
 ];

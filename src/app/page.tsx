@@ -5,17 +5,20 @@ import {
   getCampaigns,
   getDashboardSummary,
   getRecentDonations,
+  getReels,
 } from "@/lib/data";
-import { formatDate, formatVnd } from "@/lib/format";
+import { formatCompactNumber, formatDate, formatVnd } from "@/lib/format";
 
 export default async function HomePage() {
-  const [campaigns, summary, recentDonations] = await Promise.all([
+  const [campaigns, summary, recentDonations, reels] = await Promise.all([
     getCampaigns(),
     getDashboardSummary(),
     getRecentDonations(),
+    getReels(),
   ]);
 
   const featuredCampaigns = campaigns.slice(0, 3);
+  const featuredReels = reels.slice(0, 3);
 
   return (
     <div className="space-y-14 pb-8">
@@ -43,6 +46,9 @@ export default async function HomePage() {
               </Link>
               <Link href="/minh-bach" className="neo-btn neo-btn-ghost">
                 Xem minh bạch
+              </Link>
+              <Link href="/reels" className="neo-btn neo-btn-ghost">
+                Xem reels
               </Link>
             </div>
           </div>
@@ -96,6 +102,51 @@ export default async function HomePage() {
           value={`${summary.donorCount}`}
           tone="neutral"
         />
+      </section>
+
+      <section className="space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="neo-badge">Story Reels</p>
+            <h2 className="mt-2 font-display text-3xl font-bold text-ink">
+              Câu chuyện ngắn từ chiến dịch
+            </h2>
+          </div>
+          <Link
+            href="/reels"
+            className="neo-btn rounded-full border border-slate-300 bg-white text-slate-700 hover:border-primary hover:text-primary"
+          >
+            Mở trang reels
+          </Link>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-3">
+          {featuredReels.map((reel) => (
+            <Link
+              key={reel.id}
+              href="/reels"
+              className="group overflow-hidden rounded-[1.6rem] border border-white/70 bg-white/80 shadow-soft transition hover:-translate-y-1 hover:shadow-glow"
+            >
+              <div className="relative aspect-[9/12] bg-gradient-to-br from-ink via-slate-800 to-primary p-5 text-white">
+                <span className="absolute -right-10 top-10 h-32 w-32 rounded-full bg-white/10 blur-2xl transition group-hover:scale-110" />
+                <span className="relative rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.1em]">
+                  {reel.location}
+                </span>
+                <div className="relative mt-20">
+                  <h3 className="font-display text-2xl font-bold leading-tight">
+                    {reel.title}
+                  </h3>
+                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-white/80">
+                    {reel.caption}
+                  </p>
+                </div>
+                <p className="absolute bottom-5 left-5 text-xs font-bold uppercase tracking-[0.1em] text-white/70">
+                  {formatCompactNumber(reel.views)} lượt xem
+                </p>
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section className="space-y-6">

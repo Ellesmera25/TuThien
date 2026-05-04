@@ -19,6 +19,7 @@
 html,
 body {
   min-height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -149,6 +150,14 @@ main {
   border-radius: 999px;
   filter: blur(1px);
   animation: orbit 11s ease-in-out infinite;
+}
+
+.reel-scroll {
+  scrollbar-width: none;
+}
+
+.reel-scroll::-webkit-scrollbar {
+  display: none;
 }
 
 @keyframes fade-up {

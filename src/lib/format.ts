@@ -21,3 +21,10 @@ export function formatPercent(value: number): string {
 export function formatDate(value: string): string {
   return dateFormatter.format(new Date(value));
 }
+
+export function formatCompactNumber(value: number): string {
+  return new Intl.NumberFormat("vi-VN", {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
