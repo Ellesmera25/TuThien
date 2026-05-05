@@ -68,7 +68,7 @@ export async function POST(request: Request) {
 
   if (!supabase) {
     const paymentReference = createSepayPaymentReference();
-    const qrContent = buildSepayTransferContent(paymentReference, body);
+    const qrContent = buildSepayTransferContent(paymentReference);
 
     const blockchainRecord = createBlockchainRecord(
       paymentReference,
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
   }
 
   const paymentReference = createSepayPaymentReference();
-  const qrContent = buildSepayTransferContent(paymentReference, body);
+  const qrContent = buildSepayTransferContent(paymentReference);
   const qrImageUrl = buildSepayQrImageUrl(qrContent, body.amount, sepayConfig);
 
   let campaignId: string | null = null;

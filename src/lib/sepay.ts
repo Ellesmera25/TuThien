@@ -10,6 +10,8 @@ export type SepayConfig = {
   webhookSecret?: string;
 };
 
+const paymentReferenceLength = 8;
+
 type AnyRecord = Record<string, unknown>;
 
 export function getSepayConfig(): SepayConfig | null {
@@ -31,19 +33,13 @@ export function getSepayConfig(): SepayConfig | null {
 }
 
 export function createSepayPaymentReference(): string {
-  return `TUTHIEN-${randomBytes(5).toString("hex").toUpperCase()}`;
+  return `TUTHIEN-${randomBytes(4).toString("hex").toUpperCase()}`;
 }
 
 export function buildSepayTransferContent(
   paymentReference: string,
-  payload?: Pick<DonationPayload, "campaignSlug" | "email">,
-  timestamp: Date = new Date(),
 ): string {
-  const timestampSuffix = formatSepayTimestamp(timestamp);
-  const emailSuffix = payload?.email?.trim() ? ` ${payload.email.trim()}` : "";
-  const campaignSuffix = payload?.campaignSlug ? ` ${payload.campaignSlug}` : "";
-
-  return `TU THIEN ${paymentReference} ${timestampSuffix}${emailSuffix}${campaignSuffix}`;
+  return `TU THIEN ${paymentReference}`;
 }
 
 export function buildSepayQrImageUrl(
@@ -72,14 +68,20 @@ export function extractSepayReference(input: unknown): string | null {
     return null;
   }
 
-  const normalizedInput = input.replace(/\s+/g, "").toUpperCase();
-  const match = normalizedInput.match(/TUTHIEN-?([A-Z0-9]{6,})/i);
+  const normalizedInput = input
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+  const match = normalizedInput.match(
+    new RegExp(`TUTHIEN([A-Z0-9]{${paymentReferenceLength}})(?![A-Z0-9])`, "i"),
+  );
 
   if (!match?.[1]) {
     return null;
   }
 
-  return `TUTHIEN-${match[1].toUpperCase()}`;
+  const referenceSuffix = match[1].replace(/O/g, "0");
+
+  return `TUTHIEN-${referenceSuffix}`;
 }
 
 export function parseSepayWebhookPayload(payload: unknown): {
@@ -166,17 +168,6 @@ function toNumberValue(value: unknown): number | null {
   }
 
   return null;
-}
-
-function formatSepayTimestamp(date: Date): string {
-  const year = date.getUTCFullYear();
-  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(date.getUTCDate()).padStart(2, "0");
-  const hours = String(date.getUTCHours()).padStart(2, "0");
-  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
-  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
-
-  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
 }
 
 function safeEquals(left: string, right: string): boolean {
