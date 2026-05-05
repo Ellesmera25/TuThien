@@ -154,7 +154,7 @@ export default async function AccountPage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold text-ink">
-                    {donation.campaign_slug ?? "Quỹ chung"}
+                    {donation.payment_reference}
                   </p>
                   <p className="text-sm font-bold text-primary">
                     {formatVnd(donation.amount)}
@@ -162,6 +162,9 @@ export default async function AccountPage() {
                 </div>
                 <p className="mt-1 text-xs uppercase tracking-[0.1em] text-on-surface-variant">
                   {formatDate(donation.created_at)}
+                </p>
+                <p className="mt-1 text-sm text-on-surface-variant">
+                  {donation.donor_name}
                 </p>
               </li>
             ))}
@@ -241,9 +244,10 @@ function AccountIcon({
 
 type DonationRow = {
   id: string;
+  donor_name: string;
   amount: number;
-  campaign_slug: string | null;
   created_at: string;
+  payment_reference: string;
 };
 
 async function getMyRecentDonations(email: string): Promise<DonationRow[]> {
@@ -257,8 +261,8 @@ async function getMyRecentDonations(email: string): Promise<DonationRow[]> {
   }
 
   const { data, error } = await client
-    .from("donations")
-    .select("id, amount, campaign_slug, created_at")
+    .from("donation_blockchain")
+    .select("id, donor_name, amount, created_at, payment_reference")
     .eq("email", email)
     .order("created_at", { ascending: false })
     .limit(10);
