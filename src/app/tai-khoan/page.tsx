@@ -15,6 +15,8 @@ export const metadata: Metadata = {
   description: "Thông tin tài khoản và reels tác động của thành viên",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function AccountPage() {
   const user = await getCurrentUser();
   if (!user) {
@@ -64,8 +66,14 @@ export default async function AccountPage() {
 
         <div className="flex w-full flex-col gap-2 md:w-auto">
           <Link
-            href="/quyen-gop"
+            href="/reels/tao"
             className="neo-btn neo-btn-primary w-full whitespace-nowrap md:w-auto"
+          >
+            Tạo reel mới
+          </Link>
+          <Link
+            href="/quyen-gop"
+            className="neo-btn neo-btn-ghost w-full whitespace-nowrap md:w-auto"
           >
             Tạo đóng góp mới
           </Link>
@@ -116,14 +124,14 @@ export default async function AccountPage() {
         ))}
 
         <Link
-          href="/reels"
+          href="/reels/tao"
           className="group flex aspect-[9/16] flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-surface-variant bg-white transition hover:border-primary hover:bg-surface-low"
         >
           <span className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-fixed/50 text-primary transition group-hover:scale-110">
             <AccountIcon name="plus" className="h-8 w-8" />
           </span>
           <span className="text-sm font-bold text-on-surface-variant group-hover:text-primary">
-            Xem thêm reels
+            Tạo reel mới
           </span>
         </Link>
       </section>

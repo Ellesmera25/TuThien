@@ -28,8 +28,14 @@ export function ReelFeed({ reels }: ReelFeedProps) {
 
   if (reels.length === 0) {
     return (
-      <section className="flex h-[calc(100vh-80px)] items-center justify-center bg-black px-4 text-sm text-white/70">
+      <section className="flex h-[calc(100vh-80px)] flex-col items-center justify-center gap-4 bg-black px-4 text-center text-sm text-white/70">
         Chưa có reel nào được đăng.
+        <Link
+          href="/reels/tao"
+          className="rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white transition hover:bg-primary-container"
+        >
+          Tạo reel đầu tiên
+        </Link>
       </section>
     );
   }
@@ -49,6 +55,12 @@ export function ReelFeed({ reels }: ReelFeedProps) {
           TuThien.vn
         </span>
       </div>
+      <Link
+        href="/reels/tao"
+        className="fixed right-4 top-24 z-50 rounded-full bg-white/12 px-4 py-2 text-xs font-bold text-white backdrop-blur transition hover:bg-white/20"
+      >
+        Tạo reel
+      </Link>
 
       {reels.map((reel, index) => {
         const liked = likedIds.includes(reel.id);
