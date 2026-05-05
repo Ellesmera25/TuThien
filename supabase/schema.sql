@@ -37,6 +37,19 @@ create table if not exists donations (
   created_at timestamptz not null default now()
 );
 
+create table if not exists donation_blockchain (
+  id uuid primary key default gen_random_uuid(),
+  donation_id uuid not null unique references donations (id) on delete cascade,
+  payment_reference text not null unique,
+  amount bigint not null check (amount > 0),
+  donor_name text not null,
+  email text not null,
+  hash text not null unique,
+  previous_hash text not null,
+  timestamp bigint not null,
+  created_at timestamptz not null default now()
+);
+
 alter table donations
   add column if not exists user_id uuid references auth.users (id) on delete set null;
 
@@ -81,12 +94,16 @@ create table if not exists profiles (
 
 create index if not exists idx_donations_user_id on donations (user_id);
 create index if not exists idx_donations_created_at on donations (created_at desc);
+create index if not exists idx_donation_blockchain_created_at on donation_blockchain (created_at desc);
+create index if not exists idx_donation_blockchain_payment_reference on donation_blockchain (payment_reference);
+create index if not exists idx_donation_blockchain_donation_id on donation_blockchain (donation_id);
 create index if not exists idx_reels_created_at on reels (created_at desc);
 create index if not exists idx_reels_campaign_slug on reels (campaign_slug);
 create index if not exists idx_reels_user_id on reels (user_id);
 
 alter table campaigns enable row level security;
 alter table donations enable row level security;
+alter table donation_blockchain enable row level security;
 alter table disbursements enable row level security;
 alter table reels enable row level security;
 alter table profiles enable row level security;

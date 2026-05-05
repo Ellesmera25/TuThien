@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import {
+  createBlockchainRecord,
+  getGenesisBlockHash,
+} from "@/lib/blockchain";
+import {
   getSepayConfig,
   isWebhookSignatureValid,
   parseSepayWebhookPayload,
@@ -34,7 +38,7 @@ export async function POST(request: Request) {
 
   const { data: donation, error: selectError } = await supabase
     .from("donations")
-    .select("id, status, payment_reference")
+    .select("id, status, payment_reference, amount, donor_name, email")
     .eq("payment_reference", normalized.paymentReference)
     .maybeSingle();
 
@@ -42,14 +46,84 @@ export async function POST(request: Request) {
     return NextResponse.json({ received: true, ignored: true });
   }
 
+  const { data: lastBlockchainEntry } = await supabase
+    .from("donation_blockchain")
+    .select("hash")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   if (donation.status === "confirmed") {
+    const { data: blockchainEntry } = await supabase
+      .from("donation_blockchain")
+      .select("id")
+      .eq("donation_id", donation.id)
+      .maybeSingle();
+
+    if (blockchainEntry) {
+      return NextResponse.json({
+        received: true,
+        updated: false,
+        id: donation.id,
+        status: donation.status,
+        blockchainStored: true,
+      });
+    }
+
+    const restoredBlock = createBlockchainRecord(
+      donation.payment_reference ?? normalized.paymentReference,
+      Number(donation.amount),
+      donation.donor_name,
+      donation.email,
+      lastBlockchainEntry?.hash ?? getGenesisBlockHash(),
+    );
+
+    const { error: restoreError } = await supabase
+      .from("donation_blockchain")
+      .upsert(
+        {
+          donation_id: donation.id,
+          payment_reference: restoredBlock.paymentReference,
+          amount: restoredBlock.amount,
+          donor_name: restoredBlock.donorName,
+          email: restoredBlock.email,
+          hash: restoredBlock.hash,
+          previous_hash: restoredBlock.previousHash,
+          timestamp: restoredBlock.timestamp,
+        },
+        { onConflict: "donation_id" },
+      );
+
+    if (restoreError) {
+      return NextResponse.json(
+        { error: "Failed to restore blockchain record." },
+        { status: 500 },
+      );
+    }
+
+    await supabase
+      .from("donations")
+      .update({ blockchain_hash: restoredBlock.hash })
+      .eq("id", donation.id);
+
     return NextResponse.json({
       received: true,
       updated: false,
       id: donation.id,
       status: donation.status,
+      blockchainStored: true,
+      blockchainHash: restoredBlock.hash,
     });
   }
+
+  const previousHash = lastBlockchainEntry?.hash ?? getGenesisBlockHash();
+  const blockchainRecord = createBlockchainRecord(
+    normalized.paymentReference,
+    Number(donation.amount),
+    donation.donor_name,
+    donation.email,
+    previousHash,
+  );
 
   const now = new Date().toISOString();
   const { error: updateError } = await supabase
@@ -60,6 +134,7 @@ export async function POST(request: Request) {
       provider_transaction_id: normalized.providerTransactionId,
       webhook_payload: normalized.raw,
       webhook_received_at: now,
+      blockchain_hash: blockchainRecord.hash,
     })
     .eq("payment_reference", normalized.paymentReference);
 
@@ -70,11 +145,35 @@ export async function POST(request: Request) {
     );
   }
 
+  const { error: blockchainInsertError } = await supabase
+    .from("donation_blockchain")
+    .upsert(
+      {
+        donation_id: donation.id,
+        payment_reference: blockchainRecord.paymentReference,
+        amount: blockchainRecord.amount,
+        donor_name: blockchainRecord.donorName,
+        email: blockchainRecord.email,
+        hash: blockchainRecord.hash,
+        previous_hash: blockchainRecord.previousHash,
+        timestamp: blockchainRecord.timestamp,
+      },
+      { onConflict: "donation_id" },
+    );
+
+  if (blockchainInsertError) {
+    return NextResponse.json(
+      { error: "Failed to store blockchain record." },
+      { status: 500 },
+    );
+  }
+
   return NextResponse.json({
     received: true,
     updated: true,
     id: donation.id,
     status: "confirmed",
     paymentReference: normalized.paymentReference,
+    blockchainHash: blockchainRecord.hash,
   });
 }

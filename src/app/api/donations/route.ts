@@ -9,10 +9,6 @@ import {
   createSepayPaymentReference,
   getSepayConfig,
 } from "@/lib/sepay";
-import {
-  createBlockchainRecord,
-  getGenesisBlockHash,
-} from "@/lib/blockchain";
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -70,21 +66,12 @@ export async function POST(request: Request) {
     const paymentReference = createSepayPaymentReference();
     const qrContent = buildSepayTransferContent(paymentReference);
 
-    const blockchainRecord = createBlockchainRecord(
-      paymentReference,
-      body.amount,
-      body.donorName,
-      body.email,
-      getGenesisBlockHash(),
-    );
-
     return NextResponse.json({
       id: `demo_${Date.now()}`,
       demo: true,
       paymentReference,
       qrContent,
       qrImageUrl: buildSepayQrImageUrl(qrContent, body.amount, sepayConfig),
-      blockchainHash: blockchainRecord.hash,
       instruction:
         "Quét mã QR và giữ nguyên nội dung chuyển khoản để Sepay xác minh tự động.",
     });
@@ -106,28 +93,6 @@ export async function POST(request: Request) {
     campaignId = campaign?.id ?? null;
   }
 
-  // Get the last blockchain hash to link this new donation
-  let previousBlockchainHash = getGenesisBlockHash();
-  const { data: lastDonation } = await supabase
-    .from("donations")
-    .select("blockchain_hash")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (lastDonation?.blockchain_hash) {
-    previousBlockchainHash = lastDonation.blockchain_hash;
-  }
-
-  // Create blockchain record for donation with previous hash linkage
-  const blockchainRecord = createBlockchainRecord(
-    paymentReference,
-    body.amount,
-    body.donorName,
-    authUserEmail ?? body.email,
-    previousBlockchainHash,
-  );
-
   const { data, error } = await supabase
     .from("donations")
     .insert({
@@ -142,7 +107,6 @@ export async function POST(request: Request) {
       payment_reference: paymentReference,
       payment_content: qrContent,
       payment_qr_url: qrImageUrl,
-      blockchain_hash: blockchainRecord.hash,
       message: body.message ?? null,
       status: "pending",
     })
@@ -161,7 +125,6 @@ export async function POST(request: Request) {
     paymentReference,
     qrContent,
     qrImageUrl,
-    blockchainHash: blockchainRecord.hash,
     instruction:
       "Quét mã QR trong ứng dụng ngân hàng và giữ nguyên nội dung chuyển khoản để Sepay xác minh tự động.",
   });
