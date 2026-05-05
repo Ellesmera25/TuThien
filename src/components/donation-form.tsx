@@ -303,7 +303,7 @@ export function DonationForm({
         disabled={submitting}
         className="neo-btn neo-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
       >
-        {submitting ? "Đang gửi..." : "Xác nhận quyên góp"}
+        {submitting ? "Đang gửi..." : "Tạo QR quyên góp"}
       </button>
     </form>
   );

@@ -72,8 +72,14 @@ export function extractSepayReference(input: unknown): string | null {
     return null;
   }
 
-  const match = input.match(/TUTHIEN-[A-Z0-9]+/i);
-  return match?.[0]?.toUpperCase() ?? null;
+  const normalizedInput = input.replace(/\s+/g, "").toUpperCase();
+  const match = normalizedInput.match(/TUTHIEN-?([A-Z0-9]{6,})/i);
+
+  if (!match?.[1]) {
+    return null;
+  }
+
+  return `TUTHIEN-${match[1].toUpperCase()}`;
 }
 
 export function parseSepayWebhookPayload(payload: unknown): {
