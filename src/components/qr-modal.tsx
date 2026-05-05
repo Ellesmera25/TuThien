@@ -32,6 +32,7 @@ export default function QrModal({
     "pending",
   );
   const [connected, setConnected] = useState(false);
+  const [copyFeedback, setCopyFeedback] = useState("");
   const expiryStartedAtRef = useRef(Date.now());
   const redirectTimerRef = useRef<number | null>(null);
   const channelRef = useRef<ReturnType<NonNullable<ReturnType<typeof getSupabaseBrowserClient>>["channel"]> | null>(null);
@@ -219,13 +220,16 @@ export default function QrModal({
                 onClick={async () => {
                   try {
                     await navigator.clipboard.writeText(paymentDetails.qrContent);
+                    setCopyFeedback("Đã sao chép!");
+                    setTimeout(() => setCopyFeedback(""), 2000);
                   } catch {
-                    // ignore clipboard failures
+                    setCopyFeedback("Sao chép thất bại");
+                    setTimeout(() => setCopyFeedback(""), 2000);
                   }
                 }}
                 className="neo-btn neo-btn-ghost"
               >
-                Sao chép nội dung
+                {copyFeedback || "Sao chép nội dung"}
               </button>
 
               {status === "pending" ? (
@@ -245,17 +249,6 @@ export default function QrModal({
               </p>
             ) : null}
           </div>
-        </div>
-
-        <div className="flex justify-end border-t border-slate-100 px-6 py-4 sm:px-7">
-          <button
-            type="button"
-            onClick={onClose}
-            className="neo-btn neo-btn-ghost"
-            disabled={status !== "pending"}
-          >
-            {status === "pending" ? "Quay lại form" : "Đang xử lý..."}
-          </button>
         </div>
       </div>
     </div>
