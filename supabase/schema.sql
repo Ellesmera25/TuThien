@@ -184,6 +184,12 @@ create policy "donations are readable by owner"
   to authenticated
   using (auth.uid() = user_id);
 
+drop policy if exists "donation_blockchain are readable" on donation_blockchain;
+create policy "donation_blockchain are readable"
+  on donation_blockchain for select
+  to authenticated
+  using (true);
+
 drop policy if exists "profiles are readable by owner" on profiles;
 create policy "profiles are readable by owner"
   on profiles for select

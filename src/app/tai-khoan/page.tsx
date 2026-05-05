@@ -9,6 +9,7 @@ import {
   createSupabaseServerAuthClient,
   getCurrentUser,
 } from "@/lib/supabase/auth-server";
+import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Tài khoản",
@@ -248,6 +249,8 @@ type DonationRow = {
   amount: number;
   created_at: string;
   payment_reference: string;
+  hash: string;
+  previous_hash: string;
 };
 
 async function getMyRecentDonations(email: string): Promise<DonationRow[]> {
@@ -255,14 +258,14 @@ async function getMyRecentDonations(email: string): Promise<DonationRow[]> {
     return [];
   }
 
-  const { client } = await createSupabaseServerAuthClient();
+  const client = getSupabaseServiceClient();
   if (!client) {
     return [];
   }
 
   const { data, error } = await client
     .from("donation_blockchain")
-    .select("id, donor_name, amount, created_at, payment_reference")
+    .select("id, donor_name, amount, created_at, payment_reference, hash, previous_hash")
     .eq("email", email)
     .order("created_at", { ascending: false })
     .limit(10);
