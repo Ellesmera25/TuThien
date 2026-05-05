@@ -46,6 +46,16 @@ export type ReelItem = {
   createdAt: string;
 };
 
+export type ReelPayload = {
+  campaignSlug: string;
+  title: string;
+  caption: string;
+  creatorName: string;
+  location: string;
+  videoUrl: string;
+  coverTone: ReelItem["coverTone"];
+};
+
 export type DonationPayload = {
   donorName: string;
   email: string;

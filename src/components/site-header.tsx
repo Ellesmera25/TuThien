@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { getCurrentUser } from "@/lib/supabase/auth-server";
 import { AuthSignOutButton } from "@/components/auth-sign-out-button";
+import { getCurrentUser } from "@/lib/supabase/auth-server";
 
 const navItems = [
   { href: "/", label: "Trang chủ" },
@@ -15,86 +15,81 @@ export async function SiteHeader() {
   const user = await getCurrentUser();
 
   return (
-    <header className="sticky top-0 z-50 px-4 pt-4 sm:px-6">
-      <div className="mx-auto max-w-7xl">
-        <div className="neo-panel relative overflow-hidden px-4 py-3 sm:px-5">
-          <span className="orbit-dot -right-12 -top-12 h-28 w-28 bg-primary/20" />
-          <span className="orbit-dot -bottom-10 left-1/3 h-20 w-20 bg-cool/20" />
+    <header className="sticky top-0 z-50 border-b border-outline-variant/30 bg-white/90 backdrop-blur-md">
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 shadow-ambient sm:px-8">
+        <Link
+          href="/"
+          className="font-display text-2xl font-black tracking-tight text-primary"
+        >
+          TuThien.vn
+        </Link>
 
-          <div className="relative flex items-center justify-between gap-4">
-            <Link href="/" className="inline-flex items-center gap-2">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent font-display text-sm font-bold text-white shadow-glow">
-                TT
-              </span>
-              <span className="font-display text-lg font-bold tracking-tight text-ink">
-                tuthien<span className="text-primary">.vn</span>
-              </span>
-            </Link>
-
-            <nav className="hidden items-center gap-1 md:flex">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="rounded-full px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-ink"
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <Link
-                href="/quan-tri"
-                className="rounded-full px-3 py-1.5 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-ink"
-              >
-                Quản trị
-              </Link>
-            </nav>
-
-            <div className="hidden items-center gap-2 md:flex">
-              {user ? (
-                <>
-                  <Link
-                    href="/tai-khoan"
-                    className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-slate-700 transition hover:border-primary hover:text-primary"
-                  >
-                    Tài khoản
-                  </Link>
-                  <AuthSignOutButton />
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/dang-nhap"
-                    className="rounded-full border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-slate-700 transition hover:border-primary hover:text-primary"
-                  >
-                    Đăng nhập
-                  </Link>
-                  <Link href="/dang-ky" className="neo-btn neo-btn-primary">
-                    Đăng ký
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <nav className="mt-2 flex gap-2 overflow-x-auto pb-1 md:hidden">
+        <nav className="hidden items-center gap-2 md:flex">
           {navItems.map((item) => (
             <Link
               key={item.href}
               href={item.href}
-              className="shrink-0 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-soft"
+              className="rounded-lg px-3 py-2 font-display text-sm font-semibold tracking-tight text-slate-600 transition hover:bg-surface-low hover:text-primary active:scale-95"
             >
               {item.label}
             </Link>
           ))}
           <Link
-            href={user ? "/tai-khoan" : "/dang-nhap"}
-            className="shrink-0 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-soft"
+            href="/quan-tri"
+            className="rounded-lg px-3 py-2 font-display text-sm font-semibold tracking-tight text-slate-600 transition hover:bg-surface-low hover:text-primary active:scale-95"
           >
-            {user ? "Tài khoản" : "Đăng nhập"}
+            Quản trị
           </Link>
         </nav>
+
+        <div className="hidden items-center gap-3 md:flex">
+          {user ? (
+            <>
+              <Link
+                href="/tai-khoan"
+                className="rounded-lg px-4 py-2 font-display text-sm font-semibold text-slate-600 transition hover:bg-surface-low hover:text-primary"
+              >
+                Tài khoản
+              </Link>
+              <AuthSignOutButton />
+            </>
+          ) : (
+            <>
+              <Link
+                href="/dang-nhap"
+                className="rounded-lg border border-outline-variant/70 bg-white px-4 py-2 font-display text-sm font-semibold text-slate-600 transition hover:border-primary hover:text-primary active:scale-95"
+              >
+                Đăng nhập
+              </Link>
+              <Link href="/dang-ky" className="neo-btn neo-btn-primary">
+                Đăng ký
+              </Link>
+            </>
+          )}
+        </div>
+
+        <Link href="/quyen-gop" className="neo-btn neo-btn-primary md:hidden">
+          Ủng hộ
+        </Link>
       </div>
+
+      <nav className="no-scrollbar mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-3 md:hidden">
+        {navItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className="shrink-0 rounded-lg border border-outline-variant/40 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-ambient"
+          >
+            {item.label}
+          </Link>
+        ))}
+        <Link
+          href={user ? "/tai-khoan" : "/dang-nhap"}
+          className="shrink-0 rounded-lg border border-outline-variant/40 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-ambient"
+        >
+          {user ? "Tài khoản" : "Đăng nhập"}
+        </Link>
+      </nav>
     </header>
   );
 }

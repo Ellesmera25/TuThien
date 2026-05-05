@@ -10,6 +10,8 @@ export const metadata: Metadata = {
   description: "Trang quản trị tối giản cho bộ phận điều phối.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminPage() {
   const user = await getCurrentUser();
   if (!user) {

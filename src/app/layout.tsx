@@ -45,7 +45,7 @@ export default function RootLayout({
   return (
     <html lang="vi">
       <body
-        className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable} font-sans antialiased`}
+        className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable} app-surface font-sans antialiased`}
       >
         <SiteHeader />
         <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
