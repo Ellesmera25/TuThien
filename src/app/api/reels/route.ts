@@ -15,27 +15,55 @@ function isValidUrl(value: string): boolean {
   }
 }
 
+function isStorageVideoUrl(value: string): boolean {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl || !isValidUrl(value)) {
+    return false;
+  }
+
+  const parsedValue = new URL(value);
+  const parsedSupabaseUrl = new URL(supabaseUrl);
+
+  return (
+    parsedValue.origin === parsedSupabaseUrl.origin &&
+    parsedValue.pathname.includes("/storage/v1/object/public/reel-videos/")
+  );
+}
+
 function isValidPayload(payload: Partial<ReelPayload>): payload is ReelPayload {
   if (typeof payload.campaignSlug !== "string" || !payload.campaignSlug.trim()) {
     return false;
   }
 
-  if (typeof payload.title !== "string" || payload.title.trim().length < 4) {
+  if (
+    typeof payload.title !== "string" ||
+    payload.title.trim().length < 4 ||
+    payload.title.trim().length > 120
+  ) {
     return false;
   }
 
-  if (typeof payload.caption !== "string" || payload.caption.trim().length < 8) {
+  if (
+    typeof payload.caption !== "string" ||
+    payload.caption.trim().length < 8 ||
+    payload.caption.trim().length > 800
+  ) {
     return false;
   }
 
   if (
     typeof payload.creatorName !== "string" ||
-    payload.creatorName.trim().length < 2
+    payload.creatorName.trim().length < 2 ||
+    payload.creatorName.trim().length > 120
   ) {
     return false;
   }
 
-  if (typeof payload.location !== "string" || payload.location.trim().length < 2) {
+  if (
+    typeof payload.location !== "string" ||
+    payload.location.trim().length < 2 ||
+    payload.location.trim().length > 160
+  ) {
     return false;
   }
 
@@ -43,7 +71,7 @@ function isValidPayload(payload: Partial<ReelPayload>): payload is ReelPayload {
     return false;
   }
 
-  if (typeof payload.videoUrl !== "string" || !isValidUrl(payload.videoUrl)) {
+  if (typeof payload.videoUrl !== "string" || !isStorageVideoUrl(payload.videoUrl)) {
     return false;
   }
 

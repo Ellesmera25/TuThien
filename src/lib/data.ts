@@ -1,4 +1,7 @@
-import { getSupabaseServerClient } from "@/lib/supabase/server";
+import {
+  getSupabaseServerClient,
+  getSupabaseServiceClient,
+} from "@/lib/supabase/server";
 import type {
   Campaign,
   DashboardSummary,
@@ -141,14 +144,15 @@ export async function getTransparencyItems(
 }
 
 export async function getRecentDonations(): Promise<DonationItem[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServiceClient();
   if (!supabase) {
     return [];
   }
 
   const { data, error } = await supabase
     .from("donations")
-    .select("*")
+    .select("id, donor_name, amount, created_at, campaign_slug, message")
+    .eq("status", "confirmed")
     .order("created_at", { ascending: false })
     .limit(10);
 
@@ -217,7 +221,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     0,
   );
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getSupabaseServiceClient();
   if (!supabase) {
     return {
       totalRaised,

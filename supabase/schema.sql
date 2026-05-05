@@ -1,4 +1,4 @@
--- Enable UUID helper
+-- TuThien.vn Supabase schema
 create extension if not exists pgcrypto;
 
 create table if not exists campaigns (
@@ -10,7 +10,7 @@ create table if not exists campaigns (
   raised_amount bigint not null default 0 check (raised_amount >= 0),
   status text not null default 'active' check (status in ('active', 'completed', 'paused')),
   end_date date not null,
-  cover_tag text not null default 'Đang cập nhật',
+  cover_tag text not null default 'Dang cap nhat',
   created_at timestamptz not null default now()
 );
 
@@ -49,7 +49,7 @@ create table if not exists reels (
   title text not null,
   caption text not null,
   creator_name text not null default 'TuThien.vn',
-  location text not null default 'Đang cập nhật',
+  location text not null default 'Dang cap nhat',
   video_url text,
   cover_tone text not null default 'warm' check (cover_tone in ('warm', 'cool', 'mint', 'violet')),
   views bigint not null default 0 check (views >= 0),
@@ -150,10 +150,11 @@ create policy "members can delete own reel videos"
   );
 
 drop policy if exists "donations are readable" on donations;
-create policy "donations are readable"
+drop policy if exists "donations are readable by owner" on donations;
+create policy "donations are readable by owner"
   on donations for select
-  to anon, authenticated
-  using (true);
+  to authenticated
+  using (auth.uid() = user_id);
 
 drop policy if exists "profiles are readable by owner" on profiles;
 create policy "profiles are readable by owner"
@@ -189,24 +190,3 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
-
-insert into campaigns (slug, title, summary, target_amount, raised_amount, status, end_date, cover_tag)
-values
-  ('nuoc-sach-lin-ho', 'Nước sạch cho bản Lìn Hồ', 'Lắp bể lọc và đường ống cho 120 hộ dân.', 150000000, 92000000, 'active', '2026-04-15', 'Y Tý, Lào Cai'),
-  ('hoc-bong-em-den-truong-2026', 'Học bổng Em đến trường 2026', 'Trao học bổng và bộ dụng cụ học tập cho 500 học sinh.', 300000000, 145000000, 'active', '2026-06-30', 'Miền Trung'),
-  ('bep-an-0-dong-nhi-dong-2', 'Bếp ăn 0 đồng - Bệnh viện Nhi Đồng 2', 'Cung cấp suất ăn cho bệnh nhi và gia đình.', 200000000, 210000000, 'completed', '2026-01-20', 'TP.HCM')
-on conflict (slug) do nothing;
-
-insert into disbursements (campaign_slug, title, description, amount, spent_at, proof_url)
-values
-  ('bep-an-0-dong-nhi-dong-2', 'Mua thực phẩm đợt 1', 'Nhập thực phẩm cho 1.600 suất ăn.', 52300000, '2026-01-06', '#'),
-  ('nuoc-sach-lin-ho', 'Mua ống dẫn nước PE', 'Ống PE 32mm cho cụm dân cư số 2.', 37000000, '2026-02-10', '#'),
-  ('hoc-bong-em-den-truong-2026', 'Đặt may đồng phục', '200 bộ đồng phục cho học sinh tiểu học.', 28500000, '2026-02-21', '#')
-on conflict do nothing;
-
-insert into reels (campaign_slug, title, caption, creator_name, location, cover_tone, views, likes, comments)
-values
-  ('nuoc-sach-lin-ho', 'Dòng nước đầu tiên về bản', 'Đội tình nguyện kiểm tra tuyến ống mới, chuẩn bị đưa nước sạch đến 120 hộ dân.', 'TuThien Field Team', 'Y Tý, Lào Cai', 'cool', 18400, 2130, 184),
-  ('hoc-bong-em-den-truong-2026', 'Một bộ đồng phục, thêm một ngày đến lớp', 'Những phần học bổng đầu tiên được đóng gói cho học sinh vùng cao trước năm học mới.', 'Quỹ Em Đến Trường', 'Miền Trung', 'warm', 26900, 3820, 241),
-  ('bep-an-0-dong-nhi-dong-2', 'Bữa trưa 0 đồng trong khu điều trị', 'Mỗi phần ăn được chuẩn bị nóng trong ngày và ghi nhận vào bảng minh bạch của chiến dịch.', 'Bếp Ăn Nhi Đồng 2', 'TP.HCM', 'mint', 31200, 4460, 318)
-on conflict do nothing;

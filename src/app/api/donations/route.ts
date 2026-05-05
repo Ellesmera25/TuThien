@@ -13,16 +13,29 @@ function isValidPayload(
 ): payload is DonationPayload {
   if (
     typeof payload.donorName !== "string" ||
-    payload.donorName.trim() === ""
+    payload.donorName.trim() === "" ||
+    payload.donorName.trim().length > 120
   ) {
     return false;
   }
 
-  if (typeof payload.email !== "string" || !isValidEmail(payload.email)) {
+  if (
+    typeof payload.email !== "string" ||
+    payload.email.length > 254 ||
+    !isValidEmail(payload.email)
+  ) {
     return false;
   }
 
-  if (typeof payload.amount !== "number" || payload.amount < 10_000) {
+  if (
+    typeof payload.amount !== "number" ||
+    payload.amount < 10_000 ||
+    payload.amount > 1_000_000_000
+  ) {
+    return false;
+  }
+
+  if (payload.message && payload.message.length > 500) {
     return false;
   }
 

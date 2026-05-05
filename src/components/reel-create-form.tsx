@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { createSupabaseBrowserAuthClient } from "@/lib/supabase/auth-client";
 import type { ReelPayload } from "@/lib/types";
@@ -37,18 +37,33 @@ export function ReelCreateForm({
   const [submitting, setSubmitting] = useState(false);
   const [uploadingText, setUploadingText] = useState("");
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
+  const videoPreviewRef = useRef("");
 
   useEffect(() => {
-    if (!selectedVideo) {
+    return () => {
+      if (videoPreviewRef.current) {
+        URL.revokeObjectURL(videoPreviewRef.current);
+      }
+    };
+  }, []);
+
+  function handleVideoChange(file: File | null) {
+    if (videoPreviewRef.current) {
+      URL.revokeObjectURL(videoPreviewRef.current);
+      videoPreviewRef.current = "";
+    }
+
+    setSelectedVideo(file);
+
+    if (!file) {
       setVideoPreviewUrl("");
       return;
     }
 
-    const objectUrl = URL.createObjectURL(selectedVideo);
+    const objectUrl = URL.createObjectURL(file);
+    videoPreviewRef.current = objectUrl;
     setVideoPreviewUrl(objectUrl);
-
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [selectedVideo]);
+  }
 
   async function submitReel(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -191,7 +206,7 @@ export function ReelCreateForm({
           required
           type="file"
           accept="video/*"
-          onChange={(event) => setSelectedVideo(event.target.files?.[0] ?? null)}
+          onChange={(event) => handleVideoChange(event.target.files?.[0] ?? null)}
           className="w-full rounded-lg border border-dashed border-outline bg-white px-3 py-3 text-sm text-on-surface-variant file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-bold file:text-white"
         />
         <span className="text-xs font-medium text-on-surface-variant">

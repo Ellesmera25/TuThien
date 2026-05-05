@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export async function GET() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
     return NextResponse.json({
       connected: false,
-      reason: "Supabase client is null (ENV missing)"
+      reason: "Supabase service client is not configured"
     });
   }
 
@@ -19,7 +23,7 @@ export async function GET() {
   if (error) {
     return NextResponse.json({
       connected: false,
-      error: error.message
+      error: "Database check failed"
     });
   }
 
