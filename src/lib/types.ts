@@ -51,7 +51,7 @@ export type DonationPayload = {
   email: string;
   amount: number;
   campaignSlug?: string;
-  paymentMethod: "bank_transfer" | "momo" | "zalo_pay";
+  paymentMethod: "sepay_qr";
   message?: string;
 };
 

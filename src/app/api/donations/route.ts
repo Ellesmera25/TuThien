@@ -3,6 +3,16 @@ import { NextResponse } from "next/server";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import type { DonationPayload } from "@/lib/types";
+import {
+  buildSepayQrImageUrl,
+  buildSepayTransferContent,
+  createSepayPaymentReference,
+  getSepayConfig,
+} from "@/lib/sepay";
+import {
+  createBlockchainRecord,
+  getGenesisBlockHash,
+} from "@/lib/blockchain";
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -27,9 +37,7 @@ function isValidPayload(
   }
 
   return (
-    payload.paymentMethod === "bank_transfer" ||
-    payload.paymentMethod === "momo" ||
-    payload.paymentMethod === "zalo_pay"
+    payload.paymentMethod === "sepay_qr"
   );
 }
 
@@ -45,6 +53,7 @@ export async function POST(request: Request) {
 
   const supabase = getSupabaseServiceClient();
   const { client: authClient } = await createSupabaseServerAuthClient();
+  const sepayConfig = getSepayConfig();
 
   let authUserId: string | null = null;
   let authUserEmail: string | null = null;
@@ -58,11 +67,32 @@ export async function POST(request: Request) {
   }
 
   if (!supabase) {
+    const paymentReference = createSepayPaymentReference();
+    const qrContent = buildSepayTransferContent(paymentReference, body);
+
+    const blockchainRecord = createBlockchainRecord(
+      paymentReference,
+      body.amount,
+      body.donorName,
+      body.email,
+      getGenesisBlockHash(),
+    );
+
     return NextResponse.json({
       id: `demo_${Date.now()}`,
       demo: true,
+      paymentReference,
+      qrContent,
+      qrImageUrl: buildSepayQrImageUrl(qrContent, body.amount, sepayConfig),
+      blockchainHash: blockchainRecord.hash,
+      instruction:
+        "Quét mã QR và giữ nguyên nội dung chuyển khoản để Sepay xác minh tự động.",
     });
   }
+
+  const paymentReference = createSepayPaymentReference();
+  const qrContent = buildSepayTransferContent(paymentReference, body);
+  const qrImageUrl = buildSepayQrImageUrl(qrContent, body.amount, sepayConfig);
 
   let campaignId: string | null = null;
 
@@ -76,6 +106,28 @@ export async function POST(request: Request) {
     campaignId = campaign?.id ?? null;
   }
 
+  // Get the last blockchain hash to link this new donation
+  let previousBlockchainHash = getGenesisBlockHash();
+  const { data: lastDonation } = await supabase
+    .from("donations")
+    .select("blockchain_hash")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lastDonation?.blockchain_hash) {
+    previousBlockchainHash = lastDonation.blockchain_hash;
+  }
+
+  // Create blockchain record for donation with previous hash linkage
+  const blockchainRecord = createBlockchainRecord(
+    paymentReference,
+    body.amount,
+    body.donorName,
+    authUserEmail ?? body.email,
+    previousBlockchainHash,
+  );
+
   const { data, error } = await supabase
     .from("donations")
     .insert({
@@ -86,6 +138,11 @@ export async function POST(request: Request) {
       campaign_id: campaignId,
       campaign_slug: body.campaignSlug ?? null,
       payment_method: body.paymentMethod,
+      payment_provider: "sepay",
+      payment_reference: paymentReference,
+      payment_content: qrContent,
+      payment_qr_url: qrImageUrl,
+      blockchain_hash: blockchainRecord.hash,
       message: body.message ?? null,
       status: "pending",
     })
@@ -99,5 +156,13 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json({ id: data.id });
+  return NextResponse.json({
+    id: data.id,
+    paymentReference,
+    qrContent,
+    qrImageUrl,
+    blockchainHash: blockchainRecord.hash,
+    instruction:
+      "Quét mã QR trong ứng dụng ngân hàng và giữ nguyên nội dung chuyển khoản để Sepay xác minh tự động.",
+  });
 }

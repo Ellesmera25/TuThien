@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
 import { useState } from "react";
 
@@ -12,8 +13,16 @@ type FormState = {
   email: string;
   amount: string;
   campaignSlug: string;
-  paymentMethod: "bank_transfer" | "momo" | "zalo_pay";
   message: string;
+};
+
+type PaymentDetails = {
+  id: string;
+  paymentReference: string;
+  qrImageUrl: string;
+  qrContent: string;
+  instruction: string;
+  demo?: boolean;
 };
 
 const minimumDonation = 10_000;
@@ -29,17 +38,20 @@ export function DonationForm({
     email: "",
     amount: "100000",
     campaignSlug: initialCampaignSlug,
-    paymentMethod: "bank_transfer",
     message: "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(
+    null,
+  );
 
   const submitDonation = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setResult("");
+    setPaymentDetails(null);
 
     const parsedAmount = Number(state.amount);
     if (!Number.isFinite(parsedAmount) || parsedAmount < minimumDonation) {
@@ -57,7 +69,7 @@ export function DonationForm({
           email: state.email.trim(),
           amount: parsedAmount,
           campaignSlug: state.campaignSlug || undefined,
-          paymentMethod: state.paymentMethod,
+          paymentMethod: "sepay_qr",
           message: state.message.trim() || undefined,
         }),
       });
@@ -66,6 +78,10 @@ export function DonationForm({
         error?: string;
         id?: string;
         demo?: boolean;
+        paymentReference?: string;
+        qrImageUrl?: string;
+        qrContent?: string;
+        instruction?: string;
       };
 
       if (!response.ok) {
@@ -75,9 +91,21 @@ export function DonationForm({
 
       setResult(
         payload.demo
-          ? `Đã ghi nhận bản demo (${payload.id ?? "N/A"}).`
-          : `Đã tạo phiếu quyên góp thành công (${payload.id ?? "N/A"}).`,
+          ? `Đã tạo mã QR bản demo (${payload.id ?? "N/A"}).`
+          : `Đã tạo mã QR Sepay thành công (${payload.id ?? "N/A"}).`,
       );
+      if (payload.id && payload.paymentReference && payload.qrImageUrl) {
+        setPaymentDetails({
+          id: payload.id,
+          paymentReference: payload.paymentReference,
+          qrImageUrl: payload.qrImageUrl,
+          qrContent: payload.qrContent ?? payload.paymentReference,
+          instruction:
+            payload.instruction ??
+            "Quét mã QR trong ứng dụng ngân hàng, giữ nguyên nội dung chuyển khoản để hệ thống xác minh tự động.",
+          demo: payload.demo,
+        });
+      }
       setState((prev) => ({
         ...prev,
         donorName: "",
@@ -186,20 +214,9 @@ export function DonationForm({
       </div>
 
       <Field label="Phương thức thanh toán">
-        <select
-          value={state.paymentMethod}
-          onChange={(event) =>
-            setState((prev) => ({
-              ...prev,
-              paymentMethod: event.target.value as FormState["paymentMethod"],
-            }))
-          }
-          className={inputClass}
-        >
-          <option value="bank_transfer">Chuyển khoản ngân hàng</option>
-          <option value="momo">Ví MoMo</option>
-          <option value="zalo_pay">ZaloPay</option>
-        </select>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-semibold text-emerald-800">
+          Sepay QR chuyển khoản tự động xác minh
+        </div>
       </Field>
 
       <Field label="Lời nhắn (không bắt buộc)">
@@ -223,6 +240,62 @@ export function DonationForm({
         <p className="rounded-xl border border-emerald-100 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
           {result}
         </p>
+      ) : null}
+
+      {paymentDetails ? (
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="font-display text-lg font-bold text-ink">
+                Mã thanh toán Sepay
+              </p>
+              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
+                Mã tham chiếu: {paymentDetails.paymentReference}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(paymentDetails.qrContent);
+                  setResult("Đã sao chép nội dung chuyển khoản.");
+                } catch {
+                  setError("Không thể sao chép nội dung chuyển khoản.");
+                }
+              }}
+              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-slate-600 transition hover:border-primary/40 hover:text-primary"
+            >
+              Sao chép nội dung
+            </button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-[220px_1fr] md:items-center">
+            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
+              <img
+                src={paymentDetails.qrImageUrl}
+                alt="Mã QR thanh toán Sepay"
+                className="h-auto w-full rounded-xl bg-white"
+              />
+            </div>
+
+            <div className="space-y-3 text-sm text-slate-600">
+              <p>{paymentDetails.instruction}</p>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                  Nội dung chuyển khoản
+                </p>
+                <p className="mt-1 break-words font-mono text-sm font-semibold text-ink">
+                  {paymentDetails.qrContent}
+                </p>
+              </div>
+              {paymentDetails.demo ? (
+                <p className="text-xs font-semibold text-amber-700">
+                  Đây là QR bản demo vì môi trường chưa có đủ cấu hình Sepay.
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </section>
       ) : null}
 
       <button

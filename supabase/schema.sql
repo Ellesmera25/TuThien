@@ -23,8 +23,17 @@ create table if not exists donations (
   email text not null,
   amount bigint not null check (amount > 0),
   payment_method text not null,
+  payment_provider text not null default 'sepay',
+  payment_reference text unique,
+  payment_content text,
+  payment_qr_url text,
+  provider_transaction_id text,
+  webhook_payload jsonb,
   message text,
+  blockchain_hash text,
   status text not null default 'pending' check (status in ('pending', 'confirmed', 'failed')),
+  confirmed_at timestamptz,
+  webhook_received_at timestamptz,
   created_at timestamptz not null default now()
 );
 
@@ -58,10 +67,12 @@ create table if not exists reels (
 );
 
 create table if not exists profiles (
-  id uuid primary key references auth.users (id) on delete cascade,
+  id uuid not null,
   full_name text,
-  role text not null default 'member' check (role in ('member', 'admin')),
-  created_at timestamptz not null default now()
+  role text not null default 'donor'::text check (role = any (array['donor'::text, 'project_owner'::text, 'partner_org'::text, 'admin'::text])),
+  created_at timestamptz not null default now(),
+  constraint profiles_pkey primary key (id),
+  constraint profiles_id_fkey foreign key (id) references auth.users(id)
 );
 
 create index if not exists idx_donations_user_id on donations (user_id);
