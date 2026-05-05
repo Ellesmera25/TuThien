@@ -52,7 +52,7 @@ export type ReelPayload = {
   caption: string;
   creatorName: string;
   location: string;
-  videoUrl?: string;
+  videoUrl: string;
   coverTone: ReelItem["coverTone"];
 };
 

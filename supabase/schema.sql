@@ -75,6 +75,20 @@ alter table disbursements enable row level security;
 alter table reels enable row level security;
 alter table profiles enable row level security;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'reel-videos',
+  'reel-videos',
+  true,
+  104857600,
+  array['video/mp4', 'video/webm', 'video/quicktime', 'video/x-matroska']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 drop policy if exists "campaigns are readable" on campaigns;
 create policy "campaigns are readable"
   on campaigns for select
@@ -92,6 +106,43 @@ create policy "reels are readable"
   on reels for select
   to anon, authenticated
   using (true);
+
+drop policy if exists "reel videos are readable" on storage.objects;
+create policy "reel videos are readable"
+  on storage.objects for select
+  to anon, authenticated
+  using (bucket_id = 'reel-videos');
+
+drop policy if exists "members can upload reel videos" on storage.objects;
+create policy "members can upload reel videos"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'reel-videos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "members can update own reel videos" on storage.objects;
+create policy "members can update own reel videos"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'reel-videos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id = 'reel-videos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "members can delete own reel videos" on storage.objects;
+create policy "members can delete own reel videos"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'reel-videos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
 
 drop policy if exists "donations are readable" on donations;
 create policy "donations are readable"

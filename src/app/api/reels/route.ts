@@ -43,7 +43,7 @@ function isValidPayload(payload: Partial<ReelPayload>): payload is ReelPayload {
     return false;
   }
 
-  if (payload.videoUrl && !isValidUrl(payload.videoUrl)) {
+  if (typeof payload.videoUrl !== "string" || !isValidUrl(payload.videoUrl)) {
     return false;
   }
 
@@ -112,7 +112,7 @@ export async function POST(request: Request) {
       caption: body.caption.trim(),
       creator_name: body.creatorName.trim(),
       location: body.location.trim(),
-      video_url: body.videoUrl?.trim() || null,
+      video_url: body.videoUrl.trim(),
       cover_tone: body.coverTone,
       views: 0,
       likes: 0,

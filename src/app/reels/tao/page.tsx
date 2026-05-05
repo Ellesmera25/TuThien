@@ -34,9 +34,8 @@ export default async function CreateReelPage() {
             Tạo reel mới
           </h1>
           <p className="mt-3 text-sm leading-6 text-on-surface-variant">
-            Reel được ghi trực tiếp vào bảng `reels` trong database. Bạn có thể
-            gắn reel với một chiến dịch thật, thêm URL video dọc nếu có, hoặc
-            để hệ thống dùng cover fallback.
+            Video được upload lên Supabase Storage bucket `reel-videos`, sau đó
+            metadata được ghi trực tiếp vào bảng `reels` trong database.
           </p>
         </article>
 
@@ -47,7 +46,7 @@ export default async function CreateReelPage() {
           <ul className="mt-3 space-y-2 text-sm leading-6 text-on-surface-variant">
             <li>Chọn đúng chiến dịch để nút quyên góp trong reel dẫn đúng nơi.</li>
             <li>Video nên là tỉ lệ dọc 9:16 để hiển thị đẹp trên feed.</li>
-            <li>Không có video URL thì reel vẫn hiển thị bằng cover fallback.</li>
+            <li>Bucket `reel-videos` cần được tạo bằng schema Supabase mới.</li>
           </ul>
           <Link
             href="/reels"
