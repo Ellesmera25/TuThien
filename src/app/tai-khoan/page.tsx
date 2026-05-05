@@ -167,6 +167,9 @@ export default async function AccountPage() {
                 <p className="mt-1 text-sm text-on-surface-variant">
                   {donation.donor_name}
                 </p>
+                <p className="mt-1 text-sm font-semibold text-primary">
+                  Chiến dịch: {donation.campaign_title}
+                </p>
               </li>
             ))}
           </ul>
@@ -251,6 +254,7 @@ type DonationRow = {
   payment_reference: string;
   hash: string;
   previous_hash: string;
+  campaign_title: string;
 };
 
 async function getMyRecentDonations(email: string): Promise<DonationRow[]> {
@@ -263,16 +267,60 @@ async function getMyRecentDonations(email: string): Promise<DonationRow[]> {
     return [];
   }
 
-  const { data, error } = await client
+  const { data: blockchainRows, error: blockchainError } = await client
     .from("donation_blockchain")
-    .select("id, donor_name, amount, created_at, payment_reference, hash, previous_hash")
+    .select("id, donation_id, donor_name, amount, created_at, payment_reference, hash, previous_hash")
     .eq("email", email)
     .order("created_at", { ascending: false })
     .limit(10);
 
-  if (error || !data) {
+  if (blockchainError || !blockchainRows || blockchainRows.length === 0) {
     return [];
   }
 
-  return data as DonationRow[];
+  const donationIds = blockchainRows.map((row) => row.donation_id);
+  const { data: donationRows, error: donationError } = await client
+    .from("donations")
+    .select("id, campaign_slug, campaign:campaigns(title)")
+    .in("id", donationIds);
+
+  if (donationError || !donationRows) {
+    return blockchainRows.map((row) => ({
+      id: row.id,
+      donor_name: row.donor_name,
+      amount: row.amount,
+      created_at: row.created_at,
+      payment_reference: row.payment_reference,
+      hash: row.hash,
+      previous_hash: row.previous_hash,
+      campaign_title: "Quỹ chung",
+    }));
+  }
+
+  const donationMap = new Map(
+    donationRows.map((row) => [
+      row.id,
+      {
+        campaignTitle:
+          row.campaign && typeof row.campaign === "object" && !Array.isArray(row.campaign)
+            ? (row.campaign as { title?: string | null }).title ?? "Quỹ chung"
+            : "Quỹ chung",
+      },
+    ]),
+  );
+
+  return blockchainRows.map((row) => {
+    const donation = donationMap.get(row.donation_id);
+
+    return {
+      id: row.id,
+      donor_name: row.donor_name,
+      amount: row.amount,
+      created_at: row.created_at,
+      payment_reference: row.payment_reference,
+      hash: row.hash,
+      previous_hash: row.previous_hash,
+      campaign_title: donation?.campaignTitle ?? "Quỹ chung",
+    };
+  });
 }

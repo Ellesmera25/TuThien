@@ -284,59 +284,10 @@ export function DonationForm({
       ) : null}
 
       {paymentDetails ? (
-        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <p className="font-display text-lg font-bold text-ink">
-                Mã thanh toán Sepay
-              </p>
-              <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">
-                Mã tham chiếu: {paymentDetails.paymentReference}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await navigator.clipboard.writeText(paymentDetails.qrContent);
-                  setResult("Đã sao chép nội dung chuyển khoản.");
-                } catch {
-                  setError("Không thể sao chép nội dung chuyển khoản.");
-                }
-              }}
-              className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] text-slate-600 transition hover:border-primary/40 hover:text-primary"
-            >
-              Sao chép nội dung
-            </button>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-[220px_1fr] md:items-center">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 p-3">
-              <img
-                src={paymentDetails.qrImageUrl}
-                alt="Mã QR thanh toán Sepay"
-                className="h-auto w-full rounded-xl bg-white"
-              />
-            </div>
-
-            <div className="space-y-3 text-sm text-slate-600">
-              <p>{paymentDetails.instruction}</p>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-                <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
-                  Nội dung chuyển khoản
-                </p>
-                <p className="mt-1 break-words font-mono text-sm font-semibold text-ink">
-                  {paymentDetails.qrContent}
-                </p>
-              </div>
-              {paymentDetails.demo ? (
-                <p className="text-xs font-semibold text-amber-700">
-                  Đây là QR bản demo vì môi trường chưa có đủ cấu hình Sepay.
-                </p>
-              ) : null}
-            </div>
-          </div>
-        </section>
+        <QrModal
+          paymentDetails={paymentDetails}
+          onClose={() => setPaymentDetails(null)}
+        />
       ) : null}
 
       <button

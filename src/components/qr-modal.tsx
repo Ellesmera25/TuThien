@@ -143,7 +143,7 @@ export default function QrModal({
     }
 
     if (status === "failed") {
-      return "QR đã hết hạn sau 5 phút. Giao dịch không hoàn tất và sẽ quay về trang chủ.";
+      return "QR đã hết hạn sau 5 phút. Bạn sẽ được chuyển về trang chủ.";
     }
 
     return `Đang chờ webhook xác minh${connected ? "..." : "."}`;
