@@ -1,55 +1,37 @@
 import Link from "next/link";
 
 const links = [
-  { href: "/", label: "Trang chủ" },
+  { href: "/minh-bach", label: "Báo cáo tài chính" },
   { href: "/chien-dich", label: "Chiến dịch" },
   { href: "/quyen-gop", label: "Quyên góp" },
-  { href: "/minh-bach", label: "Minh bạch" },
+  { href: "/reels", label: "Reels tác động" },
 ];
 
 export function SiteFooter() {
   return (
-    <footer className="mt-16 px-4 pb-10 sm:px-6">
-      <div className="neo-panel mx-auto max-w-7xl overflow-hidden p-6 sm:p-8">
-        <div className="grid gap-8 md:grid-cols-[1.2fr_1fr_1fr]">
-          <div>
-            <p className="font-display text-2xl font-bold text-ink">
-              TuThien<span className="text-primary">.vn</span>
-            </p>
-            <p className="mt-3 max-w-md text-sm text-slate-600">
-              Nền tảng gây quỹ minh bạch, tối ưu cho cả desktop và mobile, giúp
-              cộng đồng theo dõi mọi đóng góp theo cách rõ ràng nhất.
-            </p>
-          </div>
-
-          <div className="space-y-2 text-sm text-slate-600">
-            <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-              Điều hướng
-            </p>
-            {links.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="block hover:text-primary"
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-
-          <div className="space-y-2 text-sm text-slate-600">
-            <p className="font-display text-xs font-bold uppercase tracking-[0.14em] text-slate-500">
-              Liên hệ
-            </p>
-            <p>hello@tuthien.vn</p>
-            <p>0899 000 111</p>
-            <p>TP.HCM - Việt Nam</p>
-          </div>
+    <footer className="mt-20 border-t border-outline-variant/30 bg-stone-50">
+      <div className="mx-auto grid max-w-7xl gap-8 px-6 py-12 md:grid-cols-[1fr_1.3fr]">
+        <div className="flex flex-col gap-4">
+          <span className="font-display text-xl font-bold tracking-tight text-ink">
+            TuThien<span className="text-primary">.vn</span>
+          </span>
+          <p className="max-w-md text-sm leading-6 text-slate-500">
+            Nền tảng kết nối cộng đồng với các chiến dịch xã hội, tập trung vào
+            câu chuyện thật, dòng tiền rõ ràng và báo cáo dễ kiểm chứng.
+          </p>
         </div>
 
-        <div className="mt-7 border-t border-white/70 pt-4 text-xs text-slate-500">
-          2026 TuThien.vn. Nền tảng quyên góp ưu tiên minh bạch.
-        </div>
+        <nav className="flex flex-wrap gap-4 md:justify-end md:gap-8">
+          {links.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="font-display text-sm font-semibold text-slate-500 underline-offset-4 transition hover:text-primary hover:underline"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
       </div>
     </footer>
   );
