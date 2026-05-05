@@ -39,7 +39,7 @@ export default async function DonatePage({ searchParams }: DonatePageProps) {
           </h2>
           <ul className="mt-3 space-y-2 text-sm text-slate-600">
             <li>Số tiền tối thiểu mỗi giao dịch là 10.000đ.</li>
-            <li>Nếu chưa kết nối Supabase, hệ thống sẽ chạy demo mode.</li>
+            <li>Cần kết nối Supabase thật để tạo phiếu quyên góp.</li>
             <li>
               Lịch sử tiếp nhận và giải ngân được cập nhật trên trang minh bạch.
             </li>

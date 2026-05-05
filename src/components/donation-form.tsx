@@ -65,7 +65,6 @@ export function DonationForm({
       const payload = (await response.json()) as {
         error?: string;
         id?: string;
-        demo?: boolean;
       };
 
       if (!response.ok) {
@@ -73,11 +72,7 @@ export function DonationForm({
         return;
       }
 
-      setResult(
-        payload.demo
-          ? `Đã ghi nhận bản demo (${payload.id ?? "N/A"}).`
-          : `Đã tạo phiếu quyên góp thành công (${payload.id ?? "N/A"}).`,
-      );
+      setResult(`Đã tạo phiếu quyên góp thành công (${payload.id ?? "N/A"}).`);
       setState((prev) => ({
         ...prev,
         donorName: "",

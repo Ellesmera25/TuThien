@@ -1,9 +1,3 @@
-import {
-  mockCampaigns,
-  mockRecentDonations,
-  mockReels,
-  mockTransparencyItems,
-} from "@/lib/mock-data";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   Campaign,
@@ -12,8 +6,6 @@ import type {
   ReelItem,
   TransparencyItem,
 } from "@/lib/types";
-
-const fallbackDonorCount = 186;
 
 function toNumber(value: unknown, fallback = 0): number {
   if (typeof value === "number") {
@@ -99,7 +91,7 @@ function mapReel(row: Record<string, unknown>): ReelItem {
 export async function getCampaigns(): Promise<Campaign[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return mockCampaigns;
+    return [];
   }
 
   const { data, error } = await supabase
@@ -109,11 +101,10 @@ export async function getCampaigns(): Promise<Campaign[]> {
 
   if (error) {
     console.error(error);
-    return mockCampaigns;
+    return [];
   }
 
-  const campaigns = (data ?? []).map(mapCampaign);
-  return campaigns.length > 0 ? campaigns : mockCampaigns;
+  return (data ?? []).map(mapCampaign);
 }
 
 export async function getCampaignBySlug(slug: string): Promise<Campaign | null> {
@@ -126,9 +117,7 @@ export async function getTransparencyItems(
 ): Promise<TransparencyItem[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return campaignSlug
-      ? mockTransparencyItems.filter((item) => item.campaignSlug === campaignSlug)
-      : mockTransparencyItems;
+    return [];
   }
 
   let query = supabase
@@ -145,19 +134,16 @@ export async function getTransparencyItems(
 
   if (error) {
     console.error(error);
-    return campaignSlug
-      ? mockTransparencyItems.filter((item) => item.campaignSlug === campaignSlug)
-      : mockTransparencyItems;
+    return [];
   }
 
-  const items = (data ?? []).map(mapTransparency);
-  return items.length > 0 ? items : mockTransparencyItems;
+  return (data ?? []).map(mapTransparency);
 }
 
 export async function getRecentDonations(): Promise<DonationItem[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return mockRecentDonations;
+    return [];
   }
 
   const { data, error } = await supabase
@@ -168,17 +154,16 @@ export async function getRecentDonations(): Promise<DonationItem[]> {
 
   if (error) {
     console.error(error);
-    return mockRecentDonations;
+    return [];
   }
 
-  const donations = (data ?? []).map(mapDonation);
-  return donations.length > 0 ? donations : mockRecentDonations;
+  return (data ?? []).map(mapDonation);
 }
 
 export async function getReels(): Promise<ReelItem[]> {
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return mockReels;
+    return [];
   }
 
   const { data, error } = await supabase
@@ -189,11 +174,10 @@ export async function getReels(): Promise<ReelItem[]> {
 
   if (error) {
     console.error(error);
-    return mockReels;
+    return [];
   }
 
-  const reels = (data ?? []).map(mapReel);
-  return reels.length > 0 ? reels : mockReels;
+  return (data ?? []).map(mapReel);
 }
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
@@ -216,11 +200,11 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       campaignCount: campaigns.length,
       activeCampaignCount: campaigns.filter((item) => item.status === "active")
         .length,
-      donorCount: fallbackDonorCount,
+      donorCount: 0,
     };
   }
 
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from("donations")
     .select("id", { count: "exact", head: true });
 
@@ -230,6 +214,6 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     campaignCount: campaigns.length,
     activeCampaignCount: campaigns.filter((item) => item.status === "active")
       .length,
-    donorCount: count ?? fallbackDonorCount,
+    donorCount: error ? 0 : (count ?? 0),
   };
 }

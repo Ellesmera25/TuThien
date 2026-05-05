@@ -75,15 +75,15 @@ export default async function AccountPage() {
 
       <section className="border-b border-outline-variant/40">
         <div className="no-scrollbar flex gap-8 overflow-x-auto pb-2">
-          <button className="whitespace-nowrap pb-2 text-sm font-bold text-on-surface-variant transition hover:text-primary">
+          <Link href="/chien-dich" className="whitespace-nowrap pb-2 text-sm font-bold text-on-surface-variant transition hover:text-primary">
             Chiến dịch
-          </button>
-          <button className="whitespace-nowrap border-b-2 border-primary pb-2 text-sm font-bold text-primary">
+          </Link>
+          <Link href="/reels" className="whitespace-nowrap border-b-2 border-primary pb-2 text-sm font-bold text-primary">
             Reels tác động
-          </button>
-          <button className="whitespace-nowrap pb-2 text-sm font-bold text-on-surface-variant transition hover:text-primary">
+          </Link>
+          <a href="#lich-su-dong-gop" className="whitespace-nowrap pb-2 text-sm font-bold text-on-surface-variant transition hover:text-primary">
             Lịch sử đóng góp
-          </button>
+          </a>
         </div>
       </section>
 
@@ -128,7 +128,7 @@ export default async function AccountPage() {
         </Link>
       </section>
 
-      <section className="surface-card rounded-xl p-6">
+      <section id="lich-su-dong-gop" className="surface-card rounded-xl p-6">
         <h2 className="font-display text-2xl font-semibold text-ink">
           Lịch sử đóng góp
         </h2>

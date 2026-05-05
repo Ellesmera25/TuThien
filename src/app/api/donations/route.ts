@@ -58,10 +58,13 @@ export async function POST(request: Request) {
   }
 
   if (!supabase) {
-    return NextResponse.json({
-      id: `demo_${Date.now()}`,
-      demo: true,
-    });
+    return NextResponse.json(
+      {
+        error:
+          "Chưa cấu hình Supabase service role key nên không thể ghi quyên góp vào database.",
+      },
+      { status: 503 },
+    );
   }
 
   let campaignId: string | null = null;

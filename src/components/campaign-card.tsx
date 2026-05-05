@@ -1,5 +1,10 @@
 import Link from "next/link";
 
+import {
+  getCampaignCategory,
+  getCampaignCategoryLabel,
+  type CampaignCategory,
+} from "@/lib/campaign-category";
 import { formatVnd } from "@/lib/format";
 import type { Campaign } from "@/lib/types";
 
@@ -7,29 +12,31 @@ type CampaignCardProps = {
   campaign: Campaign;
 };
 
-type Category = {
-  icon: "book" | "cross" | "leaf" | "spark";
-  label: string;
-};
+type CategoryIconName = "book" | "cross" | "leaf" | "spark";
 
-const campaignMeta: Record<
-  string,
-  { category: Category; image: string; urgency?: string }
+const categoryMeta: Record<
+  CampaignCategory,
+  { icon: CategoryIconName; image: string }
 > = {
-  "hoc-bong-em-den-truong-2026": {
-    category: { icon: "book", label: "Giáo dục" },
+  education: {
+    icon: "book",
     image:
       "https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&w=1200&q=80",
   },
-  "bep-an-0-dong-nhi-dong-2": {
-    category: { icon: "cross", label: "Y tế" },
+  emergency: {
+    icon: "spark",
     image:
-      "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80",
+      "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1200&q=80",
   },
-  "nuoc-sach-lin-ho": {
-    category: { icon: "leaf", label: "Môi trường" },
+  environment: {
+    icon: "leaf",
     image:
       "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?auto=format&fit=crop&w=1200&q=80",
+  },
+  health: {
+    icon: "cross",
+    image:
+      "https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=1200&q=80",
   },
 };
 
@@ -38,13 +45,8 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
     campaign.targetAmount > 0
       ? Math.min((campaign.raisedAmount / campaign.targetAmount) * 100, 100)
       : 0;
-  const meta =
-    campaignMeta[campaign.slug] ??
-    ({
-      category: { icon: "spark", label: "Khẩn cấp" },
-      image:
-        "https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1200&q=80",
-    } satisfies { category: Category; image: string });
+  const category = getCampaignCategory(campaign);
+  const meta = categoryMeta[category];
   const statusText = getCampaignStatusText(campaign, progress);
 
   return (
@@ -60,8 +62,8 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           style={{ backgroundImage: `url(${meta.image})` }}
         />
         <div className="absolute left-4 top-4 flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-primary backdrop-blur">
-          <CategoryIcon name={meta.category.icon} className="h-3.5 w-3.5" />
-          {meta.category.label}
+          <CategoryIcon name={meta.icon} className="h-3.5 w-3.5" />
+          {getCampaignCategoryLabel(category)}
         </div>
       </Link>
 
@@ -156,7 +158,7 @@ function CategoryIcon({
   name,
 }: {
   className: string;
-  name: Category["icon"];
+  name: CategoryIconName;
 }) {
   const common = {
     className,
