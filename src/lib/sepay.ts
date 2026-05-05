@@ -12,7 +12,7 @@ export type SepayConfig = {
 
 const paymentReferenceLength = 8;
 const paymentReferencePattern = new RegExp(
-  `TUTHIEN([A-F0-9]{${paymentReferenceLength}})(?![A-F0-9])`,
+  `TUTHIEN(?:-)?([A-F0-9]{${paymentReferenceLength}})`,
   "i",
 );
 
