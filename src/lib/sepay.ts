@@ -25,7 +25,7 @@ export function getSepayConfig(): SepayConfig | null {
     bankId,
     accountNo,
     accountName,
-    qrBaseUrl: process.env.SEPAY_QR_BASE_URL ?? "https://qr.sepay.vn/img?acc=1596357896&bank=MBBank&amount=&des=&template=compact",
+    qrBaseUrl: process.env.SEPAY_QR_BASE_URL ?? "https://qr.sepay.vn/img",
     webhookSecret: process.env.SEPAY_WEBHOOK_SECRET,
   };
 }
@@ -36,10 +36,14 @@ export function createSepayPaymentReference(): string {
 
 export function buildSepayTransferContent(
   paymentReference: string,
-  payload?: Pick<DonationPayload, "campaignSlug">,
+  payload?: Pick<DonationPayload, "campaignSlug" | "email">,
+  timestamp: Date = new Date(),
 ): string {
+  const timestampSuffix = formatSepayTimestamp(timestamp);
+  const emailSuffix = payload?.email?.trim() ? ` ${payload.email.trim()}` : "";
   const campaignSuffix = payload?.campaignSlug ? ` ${payload.campaignSlug}` : "";
-  return `TU THIEN ${paymentReference}${campaignSuffix}`;
+
+  return `TU THIEN ${paymentReference} ${timestampSuffix}${emailSuffix}${campaignSuffix}`;
 }
 
 export function buildSepayQrImageUrl(
@@ -54,13 +58,12 @@ export function buildSepayQrImageUrl(
     return fallback.toString();
   }
 
-  const qrUrl = new URL(
-    `${config.qrBaseUrl}/${encodeURIComponent(config.bankId)}-${encodeURIComponent(config.accountNo)}-compact2.png`,
-  );
+  const qrUrl = new URL(config.qrBaseUrl);
+  qrUrl.searchParams.set("acc", config.accountNo);
+  qrUrl.searchParams.set("bank", config.bankId);
   qrUrl.searchParams.set("amount", String(Math.max(0, Math.round(amount))));
   qrUrl.searchParams.set("des", qrContent);
-  qrUrl.searchParams.set("addInfo", qrContent);
-  qrUrl.searchParams.set("accountName", config.accountName);
+  qrUrl.searchParams.set("template", "compact");
   return qrUrl.toString();
 }
 
@@ -157,6 +160,17 @@ function toNumberValue(value: unknown): number | null {
   }
 
   return null;
+}
+
+function formatSepayTimestamp(date: Date): string {
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  const hours = String(date.getUTCHours()).padStart(2, "0");
+  const minutes = String(date.getUTCMinutes()).padStart(2, "0");
+  const seconds = String(date.getUTCSeconds()).padStart(2, "0");
+
+  return `${year}${month}${day}T${hours}${minutes}${seconds}Z`;
 }
 
 function safeEquals(left: string, right: string): boolean {
