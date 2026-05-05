@@ -11,6 +11,10 @@ export type SepayConfig = {
 };
 
 const paymentReferenceLength = 8;
+const paymentReferencePattern = new RegExp(
+  `TUTHIEN([A-F0-9]{${paymentReferenceLength}})(?![A-F0-9])`,
+  "i",
+);
 
 type AnyRecord = Record<string, unknown>;
 
@@ -71,9 +75,7 @@ export function extractSepayReference(input: unknown): string | null {
   const normalizedInput = input
     .toUpperCase()
     .replace(/[^A-Z0-9]/g, "");
-  const match = normalizedInput.match(
-    new RegExp(`TUTHIEN([A-Z0-9]{${paymentReferenceLength}})(?![A-Z0-9])`, "i"),
-  );
+  const match = normalizedInput.match(paymentReferencePattern);
 
   if (!match?.[1]) {
     return null;
