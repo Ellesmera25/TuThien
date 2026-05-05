@@ -107,6 +107,7 @@ export async function POST(request: Request) {
   const { data, error } = await supabase
     .from("reels")
     .insert({
+      user_id: user.id,
       campaign_slug: body.campaignSlug.trim(),
       title: body.title.trim(),
       caption: body.caption.trim(),

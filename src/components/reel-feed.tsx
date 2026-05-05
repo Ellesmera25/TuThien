@@ -25,6 +25,7 @@ const fallbackCover: Record<ReelItem["coverTone"], string> = {
 
 export function ReelFeed({ reels }: ReelFeedProps) {
   const [likedIds, setLikedIds] = useState<string[]>([]);
+  const [sharedId, setSharedId] = useState("");
 
   if (reels.length === 0) {
     return (
@@ -46,6 +47,29 @@ export function ReelFeed({ reels }: ReelFeedProps) {
         ? current.filter((id) => id !== reelId)
         : [...current, reelId],
     );
+  }
+
+  async function shareReel(reel: ReelItem) {
+    const shareUrl = `${window.location.origin}/reels?reel=${encodeURIComponent(
+      reel.id,
+    )}`;
+    const shareData = {
+      text: reel.caption,
+      title: reel.title,
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+      }
+      setSharedId(reel.id);
+      window.setTimeout(() => setSharedId(""), 1800);
+    } catch {
+      // User cancelled native share dialog.
+    }
   }
 
   return (
@@ -153,7 +177,12 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                   value={formatCompactNumber(reel.comments)}
                   icon="comment"
                 />
-                <ReelAction label="Chia sẻ" value="Chia sẻ" icon="share" />
+                <ReelAction
+                  label="Chia sẻ"
+                  value={sharedId === reel.id ? "Đã copy" : "Chia sẻ"}
+                  icon="share"
+                  onClick={() => shareReel(reel)}
+                />
                 <Link
                   href={`/quyen-gop?campaign=${reel.campaignSlug}`}
                   className="group mt-2 flex flex-col items-center gap-1"

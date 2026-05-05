@@ -44,6 +44,7 @@ create table if not exists disbursements (
 
 create table if not exists reels (
   id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users (id) on delete set null,
   campaign_slug text not null,
   title text not null,
   caption text not null,
@@ -57,6 +58,9 @@ create table if not exists reels (
   created_at timestamptz not null default now()
 );
 
+alter table reels
+  add column if not exists user_id uuid references auth.users (id) on delete set null;
+
 create table if not exists profiles (
   id uuid primary key references auth.users (id) on delete cascade,
   full_name text,
@@ -68,6 +72,7 @@ create index if not exists idx_donations_user_id on donations (user_id);
 create index if not exists idx_donations_created_at on donations (created_at desc);
 create index if not exists idx_reels_created_at on reels (created_at desc);
 create index if not exists idx_reels_campaign_slug on reels (campaign_slug);
+create index if not exists idx_reels_user_id on reels (user_id);
 
 alter table campaigns enable row level security;
 alter table donations enable row level security;

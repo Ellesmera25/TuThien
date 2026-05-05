@@ -180,6 +180,31 @@ export async function getReels(): Promise<ReelItem[]> {
   return (data ?? []).map(mapReel);
 }
 
+export async function getReelsByUser(userId: string): Promise<ReelItem[]> {
+  if (!userId) {
+    return [];
+  }
+
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("reels")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error(error);
+    return [];
+  }
+
+  return (data ?? []).map(mapReel);
+}
+
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const campaigns = await getCampaigns();
 

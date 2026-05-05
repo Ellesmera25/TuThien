@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { createSupabaseBrowserAuthClient } from "@/lib/supabase/auth-client";
 import type { ReelPayload } from "@/lib/types";
@@ -36,6 +36,19 @@ export function ReelCreateForm({
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingText, setUploadingText] = useState("");
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
+
+  useEffect(() => {
+    if (!selectedVideo) {
+      setVideoPreviewUrl("");
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(selectedVideo);
+    setVideoPreviewUrl(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [selectedVideo]);
 
   async function submitReel(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -67,6 +80,8 @@ export function ReelCreateForm({
       return;
     }
 
+    let storagePath = "";
+
     try {
       setSubmitting(true);
       setUploadingText("Đang upload video...");
@@ -81,7 +96,7 @@ export function ReelCreateForm({
         return;
       }
 
-      const storagePath = buildStoragePath(user.id, selectedVideo.name);
+      storagePath = buildStoragePath(user.id, selectedVideo.name);
       const { error: uploadError } = await supabase.storage
         .from(bucketName)
         .upload(storagePath, selectedVideo, {
@@ -116,6 +131,7 @@ export function ReelCreateForm({
       const payload = (await response.json()) as { error?: string; id?: string };
 
       if (!response.ok) {
+        await supabase.storage.from(bucketName).remove([storagePath]);
         setError(payload.error ?? "Không thể tạo reel. Vui lòng thử lại.");
         return;
       }
@@ -123,6 +139,9 @@ export function ReelCreateForm({
       router.push("/reels");
       router.refresh();
     } catch {
+      if (storagePath && supabase) {
+        await supabase.storage.from(bucketName).remove([storagePath]);
+      }
       setError("Mất kết nối máy chủ. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
@@ -179,6 +198,33 @@ export function ReelCreateForm({
           Nên dùng video dọc 9:16, dung lượng tối đa 100MB.
         </span>
       </Field>
+
+      {selectedVideo ? (
+        <div className="grid gap-4 rounded-lg border border-outline-variant/40 bg-surface-low p-4 md:grid-cols-[120px_1fr]">
+          <div className="aspect-[9/16] overflow-hidden rounded-lg bg-black">
+            {videoPreviewUrl ? (
+              <video
+                src={videoPreviewUrl}
+                className="h-full w-full object-cover"
+                muted
+                playsInline
+                controls
+              />
+            ) : null}
+          </div>
+          <div className="flex flex-col justify-center gap-1 text-sm">
+            <p className="font-bold text-ink">{selectedVideo.name}</p>
+            <p className="text-on-surface-variant">
+              {formatFileSize(selectedVideo.size)} ·{" "}
+              {selectedVideo.type || "video"}
+            </p>
+            <p className="text-xs leading-5 text-on-surface-variant">
+              Nếu lưu metadata thất bại sau khi upload, hệ thống sẽ tự xóa file
+              vừa upload để tránh rác trong Storage.
+            </p>
+          </div>
+        </div>
+      ) : null}
 
       <Field label="Tiêu đề reel">
         <input
@@ -266,6 +312,14 @@ function buildStoragePath(userId: string, fileName: string) {
   const extension = fileName.split(".").pop()?.toLowerCase() ?? "mp4";
   const safeExtension = extension.replace(/[^a-z0-9]/g, "") || "mp4";
   return `${userId}/${Date.now()}-${crypto.randomUUID()}.${safeExtension}`;
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024 * 1024) {
+    return `${Math.max(size / 1024, 1).toFixed(1)} KB`;
+  }
+
+  return `${(size / 1024 / 1024).toFixed(1)} MB`;
 }
 
 function Field({

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AuthSignOutButton } from "@/components/auth-sign-out-button";
-import { getDashboardSummary, getReels } from "@/lib/data";
+import { getDashboardSummary, getReelsByUser } from "@/lib/data";
 import { formatCompactNumber, formatDate, formatVnd } from "@/lib/format";
 import {
   createSupabaseServerAuthClient,
@@ -25,7 +25,7 @@ export default async function AccountPage() {
 
   const [summary, reels, recentDonations] = await Promise.all([
     getDashboardSummary(),
-    getReels(),
+    getReelsByUser(user.id),
     getMyRecentDonations(user.email ?? ""),
   ]);
 
