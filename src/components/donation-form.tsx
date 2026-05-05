@@ -1,7 +1,9 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
+import { createSupabaseBrowserAuthClient } from "@/lib/supabase/auth-client";
+import QrModal from "@/components/qr-modal";
 
 type DonationFormProps = {
   campaigns: Array<{ slug: string; title: string }>;
@@ -40,17 +42,55 @@ export function DonationForm({
     campaignSlug: initialCampaignSlug,
     message: "",
   });
+  const [userPrefilled, setUserPrefilled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(
     null,
   );
+  const lastInputsRef = useRef<string | null>(null);
+  const supabaseClientRef = useRef<any>(null);
+
+  useEffect(() => {
+    const client = createSupabaseBrowserAuthClient();
+    supabaseClientRef.current = client;
+    if (!client) return;
+
+    (async () => {
+      const { data } = await client.auth.getUser();
+      const user = data.user;
+      if (user) {
+        // Prefill donor name and email and mark fields as prefilled
+        setState((prev) => ({
+          ...prev,
+          donorName:
+            (user.user_metadata?.full_name as string | undefined) ?? prev.donorName,
+          email: user.email ?? prev.email,
+        }));
+        setUserPrefilled(true);
+      }
+    })();
+  }, []);
 
   const submitDonation = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setResult("");
+    // If inputs unchanged from last generated QR, keep existing QR
+    const currentInputs = JSON.stringify({
+      donorName: state.donorName.trim(),
+      email: state.email.trim(),
+      amount: state.amount,
+      campaignSlug: state.campaignSlug,
+      message: state.message.trim(),
+    });
+
+    if (paymentDetails && lastInputsRef.current === currentInputs) {
+      // keep existing QR
+      return;
+    }
+
     setPaymentDetails(null);
 
     const parsedAmount = Number(state.amount);
@@ -105,6 +145,7 @@ export function DonationForm({
             "Quét mã QR trong ứng dụng ngân hàng, giữ nguyên nội dung chuyển khoản để hệ thống xác minh tự động.",
           demo: payload.demo,
         });
+        lastInputsRef.current = currentInputs;
       }
       setState((prev) => ({
         ...prev,
