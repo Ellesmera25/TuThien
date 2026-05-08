@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#a33900" />
+    <title>TuThien.vn</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f9f9f8;
+        color: #1a1c1c;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: radial-gradient(circle at top, rgba(249, 115, 22, 0.12), transparent 40%), #f9f9f8;
+      }
+      .card {
+        max-width: 540px;
+        width: 100%;
+        background: #fff;
+        border: 1px solid rgba(142, 113, 102, 0.28);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+      }
+      .badge {
+        display: inline-block;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: rgba(163, 57, 0, 0.08);
+        color: #a33900;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+      h1 {
+        margin: 18px 0 10px;
+        font-size: 32px;
+        line-height: 1.1;
+      }
+      p {
+        margin: 0;
+        line-height: 1.7;
+        color: #5a4138;
+      }
+      code {
+        display: block;
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 16px;
+        background: #f3f4f3;
+        color: #1a1c1c;
+        overflow-x: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <span class="badge">Capacitor app shell</span>
+      <h1>TuThien.vn Android wrapper</h1>
+      <p>
+        Đây là trang đệm để Capacitor sinh project Android. Khi phát hành thật,
+        hãy đặt <strong>CAPACITOR_SERVER_URL</strong> trỏ đến website đã deploy,
+        rồi chạy <strong>npm run cap:sync</strong> và build APK trên máy có Android
+        SDK + Java.
+      </p>
+      <code>Ví dụ: CAPACITOR_SERVER_URL=https://tuthien.vn</code>
+    </main>
+  </body>
+</html>

@@ -9,6 +9,7 @@ const navItems = [
   { href: "/reels", label: "Reels" },
   { href: "/quyen-gop", label: "Quyên góp" },
   { href: "/minh-bach", label: "Minh bạch" },
+  { href: "/ung-dung", label: "Ứng dụng" },
 ];
 
 export async function SiteHeader() {

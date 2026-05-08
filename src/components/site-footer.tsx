@@ -5,6 +5,7 @@ const links = [
   { href: "/chien-dich", label: "Chiến dịch" },
   { href: "/quyen-gop", label: "Quyên góp" },
   { href: "/reels", label: "Reels tác động" },
+  { href: "/ung-dung", label: "Ứng dụng di động" },
 ];
 
 export function SiteFooter() {

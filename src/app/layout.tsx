@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   IBM_Plex_Mono,
   Plus_Jakarta_Sans,
@@ -7,6 +7,7 @@ import {
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { PwaRegister } from "@/components/pwa-register";
 
 import "./globals.css";
 
@@ -35,6 +36,23 @@ export const metadata: Metadata = {
   },
   description:
     "Nền tảng kết nối nhà hảo tâm với các chiến dịch xã hội, theo dõi minh bạch từng khoản đóng góp.",
+  applicationName: "TuThien.vn",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "TuThien.vn",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#a33900",
 };
 
 export default function RootLayout({
@@ -47,6 +65,7 @@ export default function RootLayout({
       <body
         className={`${plusJakartaSans.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable} app-surface font-sans antialiased`}
       >
+        <PwaRegister />
         <SiteHeader />
         <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6">
           {children}

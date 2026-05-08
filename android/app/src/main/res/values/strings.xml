@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TuThien.vn</string>
+    <string name="title_activity_main">TuThien.vn</string>
+    <string name="package_name">vn.tuthien.app</string>
+    <string name="custom_url_scheme">vn.tuthien.app</string>
+</resources>

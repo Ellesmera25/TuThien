@@ -1,0 +1,25 @@
+{
+  "name": "TuThien.vn",
+  "short_name": "TuThien",
+  "description": "Nền tảng từ thiện minh bạch, có thể cài như một ứng dụng trên điện thoại.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f9f9f8",
+  "theme_color": "#a33900",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

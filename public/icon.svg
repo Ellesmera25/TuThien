@@ -1,0 +1,18 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="72" y1="64" x2="448" y2="456" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB27A" />
+      <stop offset="0.52" stop-color="#F97316" />
+      <stop offset="1" stop-color="#A33900" />
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(160 148) rotate(45) scale(180 180)">
+      <stop stop-color="#FFF4ED" stop-opacity="0.9" />
+      <stop offset="1" stop-color="#FFF4ED" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#bg)" />
+  <circle cx="190" cy="156" r="120" fill="url(#glow)" />
+  <path d="M153 194C153 137.666 198.666 92 255 92C311.334 92 357 137.666 357 194C357 274.5 255 385 255 385C255 385 153 274.5 153 194Z" fill="white" fill-opacity="0.95" />
+  <path d="M255 129C221.309 129 194 156.309 194 190C194 223.691 221.309 251 255 251C288.691 251 316 223.691 316 190C316 156.309 288.691 129 255 129Z" fill="url(#bg)" />
+  <path d="M255 150C228.161 150 206 172.161 206 199C206 225.839 228.161 248 255 248C281.839 248 304 225.839 304 199C304 172.161 281.839 150 255 150ZM255 180C265.493 180 274 188.507 274 199C274 209.493 265.493 218 255 218C244.507 218 236 209.493 236 199C236 188.507 244.507 180 255 180Z" fill="white" />
+</svg>
