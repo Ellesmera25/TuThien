@@ -11,7 +11,7 @@ type AuthCardProps = {
   nextPath?: string;
 };
 
-export function AuthCard({ mode, nextPath = "/tai-khoan" }: AuthCardProps) {
+export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
   const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserAuthClient(), []);
 
@@ -75,9 +75,7 @@ export function AuthCard({ mode, nextPath = "/tai-khoan" }: AuthCardProps) {
       return;
     }
 
-    router.push(nextPath);
-    router.refresh();
-    setLoading(false);
+      window.location.href = nextPath || "/";
   };
 
   return (

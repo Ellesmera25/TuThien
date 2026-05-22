@@ -1,8 +1,11 @@
 import Link from "next/link";
 
 import { AuthSignOutButton } from "@/components/auth-sign-out-button";
-import { getCurrentUser } from "@/lib/supabase/auth-server";
-
+import {
+    canAccessAdmin,
+    getCurrentUser,
+    getCurrentUserRole,
+} from "@/lib/supabase/auth-server";
 const navItems = [
   { href: "/", label: "Trang chủ" },
   { href: "/chien-dich", label: "Chiến dịch" },
@@ -13,7 +16,9 @@ const navItems = [
 ];
 
 export async function SiteHeader() {
-  const user = await getCurrentUser();
+    const user = await getCurrentUser();
+    const role = user ? await getCurrentUserRole() : null;
+    const isAdmin = canAccessAdmin(role);
 
   return (
     <header className="sticky top-0 z-50 border-b border-outline-variant/30 bg-white/90 backdrop-blur-md">
@@ -35,12 +40,14 @@ export async function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          <Link
-            href="/quan-tri"
-            className="rounded-lg px-3 py-2 font-display text-sm font-semibold tracking-tight text-slate-600 transition hover:bg-surface-low hover:text-primary active:scale-95"
-          >
-            Quản trị
-          </Link>
+                  {isAdmin ? (
+                      <Link
+                          href="/quan-tri"
+                          className="rounded-lg px-3 py-2 font-display text-sm font-semibold tracking-tight text-slate-600 transition hover:bg-surface-low hover:text-primary active:scale-95"
+                      >
+                          Quản trị
+                      </Link>
+                  ) : null}
         </nav>
 
         <div className="hidden items-center gap-3 md:flex">

@@ -92,27 +92,44 @@ function mapReel(row: Record<string, unknown>): ReelItem {
 }
 
 export async function getCampaigns(): Promise<Campaign[]> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase) {
-    return [];
-  }
+    const supabase = getSupabaseServerClient();
+    if (!supabase) {
+        return [];
+    }
 
-  const { data, error } = await supabase
-    .from("campaigns")
-    .select("*")
-    .order("created_at", { ascending: false });
+    const { data, error } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("review_status", "published")
+        .order("created_at", { ascending: false });
 
-  if (error) {
-    console.error(error);
-    return [];
-  }
+    if (error) {
+        console.error(error);
+        return [];
+    }
 
-  return (data ?? []).map(mapCampaign);
+    return (data ?? []).map(mapCampaign);
 }
 
 export async function getCampaignBySlug(slug: string): Promise<Campaign | null> {
-  const campaigns = await getCampaigns();
-  return campaigns.find((campaign) => campaign.slug === slug) ?? null;
+    const supabase = getSupabaseServerClient();
+    if (!supabase) {
+        return null;
+    }
+
+    const { data, error } = await supabase
+        .from("campaigns")
+        .select("*")
+        .eq("slug", slug)
+        .eq("review_status", "published")
+        .maybeSingle();
+
+    if (error) {
+        console.error(error);
+        return null;
+    }
+
+    return data ? mapCampaign(data) : null;
 }
 
 export async function getTransparencyItems(
