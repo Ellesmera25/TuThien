@@ -21,13 +21,13 @@ export default async function DonatePage({ searchParams }: DonatePageProps) {
     <div className="grid gap-8 pb-8 lg:grid-cols-[1fr_1fr]">
       <section className="space-y-5">
         <article className="neo-panel-strong p-7 sm:p-8">
-          <p className="neo-badge border-white/30 bg-white/20 text-white">
+          <p className="neo-badge border-white/30 bg-white/20 text-black/80">
             Join The Mission
           </p>
-          <h1 className="mt-3 font-display text-4xl font-bold text-white">
+          <h1 className="mt-3 font-display text-4xl font-bold text-black/90">
             Gửi đóng góp của bạn
           </h1>
-          <p className="mt-3 max-w-lg text-sm text-slate-100 sm:text-base">
+          <p className="mt-3 max-w-lg text-sm text-slate-100 sm:text-black/80">
             Bạn có thể ủng hộ theo chiến dịch cụ thể hoặc quỹ chung. Toàn bộ
             thông tin được cập nhật trong bảng minh bạch.
           </p>
@@ -39,7 +39,7 @@ export default async function DonatePage({ searchParams }: DonatePageProps) {
           </h2>
           <ul className="mt-3 space-y-2 text-sm text-slate-600">
             <li>Số tiền tối thiểu mỗi giao dịch là 10.000đ.</li>
-            <li>Sepay tạo QR chuyển khoản và webhook sẽ xác minh thanh toán tự động.</li>
+            <li>QR chuyển khoản và thanh toán tự động.</li>
             <li>Nếu chưa kết nối Supabase, hệ thống sẽ chạy demo mode.</li>
             <li>
               Lịch sử tiếp nhận và giải ngân được cập nhật trên trang minh bạch.
