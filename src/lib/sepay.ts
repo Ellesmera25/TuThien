@@ -1,7 +1,5 @@
 import { createHmac, randomBytes, timingSafeEqual } from "crypto";
 
-import type { DonationPayload } from "@/lib/types";
-
 export type SepayConfig = {
   bankId: string;
   accountNo: string;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -749,9 +750,12 @@ export default async function AdminPage() {
                                                     className="group overflow-hidden rounded-xl border border-slate-100 bg-slate-50"
                                                 >
                                                     {image.signedUrl ? (
-                                                        <img
+                                                        <Image
                                                             src={image.signedUrl}
                                                             alt={image.caption ?? campaign.title}
+                                                            width={320}
+                                                            height={144}
+                                                            unoptimized
                                                             className="h-36 w-full object-cover transition group-hover:scale-105"
                                                         />
                                                     ) : (

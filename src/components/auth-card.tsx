@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { createSupabaseBrowserAuthClient } from "@/lib/supabase/auth-client";
@@ -12,7 +11,6 @@ type AuthCardProps = {
 };
 
 export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
-  const router = useRouter();
   const supabase = useMemo(() => createSupabaseBrowserAuthClient(), []);
 
   const [fullName, setFullName] = useState("");

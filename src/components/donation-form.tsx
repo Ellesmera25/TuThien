@@ -1,7 +1,6 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createSupabaseBrowserAuthClient } from "@/lib/supabase/auth-client";
 import QrModal from "@/components/qr-modal";
 
@@ -42,7 +41,6 @@ export function DonationForm({
     campaignSlug: initialCampaignSlug,
     message: "",
   });
-  const [userPrefilled, setUserPrefilled] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
@@ -50,11 +48,9 @@ export function DonationForm({
     null,
   );
   const lastInputsRef = useRef<string | null>(null);
-  const supabaseClientRef = useRef<any>(null);
 
   useEffect(() => {
     const client = createSupabaseBrowserAuthClient();
-    supabaseClientRef.current = client;
     if (!client) return;
 
     (async () => {
@@ -68,7 +64,6 @@ export function DonationForm({
             (user.user_metadata?.full_name as string | undefined) ?? prev.donorName,
           email: user.email ?? prev.email,
         }));
-        setUserPrefilled(true);
       }
     })();
   }, []);

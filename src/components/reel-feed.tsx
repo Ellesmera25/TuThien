@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { formatCompactNumber } from "@/lib/format";
 import type { ReelItem } from "@/lib/types";
@@ -10,7 +10,15 @@ type ReelFeedProps = {
   reels: ReelItem[];
 };
 
-type ReelIconName = "comment" | "donate" | "heart" | "music" | "share" | "verified";
+type ReelIconName =
+  | "comment"
+  | "donate"
+  | "heart"
+  | "music"
+  | "pause"
+  | "play"
+  | "share"
+  | "verified";
 
 const fallbackCover: Record<ReelItem["coverTone"], string> = {
   warm:
@@ -24,7 +32,15 @@ const fallbackCover: Record<ReelItem["coverTone"], string> = {
 };
 
 export function ReelFeed({ reels }: ReelFeedProps) {
+  const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentingReelId, setCommentingReelId] = useState("");
+  const [followedCampaigns, setFollowedCampaigns] = useState<string[]>([]);
   const [likedIds, setLikedIds] = useState<string[]>([]);
+  const [localComments, setLocalComments] = useState<Record<string, string[]>>(
+    {},
+  );
+  const [pausedIds, setPausedIds] = useState<string[]>([]);
   const [sharedId, setSharedId] = useState("");
 
   if (reels.length === 0) {
@@ -47,6 +63,49 @@ export function ReelFeed({ reels }: ReelFeedProps) {
         ? current.filter((id) => id !== reelId)
         : [...current, reelId],
     );
+  }
+
+  function toggleFollow(campaignSlug: string) {
+    setFollowedCampaigns((current) =>
+      current.includes(campaignSlug)
+        ? current.filter((slug) => slug !== campaignSlug)
+        : [...current, campaignSlug],
+    );
+  }
+
+  function togglePause(reelId: string) {
+    const video = videoRefs.current[reelId];
+    const paused = pausedIds.includes(reelId);
+
+    if (paused) {
+      void video?.play().catch(() => undefined);
+      setPausedIds((current) => current.filter((id) => id !== reelId));
+      return;
+    }
+
+    video?.pause();
+    setPausedIds((current) =>
+      current.includes(reelId) ? current : [...current, reelId],
+    );
+  }
+
+  function openComments(reelId: string) {
+    setCommentingReelId((current) => (current === reelId ? "" : reelId));
+    setCommentDraft("");
+  }
+
+  function submitComment(reelId: string) {
+    const comment = commentDraft.trim();
+
+    if (comment.length < 2 || comment.length > 180) {
+      return;
+    }
+
+    setLocalComments((current) => ({
+      ...current,
+      [reelId]: [comment, ...(current[reelId] ?? [])],
+    }));
+    setCommentDraft("");
   }
 
   async function shareReel(reel: ReelItem) {
@@ -89,7 +148,12 @@ export function ReelFeed({ reels }: ReelFeedProps) {
       {reels.map((reel, index) => {
         const liked = likedIds.includes(reel.id);
         const likeCount = reel.likes + (liked ? 1 : 0);
+        const comments = localComments[reel.id] ?? [];
+        const commentCount = reel.comments + comments.length;
         const cover = fallbackCover[reel.coverTone];
+        const followed = followedCampaigns.includes(reel.campaignSlug);
+        const paused = pausedIds.includes(reel.id);
+        const commentOpen = commentingReelId === reel.id;
 
         return (
           <article
@@ -99,13 +163,16 @@ export function ReelFeed({ reels }: ReelFeedProps) {
             <div className="relative h-[calc(100vh-80px)] w-full max-w-[500px] overflow-hidden bg-black shadow-2xl sm:h-[min(820px,calc(100vh-120px))] sm:rounded-2xl">
               {reel.videoUrl ? (
                 <video
+                  ref={(node) => {
+                    videoRefs.current[reel.id] = node;
+                  }}
                   className="absolute inset-0 h-full w-full object-cover"
                   src={reel.videoUrl}
                   autoPlay={index === 0}
                   loop
                   muted
                   playsInline
-                  controls
+                  onClick={() => togglePause(reel.id)}
                 />
               ) : (
                 <div
@@ -117,6 +184,23 @@ export function ReelFeed({ reels }: ReelFeedProps) {
               )}
 
               <div className="absolute inset-0 bg-gradient-to-b from-black/28 via-transparent to-black/92" />
+
+              {reel.videoUrl ? (
+                <button
+                  type="button"
+                  onClick={() => togglePause(reel.id)}
+                  className={`absolute left-1/2 top-1/2 z-20 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition ${
+                    paused ? "opacity-100" : "opacity-0 hover:opacity-100"
+                  }`}
+                  aria-label={paused ? "Phát video" : "Tạm dừng video"}
+                >
+                  <ReelIcon
+                    name={paused ? "play" : "pause"}
+                    className="h-8 w-8"
+                    filled
+                  />
+                </button>
+              ) : null}
 
               <div className="absolute left-0 top-0 z-10 h-1 w-full bg-white/20">
                 <div
@@ -141,12 +225,17 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                       {reel.location}
                     </p>
                   </div>
-                  <Link
-                    href={`/chien-dich/${reel.campaignSlug}`}
-                    className="ml-1 rounded-full border border-white/40 px-3 py-1 text-xs font-semibold text-white transition hover:bg-white/10"
+                  <button
+                    type="button"
+                    onClick={() => toggleFollow(reel.campaignSlug)}
+                    className={`ml-1 rounded-full border px-3 py-1 text-xs font-semibold transition ${
+                      followed
+                        ? "border-primary bg-primary text-white"
+                        : "border-white/40 text-white hover:bg-white/10"
+                    }`}
                   >
-                    Theo dõi
-                  </Link>
+                    {followed ? "Đang theo dõi" : "Theo dõi"}
+                  </button>
                 </div>
 
                 <div>
@@ -174,14 +263,23 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                 />
                 <ReelAction
                   label="Bình luận"
-                  value={formatCompactNumber(reel.comments)}
+                  value={formatCompactNumber(commentCount)}
                   icon="comment"
+                  active={commentOpen}
+                  onClick={() => openComments(reel.id)}
                 />
                 <ReelAction
                   label="Chia sẻ"
                   value={sharedId === reel.id ? "Đã copy" : "Chia sẻ"}
                   icon="share"
                   onClick={() => shareReel(reel)}
+                />
+                <ReelAction
+                  active={paused}
+                  label={paused ? "Phát" : "Tạm dừng"}
+                  value={paused ? "Phát" : "Tạm dừng"}
+                  icon={paused ? "play" : "pause"}
+                  onClick={() => togglePause(reel.id)}
                 />
                 <Link
                   href={`/quyen-gop?campaign=${reel.campaignSlug}`}
@@ -195,6 +293,62 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                   </span>
                 </Link>
               </div>
+
+              {commentOpen ? (
+                <div className="absolute inset-x-4 bottom-4 z-30 rounded-xl border border-white/12 bg-black/80 p-4 text-white shadow-2xl backdrop-blur sm:bottom-5 sm:left-5 sm:right-20">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-bold">Bình luận</h3>
+                    <button
+                      type="button"
+                      onClick={() => setCommentingReelId("")}
+                      className="rounded-full px-2 py-1 text-xs font-bold text-white/70 transition hover:bg-white/10 hover:text-white"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                  <div className="max-h-32 space-y-2 overflow-y-auto pr-1">
+                    {comments.length > 0 ? (
+                      comments.map((comment, commentIndex) => (
+                        <p
+                          key={`${comment}-${commentIndex}`}
+                          className="rounded-lg bg-white/10 px-3 py-2 text-xs leading-5 text-white/90"
+                        >
+                          <span className="font-bold text-primary-fixed">
+                            Bạn
+                          </span>{" "}
+                          {comment}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="rounded-lg bg-white/10 px-3 py-2 text-xs text-white/68">
+                        Chưa có bình luận mới trong phiên này.
+                      </p>
+                    )}
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <input
+                      value={commentDraft}
+                      onChange={(event) => setCommentDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          submitComment(reel.id);
+                        }
+                      }}
+                      maxLength={180}
+                      className="min-w-0 flex-1 rounded-lg border border-white/12 bg-white/12 px-3 py-2 text-sm text-white outline-none placeholder:text-white/48 focus:border-primary"
+                      placeholder="Viết bình luận..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => submitComment(reel.id)}
+                      className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
+                    >
+                      Gửi
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </article>
         );
@@ -283,6 +437,19 @@ function ReelIcon({
           <path d="M9 18V5l10-2v13" />
           <circle cx="6" cy="18" r="3" />
           <circle cx="16" cy="16" r="3" />
+        </svg>
+      );
+    case "pause":
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M8 5v14" />
+          <path d="M16 5v14" />
+        </svg>
+      );
+    case "play":
+      return (
+        <svg {...common} aria-hidden="true" fill="currentColor">
+          <path d="M8 5v14l11-7-11-7Z" />
         </svg>
       );
     case "share":

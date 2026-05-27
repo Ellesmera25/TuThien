@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -22,7 +23,16 @@ type QrModalProps = {
 
 const expiryMs = 5 * 60 * 1000;
 
-export default function QrModal({
+export default function QrModal(props: QrModalProps) {
+  return (
+    <QrModalSession
+      key={props.paymentDetails.paymentReference}
+      {...props}
+    />
+  );
+}
+
+function QrModalSession({
   paymentDetails,
   onClose,
 }: QrModalProps) {
@@ -33,18 +43,13 @@ export default function QrModal({
   );
   const [connected, setConnected] = useState(false);
   const [copyFeedback, setCopyFeedback] = useState("");
-  const expiryStartedAtRef = useRef(Date.now());
+  const expiryStartedAtRef = useRef(0);
   const redirectTimerRef = useRef<number | null>(null);
   const channelRef = useRef<ReturnType<NonNullable<ReturnType<typeof getSupabaseBrowserClient>>["channel"]> | null>(null);
 
   useEffect(() => {
     expiryStartedAtRef.current = Date.now();
-    setRemaining(expiryMs);
-    setStatus("pending");
-    setConnected(false);
-  }, [paymentDetails.paymentReference]);
 
-  useEffect(() => {
     const timerId = window.setInterval(() => {
       const elapsed = Date.now() - expiryStartedAtRef.current;
       const left = Math.max(0, expiryMs - elapsed);
@@ -183,9 +188,12 @@ export default function QrModal({
 
         <div className="grid gap-5 px-6 py-6 sm:px-7 md:grid-cols-[240px_1fr] md:items-center">
           <div className="overflow-hidden rounded-[24px] border border-slate-200 bg-slate-50 p-4">
-            <img
+            <Image
               src={paymentDetails.qrImageUrl}
               alt="Mã QR"
+              width={240}
+              height={240}
+              unoptimized
               className="h-auto w-full rounded-2xl bg-white"
             />
           </div>
