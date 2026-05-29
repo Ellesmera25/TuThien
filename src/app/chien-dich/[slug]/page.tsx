@@ -16,18 +16,30 @@ type ApprovedSupportOfferRow = {
     support_type: string;
     description: string;
     estimated_value: number | null;
+    approved_budget: number | null;
     contact_name: string | null;
     contact_phone: string | null;
     contact_email: string | null;
     created_at: string;
-    phase: {
-        title: string | null;
-        sort_order: number | null;
+    round: {
+        round_number: number | null;
+        percent: number | null;
+        planned_amount: number | null;
     } | null;
     partner: {
         full_name: string | null;
         role: string | null;
     } | null;
+};
+
+type CampaignDisbursementRoundRow = {
+    id: string;
+    round_number: number;
+    percent: number;
+    planned_amount: number;
+    status: string;
+    proof_status: string;
+    partnerName: string | null;
 };
 
 export async function generateMetadata({
@@ -56,12 +68,13 @@ async function getApprovedSupportOffers(
         .select(
             `
       id,
-      phase_id,
+      disbursement_round_id,
       partner_id,
       title,
       support_type,
       description,
       estimated_value,
+      approved_budget,
       contact_name,
       contact_phone,
       contact_email,
@@ -79,8 +92,8 @@ async function getApprovedSupportOffers(
     const partnerIds = Array.from(
         new Set(offers.map((offer) => offer.partner_id).filter(Boolean)),
     );
-    const phaseIds = Array.from(
-        new Set(offers.map((offer) => offer.phase_id).filter(Boolean)),
+    const roundIds = Array.from(
+        new Set(offers.map((offer) => offer.disbursement_round_id).filter(Boolean)),
     ) as string[];
 
     const { data: partnerRows } =
@@ -91,12 +104,12 @@ async function getApprovedSupportOffers(
                 .in("id", partnerIds)
             : { data: [] };
 
-    const { data: phaseRows } =
-        phaseIds.length > 0
+    const { data: roundRows } =
+        roundIds.length > 0
             ? await supabase
-                .from("campaign_phases")
-                .select("id, title, sort_order")
-                .in("id", phaseIds)
+                .from("disbursement_rounds")
+                .select("id, round_number, percent, planned_amount")
+                .in("id", roundIds)
             : { data: [] };
 
     const partnerById = new Map<
@@ -111,15 +124,16 @@ async function getApprovedSupportOffers(
         });
     }
 
-    const phaseById = new Map<
+    const roundById = new Map<
         string,
-        { title: string | null; sort_order: number | null }
+        { round_number: number | null; percent: number | null; planned_amount: number | null }
     >();
 
-    for (const phase of phaseRows ?? []) {
-        phaseById.set(phase.id, {
-            title: phase.title,
-            sort_order: phase.sort_order,
+    for (const round of roundRows ?? []) {
+        roundById.set(round.id, {
+            round_number: round.round_number,
+            percent: round.percent,
+            planned_amount: round.planned_amount,
         });
     }
 
@@ -129,12 +143,83 @@ async function getApprovedSupportOffers(
         support_type: offer.support_type,
         description: offer.description,
         estimated_value: offer.estimated_value,
+        approved_budget: offer.approved_budget,
         contact_name: offer.contact_name,
         contact_phone: offer.contact_phone,
         contact_email: offer.contact_email,
         created_at: offer.created_at,
-        phase: offer.phase_id ? phaseById.get(offer.phase_id) ?? null : null,
+        round: offer.disbursement_round_id
+            ? roundById.get(offer.disbursement_round_id) ?? null
+            : null,
         partner: partnerById.get(offer.partner_id) ?? null,
+    }));
+}
+
+async function getCampaignDisbursementRounds(
+    campaignId: string,
+): Promise<CampaignDisbursementRoundRow[]> {
+    const supabase = getSupabaseServiceClient();
+
+    if (!supabase) {
+        return [];
+    }
+
+    const [{ data: rounds }, { data: offers }] = await Promise.all([
+        supabase
+            .from("disbursement_rounds")
+            .select(
+                "id, round_number, percent, planned_amount, status, proof_status",
+            )
+            .eq("campaign_id", campaignId)
+            .order("round_number", { ascending: true }),
+        supabase
+            .from("support_offers")
+            .select("disbursement_round_id, partner_id")
+            .eq("campaign_id", campaignId)
+            .eq("status", "approved"),
+    ]);
+
+    if (!rounds) {
+        return [];
+    }
+
+    const partnerIds = Array.from(
+        new Set((offers ?? []).map((offer) => offer.partner_id).filter(Boolean)),
+    );
+
+    const { data: partners } =
+        partnerIds.length > 0
+            ? await supabase
+                .from("profiles")
+                .select("id, full_name")
+                .in("id", partnerIds)
+            : { data: [] };
+
+    const partnerById = new Map<string, string | null>();
+
+    for (const partner of partners ?? []) {
+        partnerById.set(partner.id, partner.full_name);
+    }
+
+    const partnerByRoundId = new Map<string, string | null>();
+
+    for (const offer of offers ?? []) {
+        if (offer.disbursement_round_id) {
+            partnerByRoundId.set(
+                offer.disbursement_round_id,
+                partnerById.get(offer.partner_id) ?? null,
+            );
+        }
+    }
+
+    return rounds.map((round) => ({
+        id: round.id,
+        round_number: round.round_number,
+        percent: round.percent,
+        planned_amount: round.planned_amount,
+        status: round.status,
+        proof_status: round.proof_status,
+        partnerName: partnerByRoundId.get(round.id) ?? null,
     }));
 }
 
@@ -148,9 +233,10 @@ export default async function CampaignDetailPage({
         notFound();
     }
 
-    const [logs, approvedSupportOffers] = await Promise.all([
+    const [logs, approvedSupportOffers, rounds] = await Promise.all([
         getTransparencyItems(campaign.slug),
         getApprovedSupportOffers(campaign.id),
+        getCampaignDisbursementRounds(campaign.id),
     ]);
 
     const progress =
@@ -215,6 +301,79 @@ export default async function CampaignDetailPage({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="font-display text-2xl font-bold text-ink">
+                            Tiến độ giải ngân
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Chiến dịch có 3 đợt giải ngân cố định 40% - 40% - 20%.
+                        </p>
+                    </div>
+                    <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
+                        {rounds.length} đợt
+                    </span>
+                </div>
+
+                {rounds.length === 0 ? (
+                    <p className="mt-5 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
+                        Dự án chưa có lịch giải ngân.
+                    </p>
+                ) : (
+                    <div className="mt-5 grid gap-4">
+                        {rounds.map((round) => {
+                            return (
+                                <article
+                                    key={round.id}
+                                    className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
+                                >
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                                                Đợt giải ngân {round.round_number}
+                                            </p>
+                                            <h3 className="mt-1 font-display text-xl font-bold text-ink">
+                                                {round.percent}% ngân sách
+                                            </h3>
+                                            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                                                Kế hoạch giải ngân dự kiến: {formatVnd(round.planned_amount)}
+                                            </p>
+                                        </div>
+                                        <span
+                                            className={`rounded-full px-3 py-1 text-xs font-bold ${getRoundStatusBadgeClass(
+                                                round.status,
+                                            )}`}
+                                        >
+                                            {formatRoundStatus(round.status)}
+                                        </span>
+                                    </div>
+
+                                    <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
+                                        <PartnerInfo
+                                            label="Tỷ lệ"
+                                            value={`${round.percent}%`}
+                                        />
+                                        <PartnerInfo
+                                            label="Số tiền dự kiến"
+                                            value={formatVnd(round.planned_amount)}
+                                        />
+                                        <PartnerInfo
+                                            label="Đơn vị đồng hành"
+                                            value={round.partnerName || "Chưa xác nhận"}
+                                        />
+                                        <PartnerInfo
+                                            label="Chứng từ"
+                                            value={formatProofStatus(round.proof_status)}
+                                        />
+                                    </div>
+                                </article>
+                            );
+                        })}
+                    </div>
+                )}
+            </section>
+
+            <section className="neo-panel p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 className="font-display text-2xl font-bold text-ink">
                             Đơn vị đồng hành
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
@@ -253,7 +412,7 @@ export default async function CampaignDetailPage({
                                         </p>
 
                                         <p className="mt-1 text-sm text-slate-600">
-                                            {formatOfferPhaseLabel(offer)}
+                                            {formatOfferRoundLabel(offer)}
                                         </p>
                                     </div>
 
@@ -272,7 +431,15 @@ export default async function CampaignDetailPage({
                                         value={
                                             offer.estimated_value
                                                 ? formatVnd(offer.estimated_value)
-                                                : "Chưa cung cấp"
+                                            : "Chưa cung cấp"
+                                        }
+                                    />
+                                    <PartnerInfo
+                                        label="Ngân sách phê duyệt"
+                                        value={
+                                            offer.approved_budget
+                                                ? formatVnd(offer.approved_budget)
+                                                : "Chưa phê duyệt"
                                         }
                                     />
                                     <PartnerInfo
@@ -354,14 +521,20 @@ function PartnerInfo({ label, value }: { label: string; value: string }) {
     );
 }
 
-function formatOfferPhaseLabel(offer: Pick<ApprovedSupportOfferRow, "phase">) {
-    if (!offer.phase) {
-        return "Giai đoạn chưa xác định";
+function formatOfferRoundLabel(offer: Pick<ApprovedSupportOfferRow, "round">) {
+    if (!offer.round) {
+        return "Đợt đồng hành chưa xác định";
     }
 
-    const order = offer.phase.sort_order ? `Giai đoạn ${offer.phase.sort_order}` : "Giai đoạn";
+    const order = offer.round.round_number
+        ? `Đợt ${offer.round.round_number}`
+        : "Đợt giải ngân";
+    const percent = offer.round.percent ? ` - ${offer.round.percent}%` : "";
+    const amount = offer.round.planned_amount
+        ? ` (${formatVnd(offer.round.planned_amount)})`
+        : "";
 
-    return offer.phase.title ? `${order}: ${offer.phase.title}` : order;
+    return `${order}${percent}${amount}`;
 }
 
 function formatSupportTypeLabel(value?: string | null) {
@@ -386,5 +559,48 @@ function formatSupportTypeLabel(value?: string | null) {
             return "Khác";
         default:
             return value || "Chưa xác định";
+    }
+}
+
+function formatRoundStatus(status: string) {
+    switch (status) {
+        case "open":
+            return "Đang mở";
+        case "requested":
+            return "Đã yêu cầu giải ngân";
+        case "disbursed":
+            return "Đã giải ngân";
+        case "completed":
+            return "Đã hoàn tất";
+        case "needs_admin_review":
+            return "Cần admin xử lý";
+        default:
+            return "Chưa mở";
+    }
+}
+
+function getRoundStatusBadgeClass(status: string) {
+    switch (status) {
+        case "open":
+        case "requested":
+            return "bg-amber-50 text-amber-700";
+        case "disbursed":
+        case "completed":
+            return "bg-emerald-50 text-emerald-700";
+        case "needs_admin_review":
+            return "bg-red-50 text-red-700";
+        default:
+            return "bg-slate-100 text-slate-700";
+    }
+}
+
+function formatProofStatus(status: string) {
+    switch (status) {
+        case "approved":
+            return "Đã duyệt";
+        case "overdue":
+            return "Quá hạn";
+        default:
+            return "Đang chờ";
     }
 }

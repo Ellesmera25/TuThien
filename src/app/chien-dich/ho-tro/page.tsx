@@ -10,7 +10,7 @@ import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
     title: "Đồng hành dự án",
-    description: "Đăng ký đồng hành thực hiện giai đoạn dự án thiện nguyện trên TuThien.vn",
+    description: "Đăng ký đồng hành theo đợt giải ngân dự án thiện nguyện trên TuThien.vn",
 };
 
 export const dynamic = "force-dynamic";
@@ -24,14 +24,15 @@ export type SupportCampaignOption = {
     end_date: string;
     cover_tag: string;
     status: "active" | "completed" | "paused";
-    phases: SupportCampaignPhaseOption[];
+    rounds: SupportCampaignRoundOption[];
 };
 
-export type SupportCampaignPhaseOption = {
+export type SupportCampaignRoundOption = {
     id: string;
-    title: string;
-    description: string;
-    sort_order: number;
+    round_number: number;
+    percent: number;
+    planned_amount: number;
+    status: string;
     hasApprovedPartner: boolean;
 };
 
@@ -57,52 +58,53 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
 
     const campaignIds = data.map((campaign) => campaign.id);
 
-    const [{ data: phaseRows }, { data: approvedOfferRows }] =
+    const [{ data: roundRows }, { data: lockedOfferRows }] =
         campaignIds.length > 0
             ? await Promise.all([
                 supabase
-                    .from("campaign_phases")
-                    .select("id, campaign_id, title, description, sort_order")
+                    .from("disbursement_rounds")
+                    .select("id, campaign_id, round_number, percent, planned_amount, status")
                     .in("campaign_id", campaignIds)
-                    .order("sort_order", { ascending: true }),
+                    .order("round_number", { ascending: true }),
                 supabase
                     .from("support_offers")
-                    .select("phase_id")
+                    .select("disbursement_round_id")
                     .in("campaign_id", campaignIds)
-                    .eq("status", "approved"),
+                    .in("status", ["owner_pending", "approved"]),
             ])
             : [{ data: [] }, { data: [] }];
 
-    const approvedPhaseIds = new Set(
-        (approvedOfferRows ?? [])
-            .map((offer) => offer.phase_id)
-            .filter((phaseId): phaseId is string => Boolean(phaseId)),
+    const lockedRoundIds = new Set(
+        (lockedOfferRows ?? [])
+            .map((offer) => offer.disbursement_round_id)
+            .filter((roundId): roundId is string => Boolean(roundId)),
     );
 
-    const phasesByCampaign = new Map<string, SupportCampaignPhaseOption[]>();
+    const roundsByCampaign = new Map<string, SupportCampaignRoundOption[]>();
 
-    for (const phase of phaseRows ?? []) {
-        const list = phasesByCampaign.get(phase.campaign_id) ?? [];
+    for (const round of roundRows ?? []) {
+        const list = roundsByCampaign.get(round.campaign_id) ?? [];
 
         list.push({
-            id: phase.id,
-            title: phase.title,
-            description: phase.description,
-            sort_order: phase.sort_order,
-            hasApprovedPartner: approvedPhaseIds.has(phase.id),
+            id: round.id,
+            round_number: round.round_number,
+            percent: round.percent,
+            planned_amount: round.planned_amount,
+            status: round.status,
+            hasApprovedPartner: lockedRoundIds.has(round.id),
         });
 
-        phasesByCampaign.set(phase.campaign_id, list);
+        roundsByCampaign.set(round.campaign_id, list);
     }
 
     return data
         .map((campaign) => ({
             ...campaign,
-            phases: (phasesByCampaign.get(campaign.id) ?? []).filter(
-                (phase) => !phase.hasApprovedPartner,
+            rounds: (roundsByCampaign.get(campaign.id) ?? []).filter(
+                (round) => !round.hasApprovedPartner,
             ),
         }))
-        .filter((campaign) => campaign.phases.length > 0) as SupportCampaignOption[];
+        .filter((campaign) => campaign.rounds.length > 0) as SupportCampaignOption[];
 }
 
 export default async function SupportCampaignPage() {
@@ -130,11 +132,11 @@ export default async function SupportCampaignPage() {
                     <p className="neo-badge">Đơn vị đồng hành</p>
 
                     <h1 className="mt-4 font-display text-4xl font-black tracking-tight text-ink md:text-5xl">
-                        Đăng ký đồng hành thực hiện giai đoạn.
+                        Đăng ký đồng hành theo đợt giải ngân.
                     </h1>
 
                     <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">
-                        Chọn dự án và giai đoạn đơn vị có thể trực tiếp triển khai.
+                        Chọn dự án và đợt giải ngân đơn vị có thể đồng hành triển khai.
                         Yêu cầu sẽ được gửi thẳng đến người tạo dự án duyệt, đồng
                         thời hiển thị cho quản trị theo dõi.
                     </p>

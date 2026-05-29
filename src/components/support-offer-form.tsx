@@ -34,7 +34,7 @@ export function SupportOfferForm({
     const supabase = useMemo(() => createSupabaseBrowserAuthClient(), []);
 
     const [campaignId, setCampaignId] = useState(campaigns[0]?.id ?? "");
-    const [phaseId, setPhaseId] = useState(campaigns[0]?.phases[0]?.id ?? "");
+    const [roundId, setRoundId] = useState(campaigns[0]?.rounds[0]?.id ?? "");
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [estimatedValue, setEstimatedValue] = useState("");
@@ -50,8 +50,8 @@ export function SupportOfferForm({
     const selectedCampaign = campaigns.find(
         (campaign) => campaign.id === campaignId,
     );
-    const selectedPhase = selectedCampaign?.phases.find(
-        (phase) => phase.id === phaseId,
+    const selectedRound = selectedCampaign?.rounds.find(
+        (round) => round.id === roundId,
     );
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -69,13 +69,13 @@ export function SupportOfferForm({
             return;
         }
 
-        if (!phaseId) {
-            setError("Vui lòng chọn giai đoạn muốn đồng hành.");
+        if (!roundId) {
+            setError("Vui lòng chọn đợt giải ngân muốn đồng hành.");
             return;
         }
 
-        if (selectedPhase?.hasApprovedPartner) {
-            setError("Giai đoạn này đã có đơn vị đồng hành được duyệt.");
+        if (selectedRound?.hasApprovedPartner) {
+            setError("Đợt này đã có đơn vị đồng hành được duyệt.");
             return;
         }
 
@@ -85,7 +85,7 @@ export function SupportOfferForm({
         }
 
         if (!description.trim()) {
-            setError("Vui lòng mô tả phương án thực hiện giai đoạn.");
+            setError("Vui lòng mô tả phương án đồng hành thực hiện.");
             return;
         }
 
@@ -152,7 +152,7 @@ export function SupportOfferForm({
                 },
                 body: JSON.stringify({
                     campaignId,
-                    phaseId,
+                    disbursementRoundId: roundId,
                     title,
                     supportType: partnerExecutionType,
                     description,
@@ -219,7 +219,7 @@ export function SupportOfferForm({
                             );
 
                             setCampaignId(nextCampaignId);
-                            setPhaseId(nextCampaign?.phases[0]?.id ?? "");
+                            setRoundId(nextCampaign?.rounds[0]?.id ?? "");
                         }}
                         className={inputClass}
                         required
@@ -232,21 +232,21 @@ export function SupportOfferForm({
                     </select>
                 </Field>
 
-                <Field label="Giai đoạn muốn đồng hành" required>
+                <Field label="Đợt giải ngân muốn đồng hành" required>
                     <select
-                        value={phaseId}
-                        onChange={(event) => setPhaseId(event.target.value)}
+                        value={roundId}
+                        onChange={(event) => setRoundId(event.target.value)}
                         className={inputClass}
                         required
                     >
-                        {selectedCampaign?.phases.map((phase, index) => (
+                        {selectedCampaign?.rounds.map((round) => (
                             <option
-                                key={phase.id}
-                                value={phase.id}
-                                disabled={phase.hasApprovedPartner}
+                                key={round.id}
+                                value={round.id}
+                                disabled={round.hasApprovedPartner}
                             >
-                                Giai đoạn {index + 1}: {phase.title}
-                                {phase.hasApprovedPartner ? " (đã có đơn vị đồng hành)" : ""}
+                                Đợt {round.round_number}: {round.percent}% - {formatVnd(round.planned_amount)}
+                                {round.hasApprovedPartner ? " (đã có đơn vị đồng hành)" : ""}
                             </option>
                         ))}
                     </select>
@@ -275,16 +275,16 @@ export function SupportOfferForm({
                                 value={formatVnd(selectedCampaign.raised_amount)}
                             />
                         </div>
-                        {selectedPhase ? (
+                        {selectedRound ? (
                             <div className="mt-3 rounded-lg border border-outline-variant/40 bg-white p-3">
                                 <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
-                                    Giai đoạn đã chọn
+                                    Đợt giải ngân đã chọn
                                 </p>
                                 <p className="mt-1 font-semibold text-ink">
-                                    {selectedPhase.title}
+                                    Đợt {selectedRound.round_number}: {selectedRound.percent}% ngân sách
                                 </p>
                                 <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                                    {selectedPhase.description}
+                                    Kế hoạch giải ngân dự kiến: {formatVnd(selectedRound.planned_amount)}
                                 </p>
                             </div>
                         ) : null}
@@ -301,13 +301,13 @@ export function SupportOfferForm({
                     />
                 </Field>
 
-                <Field label="Phương án thực hiện giai đoạn" required>
+                <Field label="Phương án đồng hành thực hiện" required>
                     <textarea
                         rows={5}
                         value={description}
                         onChange={(event) => setDescription(event.target.value)}
                         className={inputClass}
-                        placeholder="Mô tả cách đơn vị sẽ triển khai giai đoạn, nhân sự phụ trách, thời gian, hạng mục chi và cách báo cáo minh bạch..."
+                        placeholder="Mô tả cách đơn vị sẽ triển khai, nhân sự phụ trách, thời gian, hạng mục chi và cách báo cáo minh bạch..."
                         required
                     />
                 </Field>

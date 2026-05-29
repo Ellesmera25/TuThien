@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
-import { getSupabaseServiceClient } from "@/lib/supabase/server";
-import type { DonationPayload } from "@/lib/types";
 import {
   buildSepayQrImageUrl,
   buildSepayTransferContent,
   createSepayPaymentReference,
   getSepayConfig,
 } from "@/lib/sepay";
+import { getSupabaseServiceClient } from "@/lib/supabase/server";
+import type { DonationPayload } from "@/lib/types";
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -17,22 +17,13 @@ function isValidEmail(email: string): boolean {
 function isValidPayload(
   payload: Partial<DonationPayload>,
 ): payload is DonationPayload {
-  if (
-    typeof payload.donorName !== "string" ||
-    payload.donorName.trim() === ""
-  ) {
-    return false;
-  }
-
-  if (typeof payload.email !== "string" || !isValidEmail(payload.email)) {
-    return false;
-  }
-
-  if (typeof payload.amount !== "number" || payload.amount < 10_000) {
-    return false;
-  }
-
   return (
+    typeof payload.donorName === "string" &&
+    payload.donorName.trim() !== "" &&
+    typeof payload.email === "string" &&
+    isValidEmail(payload.email) &&
+    typeof payload.amount === "number" &&
+    payload.amount >= 10_000 &&
     payload.paymentMethod === "sepay_qr"
   );
 }
@@ -99,7 +90,7 @@ export async function POST(request: Request) {
       );
     }
 
-    campaignId = campaign?.id ?? null;
+    campaignId = campaign.id;
   }
 
   const { data, error } = await supabase

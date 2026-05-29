@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -20,6 +21,14 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 type RequestedRole = "project_owner" | "partner_org";
+type DisbursementRoundStatus =
+    | "locked"
+    | "open"
+    | "requested"
+    | "disbursed"
+    | "completed"
+    | "needs_admin_review";
+type DisbursementProofStatus = "pending" | "approved" | "overdue";
 
 type RoleRequestRow = {
     id: string;
@@ -66,7 +75,6 @@ type PendingCampaignPhase = {
     id: string;
     title: string;
     description: string;
-    target_amount: number;
     start_date: string | null;
     end_date: string | null;
     status: string;
@@ -91,15 +99,34 @@ type PendingCampaignRow = {
     phases: PendingCampaignPhase[];
     owner: PendingCampaignOwner | null;
 };
+
+type AdminCampaignRow = {
+    id: string;
+    slug: string;
+    title: string;
+    summary: string;
+    target_amount: number;
+    raised_amount: number;
+    status: "active" | "completed" | "paused";
+    review_status: "pending" | "published" | "rejected";
+    end_date: string;
+    cover_tag: string;
+    owner_id: string | null;
+    created_at: string;
+    owner: PendingCampaignOwner | null;
+    ownerPendingOfferCount: number;
+};
 type SupportOfferRow = {
     id: string;
     campaign_id: string;
     phase_id: string | null;
+    disbursement_round_id: string | null;
     partner_id: string;
     title: string;
     support_type: string;
     description: string;
     estimated_value: number | null;
+    approved_budget: number | null;
     contact_name: string | null;
     contact_phone: string | null;
     contact_email: string | null;
@@ -115,11 +142,43 @@ type SupportOfferRow = {
         title: string | null;
         sort_order: number | null;
     } | null;
+    round: {
+        round_number: number | null;
+        percent: number | null;
+        planned_amount: number | null;
+    } | null;
     partner: {
         full_name: string | null;
         role: string | null;
     } | null;
     proofSignedUrl: string | null;
+};
+
+type AdminDisbursementRoundRow = {
+    id: string;
+    campaign_id: string;
+    round_number: number;
+    percent: number;
+    planned_amount: number;
+    status: DisbursementRoundStatus;
+    proof_status: DisbursementProofStatus;
+    proof_due_at: string | null;
+    proof_submitted_at: string | null;
+    proof_url: string | null;
+    proof_note: string | null;
+    campaign: {
+        title: string | null;
+        slug: string | null;
+        owner_id: string | null;
+    } | null;
+    owner: PendingCampaignOwner | null;
+    approvedOffer: {
+        title: string | null;
+        partner_id: string;
+        contact_email: string | null;
+        contact_phone: string | null;
+        partnerName: string | null;
+    } | null;
 };
 
 async function assertAdmin() {
@@ -138,14 +197,121 @@ async function assertAdmin() {
     return user;
 }
 
-function formatOfferPhaseLabel(offer: Pick<SupportOfferRow, "phase">) {
-    if (!offer.phase) {
+function formatOfferRoundLabel(offer: Pick<SupportOfferRow, "round">) {
+    if (!offer.round) {
         return "Chưa xác định";
     }
 
-    const order = offer.phase.sort_order ? `Giai đoạn ${offer.phase.sort_order}` : "Giai đoạn";
+    const order = offer.round.round_number
+        ? `Đợt ${offer.round.round_number}`
+        : "Đợt giải ngân";
+    const percent = offer.round.percent ? ` - ${offer.round.percent}%` : "";
+    const amount = offer.round.planned_amount
+        ? ` (${formatVnd(offer.round.planned_amount)})`
+        : "";
 
-    return offer.phase.title ? `${order}: ${offer.phase.title}` : order;
+    return `${order}${percent}${amount}`;
+}
+
+function getAdminCampaignPriority(
+    campaign: Pick<
+        AdminCampaignRow,
+        "ownerPendingOfferCount" | "review_status" | "status"
+    >,
+) {
+    if (
+        campaign.review_status === "published" &&
+        campaign.status === "active" &&
+        campaign.ownerPendingOfferCount > 0
+    ) {
+        return 0;
+    }
+
+    if (campaign.review_status === "published" && campaign.status === "active") {
+        return 1;
+    }
+
+    if (campaign.review_status === "published" && campaign.status === "paused") {
+        return 2;
+    }
+
+    if (campaign.review_status === "pending") {
+        return 3;
+    }
+
+    if (campaign.status === "completed") {
+        return 4;
+    }
+
+    return 5;
+}
+
+function formatAdminCampaignStatus(
+    campaign: Pick<
+        AdminCampaignRow,
+        "ownerPendingOfferCount" | "review_status" | "status"
+    >,
+) {
+    if (campaign.review_status === "pending") {
+        return "Chờ admin duyệt";
+    }
+
+    if (campaign.review_status === "rejected") {
+        return "Admin từ chối";
+    }
+
+    if (
+        campaign.status === "active" &&
+        campaign.ownerPendingOfferCount > 0
+    ) {
+        return "Đã có đơn vị đồng hành";
+    }
+
+    if (campaign.status === "active") {
+        return "Đang công khai";
+    }
+
+    if (campaign.status === "paused") {
+        return "Đang tìm đồng hành";
+    }
+
+    if (campaign.status === "completed") {
+        return "Đã hoàn thành";
+    }
+
+    return "Chưa xác định";
+}
+
+function getAdminCampaignStatusBadgeClass(
+    campaign: Pick<
+        AdminCampaignRow,
+        "ownerPendingOfferCount" | "review_status" | "status"
+    >,
+) {
+    if (campaign.review_status === "pending") {
+        return "bg-amber-50 text-amber-700";
+    }
+
+    if (campaign.review_status === "rejected") {
+        return "bg-red-50 text-red-700";
+    }
+
+    if (
+        campaign.status === "active" &&
+        campaign.ownerPendingOfferCount > 0
+    ) {
+        return "bg-emerald-50 text-emerald-700";
+    }
+
+    if (campaign.status === "active") {
+        return "bg-emerald-50 text-emerald-700";
+    }
+
+    if (campaign.status === "paused") {
+        return "bg-sky-50 text-sky-700";
+    }
+
+    return "bg-slate-100 text-slate-600";
 }
 
 async function getPendingRoleRequests(): Promise<RoleRequestWithProof[]> {
@@ -223,7 +389,7 @@ async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
             supabase
                 .from("campaign_phases")
                 .select(
-                    "id, campaign_id, title, description, target_amount, start_date, end_date, status, proof_url, sort_order",
+                    "id, campaign_id, title, description, start_date, end_date, status, proof_url, sort_order",
                 )
                 .in("campaign_id", campaignIds)
                 .order("sort_order", { ascending: true }),
@@ -283,7 +449,6 @@ async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
             id: phase.id,
             title: phase.title,
             description: phase.description,
-            target_amount: phase.target_amount,
             start_date: phase.start_date,
             end_date: phase.end_date,
             status: phase.status,
@@ -301,7 +466,90 @@ async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
         owner: campaign.owner_id ? ownerById.get(campaign.owner_id) ?? null : null,
     })) as PendingCampaignRow[];
 }
-async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
+
+async function getAdminCampaigns(): Promise<AdminCampaignRow[]> {
+    const supabase = getSupabaseServiceClient();
+
+    if (!supabase) {
+        return [];
+    }
+
+    const { data: campaigns, error } = await supabase
+        .from("campaigns")
+        .select(
+            "id, slug, title, summary, target_amount, raised_amount, status, review_status, end_date, cover_tag, owner_id, created_at",
+        )
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+    if (error || !campaigns) {
+        return [];
+    }
+
+    const ownerIds = Array.from(
+        new Set(campaigns.map((campaign) => campaign.owner_id).filter(Boolean)),
+    ) as string[];
+    const campaignIds = campaigns.map((campaign) => campaign.id);
+
+    const [{ data: ownerRows }, { data: ownerPendingOfferRows }] =
+        await Promise.all([
+            ownerIds.length > 0
+                ? supabase
+                    .from("profiles")
+                    .select("id, full_name, role")
+                    .in("id", ownerIds)
+                : Promise.resolve({ data: [] }),
+            campaignIds.length > 0
+                ? supabase
+                    .from("support_offers")
+                    .select("campaign_id")
+                    .in("campaign_id", campaignIds)
+                    .eq("status", "approved")
+                : Promise.resolve({ data: [] }),
+        ]);
+
+    const ownerById = new Map<string, PendingCampaignOwner>();
+
+    for (const owner of ownerRows ?? []) {
+        ownerById.set(owner.id, {
+            id: owner.id,
+            full_name: owner.full_name,
+            role: owner.role,
+        });
+    }
+
+    const ownerPendingOfferCountByCampaign = new Map<string, number>();
+
+    for (const offer of ownerPendingOfferRows ?? []) {
+        ownerPendingOfferCountByCampaign.set(
+            offer.campaign_id,
+            (ownerPendingOfferCountByCampaign.get(offer.campaign_id) ?? 0) + 1,
+        );
+    }
+
+    return (campaigns as AdminCampaignRow[])
+        .map((campaign) => ({
+            ...campaign,
+            owner: campaign.owner_id ? ownerById.get(campaign.owner_id) ?? null : null,
+            ownerPendingOfferCount:
+                ownerPendingOfferCountByCampaign.get(campaign.id) ?? 0,
+        }))
+        .sort((left, right) => {
+            const priorityDiff =
+                getAdminCampaignPriority(left) - getAdminCampaignPriority(right);
+
+            if (priorityDiff !== 0) {
+                return priorityDiff;
+            }
+
+            return (
+                new Date(right.created_at).getTime() -
+                new Date(left.created_at).getTime()
+            );
+        });
+}
+
+async function getSupportOffersForAdmin(): Promise<SupportOfferRow[]> {
     const supabase = getSupabaseServiceClient();
 
     if (!supabase) {
@@ -315,11 +563,13 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
             id,
             campaign_id,
             phase_id,
+            disbursement_round_id,
             partner_id,
             title,
             support_type,
             description,
             estimated_value,
+            approved_budget,
             contact_name,
             contact_phone,
             contact_email,
@@ -329,8 +579,9 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
             created_at
             `,
         )
-        .eq("status", "pending")
-        .order("created_at", { ascending: true });
+        .in("status", ["pending", "owner_pending", "approved", "rejected"])
+        .order("created_at", { ascending: false })
+        .limit(50);
 
     if (error || !offers) {
         console.error("Không thể lấy đề xuất hỗ trợ:", error);
@@ -347,6 +598,9 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
 
     const phaseIds = Array.from(
         new Set(offers.map((offer) => offer.phase_id).filter(Boolean)),
+    ) as string[];
+    const roundIds = Array.from(
+        new Set(offers.map((offer) => offer.disbursement_round_id).filter(Boolean)),
     ) as string[];
 
     const { data: campaignRows } =
@@ -371,6 +625,14 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
                 .from("campaign_phases")
                 .select("id, title, sort_order")
                 .in("id", phaseIds)
+            : { data: [] };
+
+    const { data: roundRows } =
+        roundIds.length > 0
+            ? await supabase
+                .from("disbursement_rounds")
+                .select("id, round_number, percent, planned_amount")
+                .in("id", roundIds)
             : { data: [] };
 
     const campaignById = new Map<
@@ -409,6 +671,19 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
         });
     }
 
+    const roundById = new Map<
+        string,
+        { round_number: number | null; percent: number | null; planned_amount: number | null }
+    >();
+
+    for (const round of roundRows ?? []) {
+        roundById.set(round.id, {
+            round_number: round.round_number,
+            percent: round.percent,
+            planned_amount: round.planned_amount,
+        });
+    }
+
     return Promise.all(
         offers.map(async (offer) => {
             let proofSignedUrl: string | null = null;
@@ -425,11 +700,13 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
                 id: offer.id,
                 campaign_id: offer.campaign_id,
                 phase_id: offer.phase_id,
+                disbursement_round_id: offer.disbursement_round_id,
                 partner_id: offer.partner_id,
                 title: offer.title,
                 support_type: offer.support_type,
                 description: offer.description,
                 estimated_value: offer.estimated_value,
+                approved_budget: offer.approved_budget,
                 contact_name: offer.contact_name,
                 contact_phone: offer.contact_phone,
                 contact_email: offer.contact_email,
@@ -439,12 +716,119 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
                 created_at: offer.created_at,
                 campaign: campaignById.get(offer.campaign_id) ?? null,
                 phase: offer.phase_id ? phaseById.get(offer.phase_id) ?? null : null,
+                round: offer.disbursement_round_id
+                    ? roundById.get(offer.disbursement_round_id) ?? null
+                    : null,
                 partner: partnerById.get(offer.partner_id) ?? null,
                 proofSignedUrl,
             };
         }),
     );
 
+}
+
+async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRow[]> {
+    const supabase = getSupabaseServiceClient();
+
+    if (!supabase) {
+        return [];
+    }
+
+    const { data: rounds, error } = await supabase
+        .from("disbursement_rounds")
+        .select(
+            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note",
+        )
+        .in("status", ["requested", "disbursed", "needs_admin_review", "completed"])
+        .order("created_at", { ascending: false })
+        .limit(80);
+
+    if (error || !rounds || rounds.length === 0) {
+        return [];
+    }
+
+    const campaignIds = Array.from(
+        new Set(rounds.map((round) => round.campaign_id).filter(Boolean)),
+    );
+    const roundIds = rounds.map((round) => round.id);
+
+    const [{ data: campaigns }, { data: offers }] = await Promise.all([
+        campaignIds.length > 0
+            ? supabase
+                .from("campaigns")
+                .select("id, title, slug, owner_id")
+                .in("id", campaignIds)
+            : Promise.resolve({ data: [] }),
+        roundIds.length > 0
+            ? supabase
+                .from("support_offers")
+                .select("title, disbursement_round_id, partner_id, contact_email, contact_phone")
+                .in("disbursement_round_id", roundIds)
+                .eq("status", "approved")
+            : Promise.resolve({ data: [] }),
+    ]);
+
+    const ownerIds = Array.from(
+        new Set((campaigns ?? []).map((campaign) => campaign.owner_id).filter(Boolean)),
+    ) as string[];
+    const partnerIds = Array.from(
+        new Set((offers ?? []).map((offer) => offer.partner_id).filter(Boolean)),
+    ) as string[];
+    const profileIds = Array.from(new Set([...ownerIds, ...partnerIds]));
+
+    const { data: profiles } =
+        profileIds.length > 0
+            ? await supabase
+                .from("profiles")
+                .select("id, full_name, role")
+                .in("id", profileIds)
+            : { data: [] };
+
+    const campaignById = new Map(
+        (campaigns ?? []).map((campaign) => [
+            campaign.id,
+            {
+                title: campaign.title,
+                slug: campaign.slug,
+                owner_id: campaign.owner_id,
+            },
+        ]),
+    );
+    const profileById = new Map(
+        (profiles ?? []).map((profile) => [
+            profile.id,
+            {
+                id: profile.id,
+                full_name: profile.full_name,
+                role: profile.role,
+            },
+        ]),
+    );
+    const offerByRoundId = new Map(
+        (offers ?? []).map((offer) => [
+            offer.disbursement_round_id,
+            {
+                title: offer.title,
+                partner_id: offer.partner_id,
+                contact_email: offer.contact_email,
+                contact_phone: offer.contact_phone,
+                partnerName: profileById.get(offer.partner_id)?.full_name ?? null,
+            },
+        ]),
+    );
+
+    return rounds.map((round) => {
+        const campaign = campaignById.get(round.campaign_id) ?? null;
+
+        return {
+            ...round,
+            campaign,
+            owner: campaign?.owner_id
+                ? profileById.get(campaign.owner_id) ?? null
+                : null,
+            approvedOffer: offerByRoundId.get(round.id) ?? null,
+        };
+    });
 }
 async function approveRoleRequest(formData: FormData) {
     "use server";
@@ -552,17 +936,38 @@ async function approveCampaign(formData: FormData) {
         return;
     }
 
-    await supabase
+    const { data: campaign } = await supabase
         .from("campaigns")
         .update({
             review_status: "published",
-            status: "paused",
+            status: "active",
             reviewed_by: admin.id,
             reviewed_at: new Date().toISOString(),
             rejection_reason: null,
         })
         .eq("id", campaignId)
-        .eq("review_status", "pending");
+        .eq("review_status", "pending")
+        .select("id, target_amount")
+        .maybeSingle();
+
+    if (campaign) {
+        const rounds = [
+            { round_number: 1, percent: 40 },
+            { round_number: 2, percent: 40 },
+            { round_number: 3, percent: 20 },
+        ].map((round) => ({
+            campaign_id: campaign.id,
+            round_number: round.round_number,
+            percent: round.percent,
+            planned_amount: Math.round((Number(campaign.target_amount) * round.percent) / 100),
+            status: round.round_number === 1 ? "open" : "locked",
+            proof_status: "pending",
+        }));
+
+        await supabase
+            .from("disbursement_rounds")
+            .upsert(rounds, { onConflict: "campaign_id,round_number" });
+    }
 
     revalidatePath("/quan-tri");
     revalidatePath("/");
@@ -603,19 +1008,235 @@ async function rejectCampaign(formData: FormData) {
     revalidatePath("/quan-tri");
     redirect("/quan-tri");
 }
+
+async function approveDisbursementRound(formData: FormData) {
+    "use server";
+
+    const admin = await assertAdmin();
+    const roundId = String(formData.get("roundId") ?? "");
+
+    if (!roundId) {
+        return;
+    }
+
+    const supabase = getSupabaseServiceClient();
+
+    if (!supabase) {
+        return;
+    }
+
+    const { data: round } = await supabase
+        .from("disbursement_rounds")
+        .select("id, campaign_id, round_number, percent, planned_amount, status")
+        .eq("id", roundId)
+        .eq("status", "requested")
+        .maybeSingle();
+
+    if (!round) {
+        return;
+    }
+
+    const { data: approvedOffer } = await supabase
+        .from("support_offers")
+        .select("id")
+        .eq("disbursement_round_id", round.id)
+        .eq("status", "approved")
+        .maybeSingle();
+
+    if (!approvedOffer) {
+        return;
+    }
+
+    const { data: campaign } = await supabase
+        .from("campaigns")
+        .select("id, slug")
+        .eq("id", round.campaign_id)
+        .maybeSingle();
+
+    if (!campaign) {
+        return;
+    }
+
+    const now = new Date();
+    const proofDueAt = new Date(now);
+    proofDueAt.setDate(proofDueAt.getDate() + 14);
+
+    await supabase
+        .from("disbursement_rounds")
+        .update({
+            status: "disbursed",
+            approved_by: admin.id,
+            approved_at: now.toISOString(),
+            disbursed_at: now.toISOString().slice(0, 10),
+            proof_status: "pending",
+            proof_due_at: proofDueAt.toISOString(),
+        })
+        .eq("id", round.id)
+        .eq("status", "requested");
+
+    await supabase.from("disbursements").insert({
+        campaign_slug: campaign.slug,
+        title: `Giải ngân đợt ${round.round_number}`,
+        description: `Đợt ${round.round_number} (${round.percent}%) được giải ngân cho đơn vị đồng hành đã được duyệt.`,
+        amount: round.planned_amount,
+        spent_at: now.toISOString().slice(0, 10),
+        proof_url: null,
+    });
+
+    revalidatePath("/quan-tri");
+    revalidatePath("/tai-khoan");
+    revalidatePath(`/chien-dich/${campaign.slug}`);
+    redirect("/quan-tri");
+}
+
+async function approveDisbursementProof(formData: FormData) {
+    "use server";
+
+    const admin = await assertAdmin();
+    const roundId = String(formData.get("roundId") ?? "");
+
+    if (!roundId) {
+        return;
+    }
+
+    const supabase = getSupabaseServiceClient();
+
+    if (!supabase) {
+        return;
+    }
+
+    const { data: round } = await supabase
+        .from("disbursement_rounds")
+        .select("id, campaign_id, round_number, proof_url")
+        .eq("id", roundId)
+        .in("status", ["disbursed", "needs_admin_review"])
+        .maybeSingle();
+
+    if (!round?.proof_url) {
+        return;
+    }
+
+    await supabase
+        .from("disbursement_rounds")
+        .update({
+            status: "completed",
+            proof_status: "approved",
+            proof_reviewed_by: admin.id,
+            proof_reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", round.id);
+
+    if (round.round_number < 3) {
+        await supabase
+            .from("disbursement_rounds")
+            .update({ status: "open" })
+            .eq("campaign_id", round.campaign_id)
+            .eq("round_number", round.round_number + 1)
+            .eq("status", "locked");
+    }
+
+    if (round.round_number === 3) {
+        const { data: allRounds } = await supabase
+            .from("disbursement_rounds")
+            .select("proof_status")
+            .eq("campaign_id", round.campaign_id);
+
+        const allProofsApproved =
+            (allRounds ?? []).length === 3 &&
+            (allRounds ?? []).every((item) => item.proof_status === "approved");
+
+        if (allProofsApproved) {
+            await supabase
+                .from("campaigns")
+                .update({ status: "completed" })
+                .eq("id", round.campaign_id);
+        }
+    }
+
+    const { data: campaign } = await supabase
+        .from("campaigns")
+        .select("slug")
+        .eq("id", round.campaign_id)
+        .maybeSingle();
+
+    revalidatePath("/quan-tri");
+    revalidatePath("/tai-khoan");
+
+    if (campaign?.slug) {
+        revalidatePath(`/chien-dich/${campaign.slug}`);
+    }
+
+    redirect("/quan-tri");
+}
+
+async function markDisbursementProofOverdue(formData: FormData) {
+    "use server";
+
+    await assertAdmin();
+    const roundId = String(formData.get("roundId") ?? "");
+
+    if (!roundId) {
+        return;
+    }
+
+    const supabase = getSupabaseServiceClient();
+
+    if (!supabase) {
+        return;
+    }
+
+    const { data: round } = await supabase
+        .from("disbursement_rounds")
+        .select("id, campaign_id")
+        .eq("id", roundId)
+        .in("status", ["disbursed", "needs_admin_review"])
+        .maybeSingle();
+
+    if (!round) {
+        return;
+    }
+
+    await supabase
+        .from("disbursement_rounds")
+        .update({
+            status: "needs_admin_review",
+            proof_status: "overdue",
+        })
+        .eq("id", round.id);
+
+    const { data: campaign } = await supabase
+        .from("campaigns")
+        .select("slug")
+        .eq("id", round.campaign_id)
+        .maybeSingle();
+
+    revalidatePath("/quan-tri");
+    revalidatePath("/tai-khoan");
+
+    if (campaign?.slug) {
+        revalidatePath(`/chien-dich/${campaign.slug}`);
+    }
+
+    redirect("/quan-tri");
+}
+
 export default async function AdminPage() {
     await assertAdmin();
 
     const [
         summary,
+        adminCampaigns,
         pendingRoleRequests,
         pendingCampaigns,
-        pendingSupportOffers,
+        supportOffersForAdmin,
+        disbursementRoundsForAdmin,
     ] = await Promise.all([
         getDashboardSummary(),
+        getAdminCampaigns(),
         getPendingRoleRequests(),
         getPendingCampaigns(),
-        getPendingSupportOffers(),
+        getSupportOffersForAdmin(),
+        getDisbursementRoundsForAdmin(),
     ]);
 
     return (
@@ -648,6 +1269,88 @@ export default async function AdminPage() {
                     tone="mint"
                 />
             </section>
+
+            <section className="neo-panel p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 className="font-display text-2xl font-bold text-ink">
+                            Tất cả chiến dịch
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Theo dõi toàn bộ chiến dịch. Chiến dịch có đơn vị đã được chủ dự án chấp thuận sẽ nằm đầu danh sách để admin xác nhận.
+                        </p>
+                    </div>
+
+                    <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
+                        {adminCampaigns.length} chiến dịch
+                    </span>
+                </div>
+
+                {adminCampaigns.length === 0 ? (
+                    <p className="mt-5 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
+                        Chưa có chiến dịch nào trong hệ thống.
+                    </p>
+                ) : (
+                    <div className="mt-5 grid gap-3">
+                        {adminCampaigns.map((campaign) => (
+                            <article
+                                key={campaign.id}
+                                className="rounded-xl border border-slate-100 bg-white p-4 shadow-soft"
+                            >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                                            {campaign.cover_tag}
+                                        </p>
+                                        <h3 className="mt-1 font-display text-xl font-bold text-ink">
+                                            {campaign.title}
+                                        </h3>
+                                        <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+                                            {campaign.summary}
+                                        </p>
+                                        <p className="mt-2 text-sm text-slate-600">
+                                            Người tạo:{" "}
+                                            <strong className="text-ink">
+                                                {campaign.owner?.full_name || "Chưa có tên"}
+                                            </strong>
+                                        </p>
+                                        {campaign.ownerPendingOfferCount > 0 ? (
+                                            <p className="mt-2 text-sm font-semibold text-amber-700">
+                                                {campaign.ownerPendingOfferCount} đơn vị đồng hành đã được owner duyệt
+                                            </p>
+                                        ) : null}
+                                    </div>
+
+                                    <span
+                                        className={`rounded-full px-3 py-1 text-xs font-bold ${getAdminCampaignStatusBadgeClass(
+                                            campaign,
+                                        )}`}
+                                    >
+                                        {formatAdminCampaignStatus(campaign)}
+                                    </span>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
+                                    <Info label="Mục tiêu" value={formatVnd(campaign.target_amount)} />
+                                    <Info label="Đã huy động" value={formatVnd(campaign.raised_amount)} />
+                                    <Info label="Ngày kết thúc" value={campaign.end_date} />
+                                    <Info label="Ngày tạo" value={campaign.created_at} />
+                                </div>
+
+                                {campaign.review_status === "published" && campaign.status === "active" ? (
+                                    <Link
+                                        href={`/chien-dich/${campaign.slug}`}
+                                        className="mt-4 inline-flex text-sm font-bold text-primary hover:underline"
+                                    >
+                                        Xem trang công khai
+                                    </Link>
+                                ) : null}
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </section>
+
             <section className="neo-panel p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -790,11 +1493,7 @@ export default async function AdminPage() {
                                                     {phase.description}
                                                 </p>
 
-                                                <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-3">
-                                                    <Info
-                                                        label="Mục tiêu giai đoạn"
-                                                        value={formatVnd(phase.target_amount)}
-                                                    />
+                                                <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-2">
                                                     <Info label="Ngày bắt đầu" value={phase.start_date} />
                                                     <Info label="Ngày kết thúc" value={phase.end_date} />
                                                 </div>
@@ -857,25 +1556,25 @@ export default async function AdminPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="font-display text-2xl font-bold text-ink">
-                            Đăng ký đồng hành mới
+                            Theo dõi đăng ký đồng hành
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                            Theo dõi các đăng ký thực hiện giai đoạn do đơn vị đồng hành gửi. Người tạo dự án sẽ duyệt trực tiếp.
+                            Theo dõi các đăng ký thực hiện giai đoạn do đơn vị đồng hành gửi, kể cả khi người tạo dự án đã xử lý.
                         </p>
                     </div>
 
                     <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
-                        {pendingSupportOffers.length} yêu cầu
+                        {supportOffersForAdmin.length} yêu cầu
                     </span>
                 </div>
 
-                {pendingSupportOffers.length === 0 ? (
+                {supportOffersForAdmin.length === 0 ? (
                     <p className="mt-5 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
-                        Hiện chưa có đăng ký đồng hành mới nào.
+                        Hiện chưa có đăng ký đồng hành nào.
                     </p>
                 ) : (
                     <div className="mt-5 grid gap-4">
-                        {pendingSupportOffers.map((offer) => (
+                        {supportOffersForAdmin.map((offer) => (
                             <article
                                 key={offer.id}
                                 className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
@@ -898,9 +1597,9 @@ export default async function AdminPage() {
                                         </p>
 
                                         <p className="mt-1 text-sm text-slate-600">
-                                            Giai đoạn:{" "}
+                                            Đợt đồng hành:{" "}
                                             <strong className="text-ink">
-                                                {formatOfferPhaseLabel(offer)}
+                                                {formatOfferRoundLabel(offer)}
                                             </strong>
                                         </p>
 
@@ -912,8 +1611,12 @@ export default async function AdminPage() {
                                         </p>
                                     </div>
 
-                                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
-                                        Pending
+                                    <span
+                                        className={`rounded-full px-3 py-1 text-xs font-bold ${getSupportOfferStatusBadgeClass(
+                                            offer.status,
+                                        )}`}
+                                    >
+                                        {formatSupportOfferStatus(offer.status)}
                                     </span>
                                 </div>
 
@@ -921,13 +1624,21 @@ export default async function AdminPage() {
                                     {offer.description}
                                 </p>
 
-                                <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-3">
+                                <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
                                     <Info
                                         label="Ngân sách dự kiến"
                                         value={
                                             offer.estimated_value
                                                 ? formatVnd(offer.estimated_value)
                                                 : "Chưa cung cấp"
+                                        }
+                                    />
+                                    <Info
+                                        label="Ngân sách phê duyệt"
+                                        value={
+                                            offer.approved_budget
+                                                ? formatVnd(offer.approved_budget)
+                                                : "Chưa phê duyệt"
                                         }
                                     />
                                     <Info label="Người phụ trách" value={offer.contact_name} />
@@ -952,17 +1663,178 @@ export default async function AdminPage() {
                                     )}
                                 </div>
 
-                                <div className="mt-5 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-700">
-                                    <p className="font-bold">Đã gửi đến người tạo dự án</p>
-                                    <p className="mt-1">
-                                        Admin chỉ theo dõi yêu cầu này. Quyết định chấp nhận hoặc từ chối thuộc về người tạo dự án.
-                                    </p>
-                                </div>
+                                {offer.status === "pending" ? (
+                                    <div className="mt-5 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-700">
+                                        <p className="font-bold">Đã gửi đến người tạo dự án</p>
+                                        <p className="mt-1">
+                                            Admin đang theo dõi yêu cầu này. Quyết định chấp thuận ban đầu thuộc về người tạo dự án.
+                                        </p>
+                                    </div>
+                                ) : null}
+
+                                {offer.status === "owner_pending" ? (
+                                    <div className="mt-5 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-700">
+                                        <p className="font-bold">Chủ dự án đã chấp thuận</p>
+                                        <p className="mt-1">
+                                            Admin chỉ theo dõi yêu cầu này. Giải ngân sẽ được xử lý riêng ở luồng đợt giải ngân.
+                                        </p>
+                                    </div>
+                                ) : null}
+
+                                {offer.status === "approved" ? (
+                                    <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
+                                        <p className="font-bold">Admin đã xác nhận đồng hành</p>
+                                        <p className="mt-1">
+                                            Đơn vị này đang được gắn với giai đoạn công khai của chiến dịch.
+                                        </p>
+                                    </div>
+                                ) : null}
+
+                                {offer.status === "rejected" ? (
+                                    <div className="mt-5 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">
+                                        <p className="font-bold">Đăng ký đã bị từ chối</p>
+                                        <p className="mt-1">
+                                            {offer.rejection_reason || "Người tạo dự án đã từ chối đăng ký này."}
+                                        </p>
+                                    </div>
+                                ) : null}
                             </article>
                         ))}
                     </div>
                 )}
             </section>
+            <section className="neo-panel p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 className="font-display text-2xl font-bold text-ink">
+                            Theo dõi giải ngân và chứng từ
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-600">
+                            Admin duyệt yêu cầu giải ngân, theo dõi chứng từ của đơn vị đồng hành và mở đợt kế tiếp khi chứng từ hợp lệ.
+                        </p>
+                    </div>
+
+                    <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
+                        {disbursementRoundsForAdmin.length} đợt cần theo dõi
+                    </span>
+                </div>
+
+                {disbursementRoundsForAdmin.length === 0 ? (
+                    <p className="mt-5 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
+                        Chưa có yêu cầu giải ngân hoặc chứng từ cần xử lý.
+                    </p>
+                ) : (
+                    <div className="mt-5 grid gap-4">
+                        {disbursementRoundsForAdmin.map((round) => (
+                            <article
+                                key={round.id}
+                                className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
+                            >
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                        <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
+                                            {round.campaign?.title ?? "Dự án"}
+                                        </p>
+                                        <h3 className="mt-1 font-display text-xl font-bold text-ink">
+                                            Đợt {round.round_number} - {round.percent}% ({formatVnd(round.planned_amount)})
+                                        </h3>
+                                        <p className="mt-2 text-sm text-slate-600">
+                                            Owner:{" "}
+                                            <strong className="text-ink">
+                                                {round.owner?.full_name ?? "Chưa có tên"}
+                                            </strong>
+                                        </p>
+                                        <p className="mt-1 text-sm text-slate-600">
+                                            Đơn vị nhận giải ngân:{" "}
+                                            <strong className="text-ink">
+                                                {round.approvedOffer?.partnerName ?? "Chưa có đơn vị đồng hành"}
+                                            </strong>
+                                        </p>
+                                    </div>
+
+                                    <span
+                                        className={`rounded-full px-3 py-1 text-xs font-bold ${getDisbursementStatusBadgeClass(
+                                            round.status,
+                                        )}`}
+                                    >
+                                        {formatDisbursementStatus(round.status)}
+                                    </span>
+                                </div>
+
+                                <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
+                                    <Info label="Chứng từ" value={formatProofStatus(round.proof_status)} />
+                                    <Info label="Hạn nộp" value={round.proof_due_at ? round.proof_due_at.slice(0, 10) : null} />
+                                    <Info label="Đã nộp" value={round.proof_submitted_at ? round.proof_submitted_at.slice(0, 10) : null} />
+                                    <Info label="Liên hệ đơn vị" value={round.approvedOffer?.contact_email ?? round.approvedOffer?.contact_phone} />
+                                </div>
+
+                                {round.proof_url ? (
+                                    <div className="mt-4 rounded-xl border border-slate-100 bg-surface-low p-3 text-sm text-slate-700">
+                                        <p className="font-bold text-ink">Chứng từ đã nộp</p>
+                                        <a
+                                            href={round.proof_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="mt-1 inline-flex break-all font-semibold text-primary hover:underline"
+                                        >
+                                            {round.proof_url}
+                                        </a>
+                                        {round.proof_note ? (
+                                            <p className="mt-2 whitespace-pre-wrap">{round.proof_note}</p>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+
+                                {round.status === "requested" ? (
+                                    <form action={approveDisbursementRound} className="mt-5">
+                                        <input type="hidden" name="roundId" value={round.id} />
+                                        <button
+                                            type="submit"
+                                            className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
+                                        >
+                                            Duyệt giải ngân
+                                        </button>
+                                    </form>
+                                ) : null}
+
+                                {round.status === "disbursed" ||
+                                    round.status === "needs_admin_review" ? (
+                                    <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
+                                        <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-700">
+                                            <p className="font-bold">Đang chờ xử lý chứng từ</p>
+                                            <p className="mt-1">
+                                                Duyệt chứng từ sẽ hoàn tất đợt này và tự mở đợt kế tiếp.
+                                            </p>
+                                        </div>
+
+                                        <form action={markDisbursementProofOverdue}>
+                                            <input type="hidden" name="roundId" value={round.id} />
+                                            <button
+                                                type="submit"
+                                                className="w-full rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100"
+                                            >
+                                                Đánh dấu quá hạn
+                                            </button>
+                                        </form>
+
+                                        <form action={approveDisbursementProof}>
+                                            <input type="hidden" name="roundId" value={round.id} />
+                                            <button
+                                                type="submit"
+                                                className="w-full rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
+                                                disabled={!round.proof_url}
+                                            >
+                                                Duyệt chứng từ
+                                            </button>
+                                        </form>
+                                    </div>
+                                ) : null}
+                            </article>
+                        ))}
+                    </div>
+                )}
+            </section>
+
             <section className="neo-panel p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -1207,6 +2079,85 @@ function formatSupportTypeLabel(value?: string | null) {
             return "Chuyên môn";
         case "other":
             return "Khác";
+        default:
+            return "Chưa xác định";
+    }
+}
+
+function formatSupportOfferStatus(status: string) {
+    switch (status) {
+        case "pending":
+            return "Chờ chủ dự án duyệt";
+        case "owner_pending":
+            return "Chờ admin xác nhận";
+        case "approved":
+            return "Đã xác nhận đồng hành";
+        case "rejected":
+            return "Bị từ chối";
+        default:
+            return "Chưa xác định";
+    }
+}
+
+function getSupportOfferStatusBadgeClass(status: string) {
+    switch (status) {
+        case "pending":
+            return "bg-amber-50 text-amber-700";
+        case "owner_pending":
+            return "bg-amber-50 text-amber-700";
+        case "approved":
+            return "bg-emerald-50 text-emerald-700";
+        case "rejected":
+            return "bg-red-50 text-red-700";
+        default:
+            return "bg-slate-100 text-slate-600";
+    }
+}
+
+function formatDisbursementStatus(status: DisbursementRoundStatus) {
+    switch (status) {
+        case "locked":
+            return "Chưa mở";
+        case "open":
+            return "Đang mở";
+        case "requested":
+            return "Chờ duyệt giải ngân";
+        case "disbursed":
+            return "Đã giải ngân";
+        case "completed":
+            return "Hoàn tất";
+        case "needs_admin_review":
+            return "Cần admin xử lý";
+        default:
+            return "Chưa xác định";
+    }
+}
+
+function getDisbursementStatusBadgeClass(status: DisbursementRoundStatus) {
+    switch (status) {
+        case "requested":
+            return "bg-amber-50 text-amber-700";
+        case "disbursed":
+            return "bg-indigo-50 text-indigo-700";
+        case "completed":
+            return "bg-emerald-50 text-emerald-700";
+        case "needs_admin_review":
+            return "bg-red-50 text-red-700";
+        case "open":
+            return "bg-sky-50 text-sky-700";
+        default:
+            return "bg-slate-100 text-slate-600";
+    }
+}
+
+function formatProofStatus(status: DisbursementProofStatus) {
+    switch (status) {
+        case "pending":
+            return "Đang chờ";
+        case "approved":
+            return "Đã duyệt";
+        case "overdue":
+            return "Quá hạn";
         default:
             return "Chưa xác định";
     }

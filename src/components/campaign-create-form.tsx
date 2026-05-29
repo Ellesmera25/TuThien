@@ -31,7 +31,6 @@ type PhaseFormState = {
     id: string;
     title: string;
     description: string;
-    targetAmount: string;
     startDate: string;
     endDate: string;
     proofFile: File | null;
@@ -42,7 +41,6 @@ function createEmptyPhase(): PhaseFormState {
         id: crypto.randomUUID(),
         title: "",
         description: "",
-        targetAmount: "",
         startDate: "",
         endDate: "",
         proofFile: null,
@@ -134,8 +132,8 @@ export function CampaignCreateForm() {
             return;
         }
 
-        if (phases.length === 0 || phases.length > 3) {
-            setError("Mỗi chiến dịch cần từ 1 đến tối đa 3 giai đoạn.");
+        if (phases.length === 0) {
+            setError("Mỗi chiến dịch cần ít nhất 1 giai đoạn nội dung.");
             return;
         }
 
@@ -145,22 +143,6 @@ export function CampaignCreateForm() {
 
         if (invalidPhaseIndex >= 0) {
             setError(`Vui lòng nhập đủ tên và mô tả cho giai đoạn ${invalidPhaseIndex + 1}.`);
-            return;
-        }
-
-        const parsedPhases = phases.map((phase) => ({
-            ...phase,
-            parsedTargetAmount: Number(phase.targetAmount || 0),
-        }));
-
-        const invalidTargetPhaseIndex = parsedPhases.findIndex(
-            (phase) =>
-                !Number.isFinite(phase.parsedTargetAmount) ||
-                phase.parsedTargetAmount < 0,
-        );
-
-        if (invalidTargetPhaseIndex >= 0) {
-            setError("Mục tiêu giai đoạn không hợp lệ.");
             return;
         }
 
@@ -231,8 +213,8 @@ export function CampaignCreateForm() {
 
             const uploadedPhases = [];
 
-            for (let index = 0; index < parsedPhases.length; index += 1) {
-                const phase = parsedPhases[index];
+            for (let index = 0; index < phases.length; index += 1) {
+                const phase = phases[index];
                 let phaseProofPath: string | null = null;
 
                 if (phase.proofFile) {
@@ -259,7 +241,7 @@ export function CampaignCreateForm() {
                 uploadedPhases.push({
                     title: phase.title,
                     description: phase.description,
-                    targetAmount: Math.round(phase.parsedTargetAmount),
+                    targetAmount: 0,
                     startDate: phase.startDate || null,
                     endDate: phase.endDate || null,
                     proofUrl: phaseProofPath,
@@ -389,13 +371,12 @@ export function CampaignCreateForm() {
                             Giai đoạn hỗ trợ
                         </h2>
                         <p className="mt-1 text-sm text-slate-500">
-                            Mỗi chiến dịch có tối đa 3 giai đoạn, mỗi giai đoạn sau này chỉ nhận 1 đơn vị đồng hành.
+                            Giai đoạn là phần mô tả kế hoạch triển khai. Lịch giải ngân sẽ được hệ thống tạo riêng theo 3 đợt 40% - 40% - 20%.
                         </p>
                     </div>
 
                     <button
                         type="button"
-                        disabled={phases.length >= 3}
                         onClick={() => setPhases((current) => [...current, createEmptyPhase()])}
                         className="rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
@@ -452,21 +433,7 @@ export function CampaignCreateForm() {
                             />
                         </Field>
 
-                        <div className="grid gap-4 md:grid-cols-3">
-                            <Field label="Mục tiêu giai đoạn">
-                                <input
-                                    type="number"
-                                    min={0}
-                                    step={1000}
-                                    value={phase.targetAmount}
-                                    onChange={(event) =>
-                                        updatePhase(phase.id, { targetAmount: event.target.value })
-                                    }
-                                    className={inputClass}
-                                    placeholder="10000000"
-                                />
-                            </Field>
-
+                        <div className="grid gap-4 md:grid-cols-2">
                             <Field label="Ngày bắt đầu">
                                 <input
                                     type="date"

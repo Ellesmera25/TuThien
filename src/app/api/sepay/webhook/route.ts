@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
   const { data: donation, error: selectError } = await supabase
     .from("donations")
-    .select("id, status, payment_reference, amount, donor_name, email")
+    .select("id, status, payment_reference, amount, donor_name, email, campaign_id")
     .eq("payment_reference", normalized.paymentReference)
     .maybeSingle();
 
@@ -143,6 +143,21 @@ export async function POST(request: Request) {
       { error: "Failed to confirm donation." },
       { status: 500 },
     );
+  }
+
+  if (donation.campaign_id) {
+    const { data: campaign } = await supabase
+      .from("campaigns")
+      .select("raised_amount")
+      .eq("id", donation.campaign_id)
+      .maybeSingle();
+
+    await supabase
+      .from("campaigns")
+      .update({
+        raised_amount: Number(campaign?.raised_amount ?? 0) + Number(donation.amount),
+      })
+      .eq("id", donation.campaign_id);
   }
 
   const { error: blockchainInsertError } = await supabase

@@ -49,7 +49,6 @@ type CampaignImagePayload = {
 type CampaignPhasePayload = {
     title?: string;
     description?: string;
-    targetAmount?: number;
     startDate?: string | null;
     endDate?: string | null;
     proofUrl?: string | null;
@@ -146,9 +145,9 @@ export async function POST(request: Request) {
         );
     }
 
-    if (phases.length === 0 || phases.length > 3) {
+    if (phases.length === 0) {
         return NextResponse.json(
-            { error: "Mỗi chiến dịch cần từ 1 đến tối đa 3 giai đoạn." },
+            { error: "Mỗi chiến dịch cần ít nhất 1 giai đoạn nội dung." },
             { status: 400 },
         );
     }
@@ -167,22 +166,11 @@ export async function POST(request: Request) {
     const normalizedPhases = phases.map((phase) => ({
         title: phase.title?.trim() ?? "",
         description: phase.description?.trim() ?? "",
-        targetAmount: Number(phase.targetAmount ?? 0),
+        targetAmount: 0,
         startDate: phase.startDate || null,
         endDate: phase.endDate || null,
         proofUrl: phase.proofUrl?.trim() || null,
     }));
-
-    if (
-        normalizedPhases.some(
-            (phase) => !Number.isFinite(phase.targetAmount) || phase.targetAmount < 0,
-        )
-    ) {
-        return NextResponse.json(
-            { error: "Mục tiêu giai đoạn không hợp lệ." },
-            { status: 400 },
-        );
-    }
 
     if (
         normalizedPhases.some(
