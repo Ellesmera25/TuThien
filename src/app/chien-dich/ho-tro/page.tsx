@@ -9,8 +9,8 @@ import {
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-    title: "Hỗ trợ dự án",
-    description: "Gửi đề xuất hỗ trợ dự án thiện nguyện trên TuThien.vn",
+    title: "Đồng hành dự án",
+    description: "Đăng ký đồng hành thực hiện giai đoạn dự án thiện nguyện trên TuThien.vn",
 };
 
 export const dynamic = "force-dynamic";
@@ -23,6 +23,16 @@ export type SupportCampaignOption = {
     raised_amount: number;
     end_date: string;
     cover_tag: string;
+    status: "active" | "completed" | "paused";
+    phases: SupportCampaignPhaseOption[];
+};
+
+export type SupportCampaignPhaseOption = {
+    id: string;
+    title: string;
+    description: string;
+    sort_order: number;
+    hasApprovedPartner: boolean;
 };
 
 async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
@@ -35,17 +45,64 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
     const { data, error } = await supabase
         .from("campaigns")
         .select(
-            "id, title, summary, target_amount, raised_amount, end_date, cover_tag",
+            "id, title, summary, target_amount, raised_amount, end_date, cover_tag, status",
         )
         .eq("review_status", "published")
-        .eq("status", "active")
+        .in("status", ["active", "paused"])
         .order("created_at", { ascending: false });
 
     if (error || !data) {
         return [];
     }
 
-    return data as SupportCampaignOption[];
+    const campaignIds = data.map((campaign) => campaign.id);
+
+    const [{ data: phaseRows }, { data: approvedOfferRows }] =
+        campaignIds.length > 0
+            ? await Promise.all([
+                supabase
+                    .from("campaign_phases")
+                    .select("id, campaign_id, title, description, sort_order")
+                    .in("campaign_id", campaignIds)
+                    .order("sort_order", { ascending: true }),
+                supabase
+                    .from("support_offers")
+                    .select("phase_id")
+                    .in("campaign_id", campaignIds)
+                    .eq("status", "approved"),
+            ])
+            : [{ data: [] }, { data: [] }];
+
+    const approvedPhaseIds = new Set(
+        (approvedOfferRows ?? [])
+            .map((offer) => offer.phase_id)
+            .filter((phaseId): phaseId is string => Boolean(phaseId)),
+    );
+
+    const phasesByCampaign = new Map<string, SupportCampaignPhaseOption[]>();
+
+    for (const phase of phaseRows ?? []) {
+        const list = phasesByCampaign.get(phase.campaign_id) ?? [];
+
+        list.push({
+            id: phase.id,
+            title: phase.title,
+            description: phase.description,
+            sort_order: phase.sort_order,
+            hasApprovedPartner: approvedPhaseIds.has(phase.id),
+        });
+
+        phasesByCampaign.set(phase.campaign_id, list);
+    }
+
+    return data
+        .map((campaign) => ({
+            ...campaign,
+            phases: (phasesByCampaign.get(campaign.id) ?? []).filter(
+                (phase) => !phase.hasApprovedPartner,
+            ),
+        }))
+        .filter((campaign) => campaign.phases.length > 0) as SupportCampaignOption[];
 }
 
 export default async function SupportCampaignPage() {
@@ -73,13 +130,13 @@ export default async function SupportCampaignPage() {
                     <p className="neo-badge">Đơn vị đồng hành</p>
 
                     <h1 className="mt-4 font-display text-4xl font-black tracking-tight text-ink md:text-5xl">
-                        Gửi đề xuất hỗ trợ dự án thiện nguyện.
+                        Đăng ký đồng hành thực hiện giai đoạn.
                     </h1>
 
                     <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">
-                        Chọn dự án đang hoạt động, mô tả hình thức hỗ trợ và gửi
-                        thông tin để đội quản trị xem xét trước khi kết nối với người tạo
-                        dự án.
+                        Chọn dự án và giai đoạn đơn vị có thể trực tiếp triển khai.
+                        Yêu cầu sẽ được gửi thẳng đến người tạo dự án duyệt, đồng
+                        thời hiển thị cho quản trị theo dõi.
                     </p>
                 </div>
             </section>

@@ -46,6 +46,15 @@ type CampaignImagePayload = {
     isCover?: boolean;
 };
 
+type CampaignPhasePayload = {
+    title?: string;
+    description?: string;
+    targetAmount?: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    proofUrl?: string | null;
+};
+
 export async function POST(request: Request) {
     const { client: authClient } = await createSupabaseServerAuthClient();
 
@@ -83,14 +92,8 @@ export async function POST(request: Request) {
         endDate?: string;
         coverTag?: string;
         images?: CampaignImagePayload[];
-        phase?: {
-            title?: string;
-            description?: string;
-            targetAmount?: number;
-            startDate?: string | null;
-            endDate?: string | null;
-            proofUrl?: string | null;
-        };
+        phase?: CampaignPhasePayload;
+        phases?: CampaignPhasePayload[];
     };
 
     const title = body.title?.trim() ?? "";
@@ -99,7 +102,7 @@ export async function POST(request: Request) {
     const endDate = body.endDate?.trim() ?? "";
     const coverTag = body.coverTag?.trim() || "Đang cập nhật";
     const images = body.images ?? [];
-    const phase = body.phase;
+    const phases = body.phases?.length ? body.phases : body.phase ? [body.phase] : [];
 
     if (!title) {
         return NextResponse.json({ error: "Vui lòng nhập tên dự án." }, { status: 400 });
@@ -143,30 +146,49 @@ export async function POST(request: Request) {
         );
     }
 
-    if (!phase?.title?.trim()) {
+    if (phases.length === 0 || phases.length > 3) {
         return NextResponse.json(
-            { error: "Vui lòng nhập tên giai đoạn đầu tiên." },
+            { error: "Mỗi chiến dịch cần từ 1 đến tối đa 3 giai đoạn." },
             { status: 400 },
         );
     }
 
-    if (!phase.description?.trim()) {
+    const invalidPhaseIndex = phases.findIndex(
+        (phase) => !phase.title?.trim() || !phase.description?.trim(),
+    );
+
+    if (invalidPhaseIndex >= 0) {
         return NextResponse.json(
-            { error: "Vui lòng nhập mô tả giai đoạn đầu tiên." },
+            { error: `Vui lòng nhập đủ tên và mô tả cho giai đoạn ${invalidPhaseIndex + 1}.` },
             { status: 400 },
         );
     }
 
-    const phaseTargetAmount = Number(phase.targetAmount ?? 0);
+    const normalizedPhases = phases.map((phase) => ({
+        title: phase.title?.trim() ?? "",
+        description: phase.description?.trim() ?? "",
+        targetAmount: Number(phase.targetAmount ?? 0),
+        startDate: phase.startDate || null,
+        endDate: phase.endDate || null,
+        proofUrl: phase.proofUrl?.trim() || null,
+    }));
 
-    if (!Number.isFinite(phaseTargetAmount) || phaseTargetAmount < 0) {
+    if (
+        normalizedPhases.some(
+            (phase) => !Number.isFinite(phase.targetAmount) || phase.targetAmount < 0,
+        )
+    ) {
         return NextResponse.json(
             { error: "Mục tiêu giai đoạn không hợp lệ." },
             { status: 400 },
         );
     }
 
-    if (phase.proofUrl && !isSafeStoragePath(phase.proofUrl)) {
+    if (
+        normalizedPhases.some(
+            (phase) => phase.proofUrl && !isSafeStoragePath(phase.proofUrl),
+        )
+    ) {
         return NextResponse.json(
             { error: "Đường dẫn minh chứng giai đoạn không hợp lệ." },
             { status: 400 },
@@ -237,17 +259,21 @@ export async function POST(request: Request) {
         );
     }
 
-    const { error: phaseError } = await supabase.from("campaign_phases").insert({
+    const phaseRows = normalizedPhases.map((phase, index) => ({
         campaign_id: campaignId,
-        title: phase.title.trim(),
-        description: phase.description.trim(),
-        target_amount: Math.round(phaseTargetAmount),
-        start_date: phase.startDate || null,
-        end_date: phase.endDate || null,
+        title: phase.title,
+        description: phase.description,
+        target_amount: Math.round(phase.targetAmount),
+        start_date: phase.startDate,
+        end_date: phase.endDate,
         status: "planned",
-        proof_url: phase.proofUrl || null,
-        sort_order: 1,
-    });
+        proof_url: phase.proofUrl,
+        sort_order: index + 1,
+    }));
+
+    const { error: phaseError } = await supabase
+        .from("campaign_phases")
+        .insert(phaseRows);
 
     if (phaseError) {
         console.error("Create campaign phase error:", phaseError);

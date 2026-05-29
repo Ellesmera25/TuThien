@@ -101,6 +101,7 @@ export async function getCampaigns(): Promise<Campaign[]> {
         .from("campaigns")
         .select("*")
         .eq("review_status", "published")
+        .eq("status", "active")
         .order("created_at", { ascending: false });
 
     if (error) {
@@ -122,6 +123,7 @@ export async function getCampaignBySlug(slug: string): Promise<Campaign | null> 
         .select("*")
         .eq("slug", slug)
         .eq("review_status", "published")
+        .eq("status", "active")
         .maybeSingle();
 
     if (error) {

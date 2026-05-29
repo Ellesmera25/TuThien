@@ -368,7 +368,7 @@ export function RoleRequestForm() {
                 <Field
                     label={
                         isPartner
-                            ? "Hình thức hỗ trợ"
+                            ? "Năng lực đồng hành thực hiện"
                             : "Kinh nghiệm hoạt động từ thiện"
                     }
                     required
@@ -385,7 +385,7 @@ export function RoleRequestForm() {
                         required
                         placeholder={
                             isPartner
-                                ? "Ví dụ: tiền, vật phẩm, truyền thông, nhân lực..."
+                                ? "Ví dụ: điều phối hiện trường, mua sắm vật phẩm, tổ chức trao tặng, báo cáo chứng từ..."
                                 : "Ví dụ: các hoạt động, chiến dịch từng tham gia..."
                         }
                     />

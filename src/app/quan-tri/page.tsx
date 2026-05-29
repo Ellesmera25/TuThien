@@ -94,6 +94,7 @@ type PendingCampaignRow = {
 type SupportOfferRow = {
     id: string;
     campaign_id: string;
+    phase_id: string | null;
     partner_id: string;
     title: string;
     support_type: string;
@@ -103,12 +104,16 @@ type SupportOfferRow = {
     contact_phone: string | null;
     contact_email: string | null;
     proof_url: string | null;
-    status: "pending" | "approved" | "rejected";
+    status: "pending" | "owner_pending" | "approved" | "rejected";
     rejection_reason: string | null;
     created_at: string;
     campaign: {
         title: string | null;
         slug: string | null;
+    } | null;
+    phase: {
+        title: string | null;
+        sort_order: number | null;
     } | null;
     partner: {
         full_name: string | null;
@@ -131,6 +136,16 @@ async function assertAdmin() {
     }
 
     return user;
+}
+
+function formatOfferPhaseLabel(offer: Pick<SupportOfferRow, "phase">) {
+    if (!offer.phase) {
+        return "Chưa xác định";
+    }
+
+    const order = offer.phase.sort_order ? `Giai đoạn ${offer.phase.sort_order}` : "Giai đoạn";
+
+    return offer.phase.title ? `${order}: ${offer.phase.title}` : order;
 }
 
 async function getPendingRoleRequests(): Promise<RoleRequestWithProof[]> {
@@ -299,6 +314,7 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
             `
             id,
             campaign_id,
+            phase_id,
             partner_id,
             title,
             support_type,
@@ -329,6 +345,10 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
         new Set(offers.map((offer) => offer.partner_id).filter(Boolean)),
     );
 
+    const phaseIds = Array.from(
+        new Set(offers.map((offer) => offer.phase_id).filter(Boolean)),
+    ) as string[];
+
     const { data: campaignRows } =
         campaignIds.length > 0
             ? await supabase
@@ -343,6 +363,14 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
                 .from("profiles")
                 .select("id, full_name, role")
                 .in("id", partnerIds)
+            : { data: [] };
+
+    const { data: phaseRows } =
+        phaseIds.length > 0
+            ? await supabase
+                .from("campaign_phases")
+                .select("id, title, sort_order")
+                .in("id", phaseIds)
             : { data: [] };
 
     const campaignById = new Map<
@@ -369,6 +397,18 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
         });
     }
 
+    const phaseById = new Map<
+        string,
+        { title: string | null; sort_order: number | null }
+    >();
+
+    for (const phase of phaseRows ?? []) {
+        phaseById.set(phase.id, {
+            title: phase.title,
+            sort_order: phase.sort_order,
+        });
+    }
+
     return Promise.all(
         offers.map(async (offer) => {
             let proofSignedUrl: string | null = null;
@@ -384,6 +424,7 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
             return {
                 id: offer.id,
                 campaign_id: offer.campaign_id,
+                phase_id: offer.phase_id,
                 partner_id: offer.partner_id,
                 title: offer.title,
                 support_type: offer.support_type,
@@ -397,6 +438,7 @@ async function getPendingSupportOffers(): Promise<SupportOfferRow[]> {
                 rejection_reason: offer.rejection_reason,
                 created_at: offer.created_at,
                 campaign: campaignById.get(offer.campaign_id) ?? null,
+                phase: offer.phase_id ? phaseById.get(offer.phase_id) ?? null : null,
                 partner: partnerById.get(offer.partner_id) ?? null,
                 proofSignedUrl,
             };
@@ -514,7 +556,7 @@ async function approveCampaign(formData: FormData) {
         .from("campaigns")
         .update({
             review_status: "published",
-            status: "active",
+            status: "paused",
             reviewed_by: admin.id,
             reviewed_at: new Date().toISOString(),
             rejection_reason: null,
@@ -557,70 +599,6 @@ async function rejectCampaign(formData: FormData) {
         })
         .eq("id", campaignId)
         .eq("review_status", "pending");
-
-    revalidatePath("/quan-tri");
-    redirect("/quan-tri");
-}
-async function approveSupportOffer(formData: FormData) {
-    "use server";
-
-    const admin = await assertAdmin();
-    const offerId = String(formData.get("offerId") ?? "");
-
-    if (!offerId) {
-        return;
-    }
-
-    const supabase = getSupabaseServiceClient();
-
-    if (!supabase) {
-        return;
-    }
-
-    await supabase
-        .from("support_offers")
-        .update({
-            status: "owner_pending",
-            reviewed_by: admin.id,
-            reviewed_at: new Date().toISOString(),
-            rejection_reason: null,
-        })
-        .eq("id", offerId)
-        .eq("status", "pending");
-
-    revalidatePath("/quan-tri");
-    revalidatePath("/tai-khoan");
-    redirect("/quan-tri");
-}
-
-async function rejectSupportOffer(formData: FormData) {
-    "use server";
-
-    const admin = await assertAdmin();
-    const offerId = String(formData.get("offerId") ?? "");
-    const rejectionReason = String(formData.get("rejectionReason") ?? "").trim();
-
-    if (!offerId) {
-        return;
-    }
-
-    const supabase = getSupabaseServiceClient();
-
-    if (!supabase) {
-        return;
-    }
-
-    await supabase
-        .from("support_offers")
-        .update({
-            status: "rejected",
-            reviewed_by: admin.id,
-            reviewed_at: new Date().toISOString(),
-            rejection_reason:
-                rejectionReason || "Đề xuất hỗ trợ chưa phù hợp để kết nối với dự án.",
-        })
-        .eq("id", offerId)
-        .eq("status", "pending");
 
     revalidatePath("/quan-tri");
     redirect("/quan-tri");
@@ -879,21 +857,21 @@ export default async function AdminPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="font-display text-2xl font-bold text-ink">
-                            Đề xuất hỗ trợ chờ duyệt
+                            Đăng ký đồng hành mới
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                            Duyệt các đề xuất hỗ trợ do đơn vị đồng hành gửi cho dự án.
+                            Theo dõi các đăng ký thực hiện giai đoạn do đơn vị đồng hành gửi. Người tạo dự án sẽ duyệt trực tiếp.
                         </p>
                     </div>
 
                     <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
-                        {pendingSupportOffers.length} chờ duyệt
+                        {pendingSupportOffers.length} yêu cầu
                     </span>
                 </div>
 
                 {pendingSupportOffers.length === 0 ? (
                     <p className="mt-5 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
-                        Hiện chưa có đề xuất hỗ trợ nào đang chờ duyệt.
+                        Hiện chưa có đăng ký đồng hành mới nào.
                     </p>
                 ) : (
                     <div className="mt-5 grid gap-4">
@@ -920,6 +898,13 @@ export default async function AdminPage() {
                                         </p>
 
                                         <p className="mt-1 text-sm text-slate-600">
+                                            Giai đoạn:{" "}
+                                            <strong className="text-ink">
+                                                {formatOfferPhaseLabel(offer)}
+                                            </strong>
+                                        </p>
+
+                                        <p className="mt-1 text-sm text-slate-600">
                                             Đơn vị gửi:{" "}
                                             <strong className="text-ink">
                                                 {offer.partner?.full_name ?? "Chưa có tên"}
@@ -938,7 +923,7 @@ export default async function AdminPage() {
 
                                 <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-3">
                                     <Info
-                                        label="Giá trị ước tính"
+                                        label="Ngân sách dự kiến"
                                         value={
                                             offer.estimated_value
                                                 ? formatVnd(offer.estimated_value)
@@ -958,7 +943,7 @@ export default async function AdminPage() {
                                             rel="noreferrer"
                                             className="inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
                                         >
-                                            Xem minh chứng hỗ trợ
+                                            Xem hồ sơ đính kèm
                                         </a>
                                     ) : (
                                         <p className="text-sm font-semibold text-slate-500">
@@ -967,31 +952,11 @@ export default async function AdminPage() {
                                     )}
                                 </div>
 
-                                <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
-                                    <form action={rejectSupportOffer} className="flex gap-2">
-                                        <input type="hidden" name="offerId" value={offer.id} />
-                                        <input
-                                            name="rejectionReason"
-                                            placeholder="Lý do từ chối..."
-                                            className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                        />
-                                        <button
-                                            type="submit"
-                                            className="rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-100"
-                                        >
-                                            Từ chối
-                                        </button>
-                                    </form>
-
-                                    <form action={approveSupportOffer}>
-                                        <input type="hidden" name="offerId" value={offer.id} />
-                                        <button
-                                            type="submit"
-                                            className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
-                                        >
-                                            Duyệt hỗ trợ
-                                        </button>
-                                    </form>
+                                <div className="mt-5 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-700">
+                                    <p className="font-bold">Đã gửi đến người tạo dự án</p>
+                                    <p className="mt-1">
+                                        Admin chỉ theo dõi yêu cầu này. Quyết định chấp nhận hoặc từ chối thuộc về người tạo dự án.
+                                    </p>
                                 </div>
                             </article>
                         ))}
@@ -1081,7 +1046,7 @@ export default async function AdminPage() {
                                     <Info
                                         label={
                                             request.requested_role === "partner_org"
-                                                ? "Hình thức hỗ trợ"
+                                                ? "Năng lực đồng hành"
                                                 : "Kinh nghiệm hoạt động từ thiện"
                                         }
                                         value={
@@ -1226,6 +1191,8 @@ function formatApplicantType(value?: null | string) {
 }
 function formatSupportTypeLabel(value?: string | null) {
     switch (value) {
+        case "implementation":
+            return "Đồng hành thực hiện";
         case "financial":
             return "Tài chính";
         case "goods":

@@ -27,6 +27,28 @@ function isAllowedProof(file: File) {
     ].includes(file.type);
 }
 
+type PhaseFormState = {
+    id: string;
+    title: string;
+    description: string;
+    targetAmount: string;
+    startDate: string;
+    endDate: string;
+    proofFile: File | null;
+};
+
+function createEmptyPhase(): PhaseFormState {
+    return {
+        id: crypto.randomUUID(),
+        title: "",
+        description: "",
+        targetAmount: "",
+        startDate: "",
+        endDate: "",
+        proofFile: null,
+    };
+}
+
 export function CampaignCreateForm() {
     const router = useRouter();
     const supabase = useMemo(() => createSupabaseBrowserAuthClient(), []);
@@ -39,16 +61,21 @@ export function CampaignCreateForm() {
 
     const [images, setImages] = useState<File[]>([]);
 
-    const [phaseTitle, setPhaseTitle] = useState("");
-    const [phaseDescription, setPhaseDescription] = useState("");
-    const [phaseTargetAmount, setPhaseTargetAmount] = useState("");
-    const [phaseStartDate, setPhaseStartDate] = useState("");
-    const [phaseEndDate, setPhaseEndDate] = useState("");
-    const [phaseProofFile, setPhaseProofFile] = useState<File | null>(null);
+    const [phases, setPhases] = useState<PhaseFormState[]>(() => [
+        createEmptyPhase(),
+    ]);
 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
+
+    function updatePhase(id: string, patch: Partial<PhaseFormState>) {
+        setPhases((current) =>
+            current.map((phase) =>
+                phase.id === id ? { ...phase, ...patch } : phase,
+            ),
+        );
+    }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -107,29 +134,50 @@ export function CampaignCreateForm() {
             return;
         }
 
-        if (!phaseTitle.trim()) {
-            setError("Vui lòng nhập tên giai đoạn đầu tiên.");
+        if (phases.length === 0 || phases.length > 3) {
+            setError("Mỗi chiến dịch cần từ 1 đến tối đa 3 giai đoạn.");
             return;
         }
 
-        if (!phaseDescription.trim()) {
-            setError("Vui lòng nhập mô tả giai đoạn đầu tiên.");
+        const invalidPhaseIndex = phases.findIndex(
+            (phase) => !phase.title.trim() || !phase.description.trim(),
+        );
+
+        if (invalidPhaseIndex >= 0) {
+            setError(`Vui lòng nhập đủ tên và mô tả cho giai đoạn ${invalidPhaseIndex + 1}.`);
             return;
         }
 
-        const parsedPhaseTargetAmount = Number(phaseTargetAmount || 0);
+        const parsedPhases = phases.map((phase) => ({
+            ...phase,
+            parsedTargetAmount: Number(phase.targetAmount || 0),
+        }));
 
-        if (!Number.isFinite(parsedPhaseTargetAmount) || parsedPhaseTargetAmount < 0) {
+        const invalidTargetPhaseIndex = parsedPhases.findIndex(
+            (phase) =>
+                !Number.isFinite(phase.parsedTargetAmount) ||
+                phase.parsedTargetAmount < 0,
+        );
+
+        if (invalidTargetPhaseIndex >= 0) {
             setError("Mục tiêu giai đoạn không hợp lệ.");
             return;
         }
 
-        if (phaseProofFile && !isAllowedProof(phaseProofFile)) {
+        const invalidProofPhaseIndex = phases.findIndex(
+            (phase) => phase.proofFile && !isAllowedProof(phase.proofFile),
+        );
+
+        if (invalidProofPhaseIndex >= 0) {
             setError("Minh chứng giai đoạn chỉ chấp nhận ảnh hoặc PDF.");
             return;
         }
 
-        if (phaseProofFile && phaseProofFile.size > 5 * 1024 * 1024) {
+        const oversizedProofPhaseIndex = phases.findIndex(
+            (phase) => phase.proofFile && phase.proofFile.size > 5 * 1024 * 1024,
+        );
+
+        if (oversizedProofPhaseIndex >= 0) {
             setError("File minh chứng giai đoạn không được vượt quá 5MB.");
             return;
         }
@@ -181,27 +229,41 @@ export function CampaignCreateForm() {
                 });
             }
 
-            let phaseProofPath: string | null = null;
+            const uploadedPhases = [];
 
-            if (phaseProofFile) {
-                const fileExt =
-                    phaseProofFile.name.split(".").pop()?.toLowerCase() ?? "file";
-                phaseProofPath = `${user.id}/campaigns/${tempId}/proofs/${Date.now()}.${fileExt}`;
+            for (let index = 0; index < parsedPhases.length; index += 1) {
+                const phase = parsedPhases[index];
+                let phaseProofPath: string | null = null;
 
-                const { error: proofUploadError } = await supabase.storage
-                    .from("campaign-assets")
-                    .upload(phaseProofPath, phaseProofFile, {
-                        cacheControl: "3600",
-                        contentType: phaseProofFile.type,
-                        upsert: false,
-                    });
+                if (phase.proofFile) {
+                    const fileExt =
+                        phase.proofFile.name.split(".").pop()?.toLowerCase() ?? "file";
+                    phaseProofPath = `${user.id}/campaigns/${tempId}/proofs/${Date.now()}-${index}.${fileExt}`;
 
-                if (proofUploadError) {
-                    setError(
-                        `Không thể tải minh chứng giai đoạn: ${proofUploadError.message}`,
-                    );
-                    return;
+                    const { error: proofUploadError } = await supabase.storage
+                        .from("campaign-assets")
+                        .upload(phaseProofPath, phase.proofFile, {
+                            cacheControl: "3600",
+                            contentType: phase.proofFile.type,
+                            upsert: false,
+                        });
+
+                    if (proofUploadError) {
+                        setError(
+                            `Không thể tải minh chứng giai đoạn ${index + 1}: ${proofUploadError.message}`,
+                        );
+                        return;
+                    }
                 }
+
+                uploadedPhases.push({
+                    title: phase.title,
+                    description: phase.description,
+                    targetAmount: Math.round(phase.parsedTargetAmount),
+                    startDate: phase.startDate || null,
+                    endDate: phase.endDate || null,
+                    proofUrl: phaseProofPath,
+                });
             }
 
             const response = await fetch("/api/campaigns", {
@@ -216,14 +278,7 @@ export function CampaignCreateForm() {
                     endDate,
                     coverTag,
                     images: uploadedImages,
-                    phase: {
-                        title: phaseTitle,
-                        description: phaseDescription,
-                        targetAmount: Math.round(parsedPhaseTargetAmount),
-                        startDate: phaseStartDate || null,
-                        endDate: phaseEndDate || null,
-                        proofUrl: phaseProofPath,
-                    },
+                    phases: uploadedPhases,
                 }),
             });
 
@@ -328,77 +383,130 @@ export function CampaignCreateForm() {
             </section>
 
             <section className="grid gap-4 rounded-xl border border-outline-variant/40 bg-surface-low p-4">
-                <h2 className="font-display text-2xl font-semibold text-ink">
-                    Giai đoạn hỗ trợ đầu tiên
-                </h2>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <h2 className="font-display text-2xl font-semibold text-ink">
+                            Giai đoạn hỗ trợ
+                        </h2>
+                        <p className="mt-1 text-sm text-slate-500">
+                            Mỗi chiến dịch có tối đa 3 giai đoạn, mỗi giai đoạn sau này chỉ nhận 1 đơn vị đồng hành.
+                        </p>
+                    </div>
 
-                <Field label="Tên giai đoạn" required>
-                    <input
-                        value={phaseTitle}
-                        onChange={(event) => setPhaseTitle(event.target.value)}
-                        className={inputClass}
-                        placeholder="Ví dụ: Khảo sát và xác minh hoàn cảnh"
-                        required
-                    />
-                </Field>
-
-                <Field label="Mô tả giai đoạn" required>
-                    <textarea
-                        rows={4}
-                        value={phaseDescription}
-                        onChange={(event) => setPhaseDescription(event.target.value)}
-                        className={inputClass}
-                        placeholder="Mô tả việc cần làm, đối tượng hỗ trợ, cách thực hiện..."
-                        required
-                    />
-                </Field>
-
-                <div className="grid gap-4 md:grid-cols-3">
-                    <Field label="Mục tiêu giai đoạn">
-                        <input
-                            type="number"
-                            min={0}
-                            step={1000}
-                            value={phaseTargetAmount}
-                            onChange={(event) => setPhaseTargetAmount(event.target.value)}
-                            className={inputClass}
-                            placeholder="10000000"
-                        />
-                    </Field>
-
-                    <Field label="Ngày bắt đầu">
-                        <input
-                            type="date"
-                            value={phaseStartDate}
-                            onChange={(event) => setPhaseStartDate(event.target.value)}
-                            className={inputClass}
-                        />
-                    </Field>
-
-                    <Field label="Ngày kết thúc">
-                        <input
-                            type="date"
-                            value={phaseEndDate}
-                            onChange={(event) => setPhaseEndDate(event.target.value)}
-                            className={inputClass}
-                        />
-                    </Field>
+                    <button
+                        type="button"
+                        disabled={phases.length >= 3}
+                        onClick={() => setPhases((current) => [...current, createEmptyPhase()])}
+                        className="rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                        Thêm giai đoạn
+                    </button>
                 </div>
 
-                <Field label="Minh chứng giai đoạn">
-                    <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
-                        onChange={(event) => {
-                            setPhaseProofFile(event.target.files?.[0] ?? null);
-                        }}
-                        className={fileInputClass}
-                    />
-                    <span className="text-xs font-normal text-slate-500">
-                        Có thể tải ảnh hoặc PDF minh chứng cho giai đoạn đầu tiên. Tối đa
-                        5MB.
-                    </span>
-                </Field>
+                {phases.map((phase, index) => (
+                    <div
+                        key={phase.id}
+                        className="grid gap-4 rounded-xl border border-outline-variant/40 bg-white p-4"
+                    >
+                        <div className="flex items-center justify-between gap-3">
+                            <h3 className="font-display text-lg font-bold text-ink">
+                                Giai đoạn {index + 1}
+                            </h3>
+                            {phases.length > 1 ? (
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setPhases((current) =>
+                                            current.filter((item) => item.id !== phase.id),
+                                        )
+                                    }
+                                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 transition hover:bg-red-100"
+                                >
+                                    Xóa
+                                </button>
+                            ) : null}
+                        </div>
+
+                        <Field label="Tên giai đoạn" required>
+                            <input
+                                value={phase.title}
+                                onChange={(event) =>
+                                    updatePhase(phase.id, { title: event.target.value })
+                                }
+                                className={inputClass}
+                                placeholder="Ví dụ: Khảo sát và xác minh hoàn cảnh"
+                                required
+                            />
+                        </Field>
+
+                        <Field label="Mô tả giai đoạn" required>
+                            <textarea
+                                rows={4}
+                                value={phase.description}
+                                onChange={(event) =>
+                                    updatePhase(phase.id, { description: event.target.value })
+                                }
+                                className={inputClass}
+                                placeholder="Mô tả việc cần làm, đối tượng hỗ trợ, cách thực hiện..."
+                                required
+                            />
+                        </Field>
+
+                        <div className="grid gap-4 md:grid-cols-3">
+                            <Field label="Mục tiêu giai đoạn">
+                                <input
+                                    type="number"
+                                    min={0}
+                                    step={1000}
+                                    value={phase.targetAmount}
+                                    onChange={(event) =>
+                                        updatePhase(phase.id, { targetAmount: event.target.value })
+                                    }
+                                    className={inputClass}
+                                    placeholder="10000000"
+                                />
+                            </Field>
+
+                            <Field label="Ngày bắt đầu">
+                                <input
+                                    type="date"
+                                    value={phase.startDate}
+                                    onChange={(event) =>
+                                        updatePhase(phase.id, { startDate: event.target.value })
+                                    }
+                                    className={inputClass}
+                                />
+                            </Field>
+
+                            <Field label="Ngày kết thúc">
+                                <input
+                                    type="date"
+                                    value={phase.endDate}
+                                    onChange={(event) =>
+                                        updatePhase(phase.id, { endDate: event.target.value })
+                                    }
+                                    className={inputClass}
+                                />
+                            </Field>
+                        </div>
+
+                        <Field label="Minh chứng giai đoạn">
+                            <input
+                                type="file"
+                                accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+                                onChange={(event) => {
+                                    updatePhase(phase.id, {
+                                        proofFile: event.target.files?.[0] ?? null,
+                                    });
+                                }}
+                                className={fileInputClass}
+                            />
+                            <span className="text-xs font-normal text-slate-500">
+                                Có thể tải ảnh hoặc PDF minh chứng cho giai đoạn. Tối đa 5MB.
+                            </span>
+                        </Field>
+                    </div>
+                ))}
             </section>
 
             {error ? (

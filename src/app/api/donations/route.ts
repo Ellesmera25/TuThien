@@ -88,7 +88,16 @@ export async function POST(request: Request) {
       .from("campaigns")
       .select("id")
       .eq("slug", body.campaignSlug)
+      .eq("review_status", "published")
+      .eq("status", "active")
       .maybeSingle();
+
+    if (!campaign) {
+      return NextResponse.json(
+        { error: "Dự án chưa mở quyên góp hoặc không tồn tại." },
+        { status: 400 },
+      );
+    }
 
     campaignId = campaign?.id ?? null;
   }

@@ -7,6 +7,7 @@ import {
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
 const allowedSupportTypes = [
+    "implementation",
     "financial",
     "goods",
     "volunteer",
@@ -54,7 +55,7 @@ export async function POST(request: Request) {
 
     if (!user) {
         return NextResponse.json(
-            { error: "Bạn cần đăng nhập để gửi đề xuất hỗ trợ." },
+            { error: "Bạn cần đăng nhập để đăng ký đồng hành." },
             { status: 401 },
         );
     }
@@ -63,13 +64,14 @@ export async function POST(request: Request) {
 
     if (role !== "partner_org") {
         return NextResponse.json(
-            { error: "Chỉ đơn vị đồng hành mới được gửi đề xuất hỗ trợ." },
+            { error: "Chỉ đơn vị đồng hành mới được đăng ký thực hiện giai đoạn." },
             { status: 403 },
         );
     }
 
     const body = (await request.json()) as {
         campaignId?: string;
+        phaseId?: string;
         title?: string;
         supportType?: string;
         description?: string;
@@ -81,8 +83,9 @@ export async function POST(request: Request) {
     };
 
     const campaignId = body.campaignId?.trim() ?? "";
+    const phaseId = body.phaseId?.trim() ?? "";
     const title = body.title?.trim() ?? "";
-    const supportType = body.supportType?.trim() ?? "";
+    const supportType = body.supportType?.trim() || "implementation";
     const description = body.description?.trim() ?? "";
     const estimatedValue =
         body.estimatedValue === null || body.estimatedValue === undefined
@@ -95,28 +98,35 @@ export async function POST(request: Request) {
 
     if (!campaignId) {
         return NextResponse.json(
-            { error: "Vui lòng chọn dự án muốn hỗ trợ." },
+            { error: "Vui lòng chọn dự án muốn đồng hành." },
+            { status: 400 },
+        );
+    }
+
+    if (!phaseId) {
+        return NextResponse.json(
+            { error: "Vui lòng chọn giai đoạn muốn đồng hành." },
             { status: 400 },
         );
     }
 
     if (!title) {
         return NextResponse.json(
-            { error: "Vui lòng nhập tiêu đề đề xuất." },
+            { error: "Vui lòng nhập tên phương án thực hiện." },
             { status: 400 },
         );
     }
 
     if (!allowedSupportTypes.includes(supportType)) {
         return NextResponse.json(
-            { error: "Hình thức hỗ trợ không hợp lệ." },
+            { error: "Loại đăng ký đồng hành không hợp lệ." },
             { status: 400 },
         );
     }
 
     if (!description) {
         return NextResponse.json(
-            { error: "Vui lòng mô tả nội dung hỗ trợ." },
+            { error: "Vui lòng mô tả phương án thực hiện giai đoạn." },
             { status: 400 },
         );
     }
@@ -126,7 +136,7 @@ export async function POST(request: Request) {
         (!Number.isFinite(estimatedValue) || estimatedValue < 0)
     ) {
         return NextResponse.json(
-            { error: "Giá trị ước tính không hợp lệ." },
+            { error: "Ngân sách thực hiện dự kiến không hợp lệ." },
             { status: 400 },
         );
     }
@@ -149,10 +159,10 @@ export async function POST(request: Request) {
 
     const { data: campaign, error: campaignError } = await supabase
         .from("campaigns")
-        .select("id, review_status, status")
+        .select("id, review_status, status, owner_id")
         .eq("id", campaignId)
         .eq("review_status", "published")
-        .eq("status", "active")
+        .in("status", ["active", "paused"])
         .maybeSingle();
 
     if (campaignError || !campaign) {
@@ -162,8 +172,59 @@ export async function POST(request: Request) {
         );
     }
 
+    if (campaign.owner_id === user.id) {
+        return NextResponse.json(
+            { error: "Bạn không thể gửi đề xuất đồng hành cho dự án của chính mình." },
+            { status: 400 },
+        );
+    }
+
+    const { data: phase, error: phaseError } = await supabase
+        .from("campaign_phases")
+        .select("id")
+        .eq("id", phaseId)
+        .eq("campaign_id", campaignId)
+        .maybeSingle();
+
+    if (phaseError || !phase) {
+        return NextResponse.json(
+            { error: "Giai đoạn không tồn tại trong dự án đã chọn." },
+            { status: 400 },
+        );
+    }
+
+    const { data: approvedOffer } = await supabase
+        .from("support_offers")
+        .select("id")
+        .eq("phase_id", phaseId)
+        .eq("status", "approved")
+        .maybeSingle();
+
+    if (approvedOffer) {
+        return NextResponse.json(
+            { error: "Giai đoạn này đã có đơn vị đồng hành được duyệt." },
+            { status: 409 },
+        );
+    }
+
+    const { data: existingOffer } = await supabase
+        .from("support_offers")
+        .select("id")
+        .eq("phase_id", phaseId)
+        .eq("partner_id", user.id)
+        .in("status", ["pending", "owner_pending", "approved"])
+        .maybeSingle();
+
+    if (existingOffer) {
+        return NextResponse.json(
+            { error: "Bạn đã gửi yêu cầu đồng hành cho giai đoạn này." },
+            { status: 409 },
+        );
+    }
+
     const { error } = await supabase.from("support_offers").insert({
         campaign_id: campaignId,
+        phase_id: phaseId,
         partner_id: user.id,
         title,
         support_type: supportType,
@@ -181,12 +242,13 @@ export async function POST(request: Request) {
         console.error("Create support offer error:", error);
 
         return NextResponse.json(
-            { error: "Không thể gửi đề xuất hỗ trợ. Vui lòng thử lại." },
+            { error: "Không thể gửi đăng ký đồng hành. Vui lòng thử lại." },
             { status: 500 },
         );
     }
 
     return NextResponse.json({
-        message: "Đã gửi đề xuất hỗ trợ. Vui lòng chờ admin xem xét.",
+        message:
+            "Đã gửi đăng ký đồng hành đến người tạo dự án. Admin có thể theo dõi yêu cầu này.",
     });
 }

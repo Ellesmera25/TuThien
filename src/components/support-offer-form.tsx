@@ -13,15 +13,7 @@ const inputClass =
 const fileInputClass =
     "w-full rounded-lg border border-dashed border-outline bg-white px-3 py-3 text-sm text-on-surface-variant file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-bold file:text-white";
 
-const supportTypeOptions = [
-    { value: "financial", label: "Tài chính" },
-    { value: "goods", label: "Hàng hóa" },
-    { value: "volunteer", label: "Nhân lực / tình nguyện viên" },
-    { value: "media", label: "Truyền thông" },
-    { value: "location", label: "Địa điểm / cơ sở vật chất" },
-    { value: "expertise", label: "Chuyên môn" },
-    { value: "other", label: "Khác" },
-];
+const partnerExecutionType = "implementation";
 
 function isAllowedProof(file: File) {
     return [
@@ -42,8 +34,8 @@ export function SupportOfferForm({
     const supabase = useMemo(() => createSupabaseBrowserAuthClient(), []);
 
     const [campaignId, setCampaignId] = useState(campaigns[0]?.id ?? "");
+    const [phaseId, setPhaseId] = useState(campaigns[0]?.phases[0]?.id ?? "");
     const [title, setTitle] = useState("");
-    const [supportType, setSupportType] = useState("goods");
     const [description, setDescription] = useState("");
     const [estimatedValue, setEstimatedValue] = useState("");
     const [contactName, setContactName] = useState("");
@@ -58,6 +50,9 @@ export function SupportOfferForm({
     const selectedCampaign = campaigns.find(
         (campaign) => campaign.id === campaignId,
     );
+    const selectedPhase = selectedCampaign?.phases.find(
+        (phase) => phase.id === phaseId,
+    );
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -70,17 +65,27 @@ export function SupportOfferForm({
         }
 
         if (!campaignId) {
-            setError("Vui lòng chọn dự án muốn hỗ trợ.");
+            setError("Vui lòng chọn dự án muốn đồng hành.");
+            return;
+        }
+
+        if (!phaseId) {
+            setError("Vui lòng chọn giai đoạn muốn đồng hành.");
+            return;
+        }
+
+        if (selectedPhase?.hasApprovedPartner) {
+            setError("Giai đoạn này đã có đơn vị đồng hành được duyệt.");
             return;
         }
 
         if (!title.trim()) {
-            setError("Vui lòng nhập tiêu đề đề xuất.");
+            setError("Vui lòng nhập tên phương án thực hiện.");
             return;
         }
 
         if (!description.trim()) {
-            setError("Vui lòng mô tả nội dung hỗ trợ.");
+            setError("Vui lòng mô tả phương án thực hiện giai đoạn.");
             return;
         }
 
@@ -92,7 +97,7 @@ export function SupportOfferForm({
             parsedEstimatedValue !== null &&
             (!Number.isFinite(parsedEstimatedValue) || parsedEstimatedValue < 0)
         ) {
-            setError("Giá trị ước tính không hợp lệ.");
+            setError("Ngân sách thực hiện dự kiến không hợp lệ.");
             return;
         }
 
@@ -114,7 +119,7 @@ export function SupportOfferForm({
             } = await supabase.auth.getUser();
 
             if (!user) {
-                setError("Bạn cần đăng nhập để gửi đề xuất hỗ trợ.");
+                setError("Bạn cần đăng nhập để đăng ký đồng hành.");
                 return;
             }
 
@@ -147,8 +152,9 @@ export function SupportOfferForm({
                 },
                 body: JSON.stringify({
                     campaignId,
+                    phaseId,
                     title,
-                    supportType,
+                    supportType: partnerExecutionType,
                     description,
                     estimatedValue: parsedEstimatedValue,
                     contactName,
@@ -165,14 +171,14 @@ export function SupportOfferForm({
 
             if (!response.ok) {
                 setError(
-                    payload.error ?? "Không thể gửi đề xuất hỗ trợ. Vui lòng thử lại.",
+                    payload.error ?? "Không thể gửi đăng ký đồng hành. Vui lòng thử lại.",
                 );
                 return;
             }
 
             setMessage(
                 payload.message ??
-                "Đã gửi đề xuất hỗ trợ. Vui lòng chờ admin xem xét.",
+                "Đã gửi đăng ký đồng hành. Vui lòng chờ người tạo dự án duyệt.",
             );
 
             router.push("/tai-khoan");
@@ -187,10 +193,10 @@ export function SupportOfferForm({
     if (campaigns.length === 0) {
         return (
             <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-700">
-                <p className="font-bold">Chưa có dự án đang nhận hỗ trợ</p>
+                <p className="font-bold">Chưa có dự án đang nhận đồng hành</p>
                 <p className="mt-1">
-                    Hiện chưa có dự án nào đã duyệt và đang hoạt động để gửi đề
-                    xuất hỗ trợ.
+                    Hiện chưa có dự án nào đã duyệt và đang hoạt động để đăng ký
+                    đồng hành.
                 </p>
             </div>
         );
@@ -200,13 +206,21 @@ export function SupportOfferForm({
         <form onSubmit={handleSubmit} className="grid gap-6">
             <section className="grid gap-4">
                 <h2 className="font-display text-2xl font-semibold text-ink">
-                    Thông tin đề xuất hỗ trợ
+                    Thông tin đăng ký đồng hành
                 </h2>
 
-                <Field label="Dự án muốn hỗ trợ" required>
+                <Field label="Dự án muốn đồng hành" required>
                     <select
                         value={campaignId}
-                        onChange={(event) => setCampaignId(event.target.value)}
+                        onChange={(event) => {
+                            const nextCampaignId = event.target.value;
+                            const nextCampaign = campaigns.find(
+                                (campaign) => campaign.id === nextCampaignId,
+                            );
+
+                            setCampaignId(nextCampaignId);
+                            setPhaseId(nextCampaign?.phases[0]?.id ?? "");
+                        }}
                         className={inputClass}
                         required
                     >
@@ -218,10 +232,32 @@ export function SupportOfferForm({
                     </select>
                 </Field>
 
+                <Field label="Giai đoạn muốn đồng hành" required>
+                    <select
+                        value={phaseId}
+                        onChange={(event) => setPhaseId(event.target.value)}
+                        className={inputClass}
+                        required
+                    >
+                        {selectedCampaign?.phases.map((phase, index) => (
+                            <option
+                                key={phase.id}
+                                value={phase.id}
+                                disabled={phase.hasApprovedPartner}
+                            >
+                                Giai đoạn {index + 1}: {phase.title}
+                                {phase.hasApprovedPartner ? " (đã có đơn vị đồng hành)" : ""}
+                            </option>
+                        ))}
+                    </select>
+                </Field>
+
                 {selectedCampaign ? (
                     <div className="rounded-xl border border-outline-variant/40 bg-surface-low p-4">
                         <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
-                            {selectedCampaign.cover_tag}
+                            {selectedCampaign.status === "paused"
+                                ? "Đang tìm đơn vị đồng hành"
+                                : selectedCampaign.cover_tag}
                         </p>
                         <h3 className="mt-1 font-display text-xl font-bold text-ink">
                             {selectedCampaign.title}
@@ -239,47 +275,45 @@ export function SupportOfferForm({
                                 value={formatVnd(selectedCampaign.raised_amount)}
                             />
                         </div>
+                        {selectedPhase ? (
+                            <div className="mt-3 rounded-lg border border-outline-variant/40 bg-white p-3">
+                                <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+                                    Giai đoạn đã chọn
+                                </p>
+                                <p className="mt-1 font-semibold text-ink">
+                                    {selectedPhase.title}
+                                </p>
+                                <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                                    {selectedPhase.description}
+                                </p>
+                            </div>
+                        ) : null}
                     </div>
                 ) : null}
 
-                <Field label="Tiêu đề đề xuất" required>
+                <Field label="Tên phương án thực hiện" required>
                     <input
                         value={title}
                         onChange={(event) => setTitle(event.target.value)}
                         className={inputClass}
-                        placeholder="Ví dụ: Hỗ trợ 500 phần quà cho trẻ em vùng cao"
+                        placeholder="Ví dụ: Tổ chức bữa ăn và trao quà cho trẻ em vùng cao"
                         required
                     />
                 </Field>
 
-                <Field label="Hình thức hỗ trợ" required>
-                    <select
-                        value={supportType}
-                        onChange={(event) => setSupportType(event.target.value)}
-                        className={inputClass}
-                        required
-                    >
-                        {supportTypeOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
-                </Field>
-
-                <Field label="Nội dung hỗ trợ" required>
+                <Field label="Phương án thực hiện giai đoạn" required>
                     <textarea
                         rows={5}
                         value={description}
                         onChange={(event) => setDescription(event.target.value)}
                         className={inputClass}
-                        placeholder="Mô tả cụ thể đơn vị có thể hỗ trợ gì, số lượng, thời gian, điều kiện phối hợp..."
+                        placeholder="Mô tả cách đơn vị sẽ triển khai giai đoạn, nhân sự phụ trách, thời gian, hạng mục chi và cách báo cáo minh bạch..."
                         required
                     />
                 </Field>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                    <Field label="Giá trị ước tính VNĐ">
+                    <Field label="Ngân sách thực hiện dự kiến VNĐ">
                         <input
                             type="number"
                             min={0}
@@ -322,7 +356,7 @@ export function SupportOfferForm({
                     </Field>
                 </div>
 
-                <Field label="Minh chứng / tài liệu đính kèm">
+                <Field label="Hồ sơ năng lực / tài liệu đính kèm">
                     <input
                         type="file"
                         accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
@@ -332,7 +366,7 @@ export function SupportOfferForm({
                         className={fileInputClass}
                     />
                     <span className="text-xs font-normal text-slate-500">
-                        Có thể tải ảnh hoặc PDF. Tối đa 20MB.
+                        Có thể tải ảnh hoặc PDF về năng lực thực hiện, kế hoạch hoặc giấy tờ liên quan. Tối đa 20MB.
                     </span>
                 </Field>
             </section>
@@ -354,7 +388,7 @@ export function SupportOfferForm({
                 disabled={submitting}
                 className="neo-btn neo-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-70"
             >
-                {submitting ? "Đang gửi..." : "Gửi đề xuất hỗ trợ"}
+                {submitting ? "Đang gửi..." : "Gửi đăng ký đồng hành"}
             </button>
         </form>
     );

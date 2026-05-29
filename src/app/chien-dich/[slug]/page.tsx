@@ -20,6 +20,10 @@ type ApprovedSupportOfferRow = {
     contact_phone: string | null;
     contact_email: string | null;
     created_at: string;
+    phase: {
+        title: string | null;
+        sort_order: number | null;
+    } | null;
     partner: {
         full_name: string | null;
         role: string | null;
@@ -52,6 +56,7 @@ async function getApprovedSupportOffers(
         .select(
             `
       id,
+      phase_id,
       partner_id,
       title,
       support_type,
@@ -74,6 +79,9 @@ async function getApprovedSupportOffers(
     const partnerIds = Array.from(
         new Set(offers.map((offer) => offer.partner_id).filter(Boolean)),
     );
+    const phaseIds = Array.from(
+        new Set(offers.map((offer) => offer.phase_id).filter(Boolean)),
+    ) as string[];
 
     const { data: partnerRows } =
         partnerIds.length > 0
@@ -81,6 +89,14 @@ async function getApprovedSupportOffers(
                 .from("profiles")
                 .select("id, full_name, role")
                 .in("id", partnerIds)
+            : { data: [] };
+
+    const { data: phaseRows } =
+        phaseIds.length > 0
+            ? await supabase
+                .from("campaign_phases")
+                .select("id, title, sort_order")
+                .in("id", phaseIds)
             : { data: [] };
 
     const partnerById = new Map<
@@ -95,6 +111,18 @@ async function getApprovedSupportOffers(
         });
     }
 
+    const phaseById = new Map<
+        string,
+        { title: string | null; sort_order: number | null }
+    >();
+
+    for (const phase of phaseRows ?? []) {
+        phaseById.set(phase.id, {
+            title: phase.title,
+            sort_order: phase.sort_order,
+        });
+    }
+
     return offers.map((offer) => ({
         id: offer.id,
         title: offer.title,
@@ -105,6 +133,7 @@ async function getApprovedSupportOffers(
         contact_phone: offer.contact_phone,
         contact_email: offer.contact_email,
         created_at: offer.created_at,
+        phase: offer.phase_id ? phaseById.get(offer.phase_id) ?? null : null,
         partner: partnerById.get(offer.partner_id) ?? null,
     }));
 }
@@ -189,7 +218,7 @@ export default async function CampaignDetailPage({
                             Đơn vị đồng hành
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                            Các đề xuất hỗ trợ đã được người tạo dự án chấp nhận phối hợp.
+                            Các đơn vị đã được người tạo dự án chấp nhận đồng hành thực hiện giai đoạn.
                         </p>
                     </div>
 
@@ -222,6 +251,10 @@ export default async function CampaignDetailPage({
                                         <p className="mt-1 text-sm font-semibold text-primary">
                                             {offer.title}
                                         </p>
+
+                                        <p className="mt-1 text-sm text-slate-600">
+                                            {formatOfferPhaseLabel(offer)}
+                                        </p>
                                     </div>
 
                                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
@@ -235,7 +268,7 @@ export default async function CampaignDetailPage({
 
                                 <div className="mt-4 grid gap-3 text-sm text-slate-700 sm:grid-cols-2">
                                     <PartnerInfo
-                                        label="Giá trị ước tính"
+                                        label="Ngân sách dự kiến"
                                         value={
                                             offer.estimated_value
                                                 ? formatVnd(offer.estimated_value)
@@ -321,8 +354,20 @@ function PartnerInfo({ label, value }: { label: string; value: string }) {
     );
 }
 
+function formatOfferPhaseLabel(offer: Pick<ApprovedSupportOfferRow, "phase">) {
+    if (!offer.phase) {
+        return "Giai đoạn chưa xác định";
+    }
+
+    const order = offer.phase.sort_order ? `Giai đoạn ${offer.phase.sort_order}` : "Giai đoạn";
+
+    return offer.phase.title ? `${order}: ${offer.phase.title}` : order;
+}
+
 function formatSupportTypeLabel(value?: string | null) {
     switch (value) {
+        case "implementation":
+            return "Đồng hành thực hiện";
         case "financial":
             return "Tài chính";
         case "goods":

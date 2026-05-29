@@ -47,6 +47,7 @@ type SupportOfferStatus = "pending" | "owner_pending" | "approved" | "rejected";
 type MySupportOfferRow = {
     id: string;
     campaign_id: string;
+    phase_id: string | null;
     partner_id: string;
     title: string;
     support_type: string;
@@ -63,6 +64,10 @@ type MySupportOfferRow = {
     campaign: {
         title: string | null;
         slug: string | null;
+    } | null;
+    phase: {
+        title: string | null;
+        sort_order: number | null;
     } | null;
     partner: {
         full_name: string | null;
@@ -151,7 +156,7 @@ export default async function AccountPage() {
                             href="/chien-dich/ho-tro"
                             className="neo-btn neo-btn-primary w-full whitespace-nowrap md:w-auto"
                         >
-                            Hỗ trợ dự án
+                            Đồng hành dự án
                         </Link>
                     ) : null}
                     <Link
@@ -287,21 +292,21 @@ export default async function AccountPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-display text-2xl font-semibold text-ink">
-                                Đề xuất hỗ trợ của tôi
+                                Đăng ký đồng hành của tôi
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Theo dõi trạng thái đề xuất đã gửi cho các dự án.
+                                Theo dõi trạng thái đăng ký thực hiện giai đoạn đã gửi cho các dự án.
                             </p>
                         </div>
 
                         <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
-                            {mySupportOffers.length} đề xuất
+                            {mySupportOffers.length} đăng ký
                         </span>
                     </div>
 
                     {mySupportOffers.length === 0 ? (
                         <p className="mt-5 rounded-xl border border-outline-variant/40 bg-white p-4 text-sm text-on-surface-variant">
-                            Chưa có đề xuất hỗ trợ nào. Bạn có thể gửi đề xuất tại trang Hỗ trợ dự án.
+                            Chưa có đăng ký đồng hành nào. Bạn có thể gửi đăng ký tại trang Đồng hành dự án.
                         </p>
                     ) : (
                         <div className="mt-5 grid gap-3">
@@ -326,6 +331,13 @@ export default async function AccountPage() {
                                                     {offer.campaign?.title ?? "Không xác định"}
                                                 </strong>
                                             </p>
+
+                                            <p className="mt-1 text-sm text-on-surface-variant">
+                                                Giai đoạn:{" "}
+                                                <strong className="text-ink">
+                                                    {formatOfferPhaseLabel(offer)}
+                                                </strong>
+                                            </p>
                                         </div>
 
                                         <span
@@ -343,7 +355,7 @@ export default async function AccountPage() {
 
                                     <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-3">
                                         <CampaignInfo
-                                            label="Giá trị ước tính"
+                                            label="Ngân sách dự kiến"
                                             value={
                                                 offer.estimated_value
                                                     ? formatVnd(offer.estimated_value)
@@ -362,9 +374,9 @@ export default async function AccountPage() {
 
                                     {offer.status === "pending" ? (
                                         <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-700">
-                                            <p className="font-bold">Đang chờ admin duyệt</p>
+                                            <p className="font-bold">Đang chờ người tạo dự án duyệt</p>
                                             <p className="mt-1">
-                                                Đề xuất đã được gửi và đang chờ kiểm tra hợp lệ.
+                                                Đăng ký đã được gửi đến người tạo dự án. Admin vẫn có thể theo dõi yêu cầu này.
                                             </p>
                                         </div>
                                     ) : null}
@@ -373,14 +385,14 @@ export default async function AccountPage() {
                                         <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-700">
                                             <p className="font-bold">Đang chờ chủ dự án duyệt</p>
                                             <p className="mt-1">
-                                                Admin đã duyệt bước đầu. Đề xuất đang chờ người tạo dự án chấp nhận phối hợp.
+                                                Đăng ký đang chờ người tạo dự án chấp nhận phối hợp.
                                             </p>
                                         </div>
                                     ) : null}
 
                                     {offer.status === "approved" ? (
                                         <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
-                                            <p className="font-bold">Đề xuất đã được chấp nhận</p>
+                                            <p className="font-bold">Đăng ký đã được chấp nhận</p>
                                             <p className="mt-1">
                                                 Người tạo dự án đã đồng ý phối hợp với đơn vị đồng hành.
                                             </p>
@@ -479,7 +491,7 @@ export default async function AccountPage() {
                                     </div>
                                 ) : null}
 
-                                {campaign.review_status === "published" ? (
+                                {campaign.review_status === "published" && campaign.status === "active" ? (
                                     <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
                                         <p className="font-bold">Dự án đã được duyệt</p>
                                         <p className="mt-1">
@@ -494,6 +506,15 @@ export default async function AccountPage() {
                                         </Link>
                                     </div>
                                 ) : null}
+
+                                {campaign.review_status === "published" && campaign.status === "paused" ? (
+                                    <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-700">
+                                        <p className="font-bold">Đang tìm đơn vị đồng hành</p>
+                                        <p className="mt-1">
+                                            Dự án đã được admin duyệt nhưng chưa mở công khai/quyên góp. Khi bạn chấp nhận một đơn vị đồng hành cho giai đoạn, dự án sẽ tự chuyển sang trạng thái công khai.
+                                        </p>
+                                    </div>
+                                ) : null}
                             </article>
                         ))}
                     </div>
@@ -504,21 +525,21 @@ export default async function AccountPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-display text-2xl font-semibold text-ink">
-                                Lịch sử đề xuất hỗ trợ cho dự án của tôi
+                                Đăng ký đồng hành cho dự án của tôi
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Theo dõi các đề xuất đã được admin chuyển đến và xử lý phối hợp.
+                                Theo dõi các đăng ký thực hiện giai đoạn do đơn vị đồng hành gửi trực tiếp.
                             </p>
                         </div>
 
                         <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
-                            {ownerSupportOffers.length} đề xuất
+                            {ownerSupportOffers.length} đăng ký
                         </span>
                     </div>
 
                     {ownerSupportOffers.length === 0 ? (
                         <p className="mt-5 rounded-xl border border-outline-variant/40 bg-white p-4 text-sm text-on-surface-variant">
-                            Hiện chưa có đề xuất hỗ trợ nào cho các dự án của bạn.
+                            Hiện chưa có đăng ký đồng hành nào cho các dự án của bạn.
                         </p>
                     ) : (
                         <div className="mt-5 grid gap-3">
@@ -545,6 +566,13 @@ export default async function AccountPage() {
                                             </p>
 
                                             <p className="mt-1 text-sm text-on-surface-variant">
+                                                Giai đoạn:{" "}
+                                                <strong className="text-ink">
+                                                    {formatOfferPhaseLabel(offer)}
+                                                </strong>
+                                            </p>
+
+                                            <p className="mt-1 text-sm text-on-surface-variant">
                                                 Đơn vị gửi:{" "}
                                                 <strong className="text-ink">
                                                     {offer.partner?.full_name ?? "Chưa có tên"}
@@ -567,7 +595,7 @@ export default async function AccountPage() {
 
                                     <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-3">
                                         <CampaignInfo
-                                            label="Giá trị ước tính"
+                                            label="Ngân sách dự kiến"
                                             value={
                                                 offer.estimated_value
                                                     ? formatVnd(offer.estimated_value)
@@ -595,11 +623,11 @@ export default async function AccountPage() {
                                             rel="noreferrer"
                                             className="mt-4 inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
                                         >
-                                            Xem minh chứng hỗ trợ
+                                            Xem hồ sơ đính kèm
                                         </a>
                                     ) : null}
 
-                                    {offer.status === "owner_pending" ? (
+                                    {offer.status === "pending" || offer.status === "owner_pending" ? (
                                         <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto]">
                                             <form action={rejectOwnerSupportOffer} className="flex gap-2">
                                                 <input type="hidden" name="offerId" value={offer.id} />
@@ -622,7 +650,7 @@ export default async function AccountPage() {
                                                     type="submit"
                                                     className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
                                                 >
-                                                    Chấp nhận phối hợp
+                                                    Chấp nhận đồng hành
                                                 </button>
                                             </form>
                                         </div>
@@ -630,16 +658,16 @@ export default async function AccountPage() {
 
                                     {offer.status === "approved" ? (
                                         <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
-                                            <p className="font-bold">Đã chấp nhận phối hợp</p>
+                                            <p className="font-bold">Đã chấp nhận đồng hành</p>
                                             <p className="mt-1">
-                                                Đơn vị đồng hành này sẽ được hiển thị trên trang dự án công khai.
+                                                Đơn vị này sẽ được hiển thị là đơn vị đồng hành thực hiện giai đoạn trên trang dự án công khai.
                                             </p>
                                         </div>
                                     ) : null}
 
                                     {offer.status === "rejected" ? (
                                         <div className="mt-4 rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-700">
-                                            <p className="font-bold">Đã từ chối đề xuất</p>
+                                            <p className="font-bold">Đã từ chối đăng ký</p>
                                             <p className="mt-1">
                                                 {getSupportOfferRejectionReason(offer)}
                                             </p>
@@ -966,6 +994,7 @@ async function getMySupportOffers(userId: string): Promise<MySupportOfferRow[]> 
             `
             id,
             campaign_id,
+            phase_id,
             partner_id,
             title,
             support_type,
@@ -1020,6 +1049,7 @@ async function getOwnerSupportOffers(
             `
             id,
             campaign_id,
+            phase_id,
             partner_id,
             title,
             support_type,
@@ -1036,7 +1066,7 @@ async function getOwnerSupportOffers(
             `,
         )
         .in("campaign_id", campaignIds)
-        .in("status", ["owner_pending", "approved", "rejected"])
+        .in("status", ["pending", "owner_pending", "approved", "rejected"])
         .order("created_at", { ascending: false });
 
     if (error || !offers) {
@@ -1050,6 +1080,7 @@ async function enrichSupportOffers(
     offers: Array<{
         id: string;
         campaign_id: string;
+        phase_id: string | null;
         partner_id: string;
         title: string;
         support_type: string;
@@ -1072,6 +1103,9 @@ async function enrichSupportOffers(
     }
 
     const campaignIds = Array.from(new Set(offers.map((offer) => offer.campaign_id)));
+    const phaseIds = Array.from(
+        new Set(offers.map((offer) => offer.phase_id).filter(Boolean)),
+    ) as string[];
     const partnerIds = Array.from(new Set(offers.map((offer) => offer.partner_id)));
 
     const { data: campaignRows } =
@@ -1088,6 +1122,14 @@ async function enrichSupportOffers(
                 .from("profiles")
                 .select("id, full_name, role")
                 .in("id", partnerIds)
+            : { data: [] };
+
+    const { data: phaseRows } =
+        phaseIds.length > 0
+            ? await client
+                .from("campaign_phases")
+                .select("id, title, sort_order")
+                .in("id", phaseIds)
             : { data: [] };
 
     const campaignById = new Map<
@@ -1114,6 +1156,18 @@ async function enrichSupportOffers(
         });
     }
 
+    const phaseById = new Map<
+        string,
+        { title: string | null; sort_order: number | null }
+    >();
+
+    for (const phase of phaseRows ?? []) {
+        phaseById.set(phase.id, {
+            title: phase.title,
+            sort_order: phase.sort_order,
+        });
+    }
+
     return Promise.all(
         offers.map(async (offer) => {
             let proofSignedUrl: string | null = null;
@@ -1129,6 +1183,7 @@ async function enrichSupportOffers(
             return {
                 ...offer,
                 campaign: campaignById.get(offer.campaign_id) ?? null,
+                phase: offer.phase_id ? phaseById.get(offer.phase_id) ?? null : null,
                 partner: partnerById.get(offer.partner_id) ?? null,
                 proofSignedUrl,
             };
@@ -1159,9 +1214,9 @@ async function approveOwnerSupportOffer(formData: FormData) {
 
     const { data: offer } = await client
         .from("support_offers")
-        .select("id, campaign_id")
+        .select("id, campaign_id, phase_id")
         .eq("id", offerId)
-        .eq("status", "owner_pending")
+        .in("status", ["pending", "owner_pending"])
         .maybeSingle();
 
     if (!offer) {
@@ -1179,6 +1234,20 @@ async function approveOwnerSupportOffer(formData: FormData) {
         return;
     }
 
+    if (offer.phase_id) {
+        const { data: approvedOffer } = await client
+            .from("support_offers")
+            .select("id")
+            .eq("phase_id", offer.phase_id)
+            .eq("status", "approved")
+            .neq("id", offerId)
+            .maybeSingle();
+
+        if (approvedOffer) {
+            return;
+        }
+    }
+
     await client
         .from("support_offers")
         .update({
@@ -1188,7 +1257,30 @@ async function approveOwnerSupportOffer(formData: FormData) {
             owner_rejection_reason: null,
         })
         .eq("id", offerId)
-        .eq("status", "owner_pending");
+        .in("status", ["pending", "owner_pending"]);
+
+    await client
+        .from("campaigns")
+        .update({ status: "active" })
+        .eq("id", offer.campaign_id)
+        .eq("status", "paused");
+
+    if (offer.phase_id) {
+        await client
+            .from("support_offers")
+            .update({
+                status: "rejected",
+                owner_reviewed_by: user.id,
+                owner_reviewed_at: new Date().toISOString(),
+                owner_rejection_reason:
+                    "Giai đoạn này đã có đơn vị đồng hành được chấp nhận.",
+                rejection_reason:
+                    "Giai đoạn này đã có đơn vị đồng hành được chấp nhận.",
+            })
+            .eq("phase_id", offer.phase_id)
+            .in("status", ["pending", "owner_pending"])
+            .neq("id", offerId);
+    }
 
     const { data: campaignForRevalidate } = await client
         .from("campaigns")
@@ -1231,7 +1323,7 @@ async function rejectOwnerSupportOffer(formData: FormData) {
         .from("support_offers")
         .select("id, campaign_id")
         .eq("id", offerId)
-        .eq("status", "owner_pending")
+        .in("status", ["pending", "owner_pending"])
         .maybeSingle();
 
     if (!offer) {
@@ -1262,7 +1354,7 @@ async function rejectOwnerSupportOffer(formData: FormData) {
             rejection_reason: reason,
         })
         .eq("id", offerId)
-        .eq("status", "owner_pending");
+        .in("status", ["pending", "owner_pending"]);
 
     const { data: campaignForRevalidate } = await client
         .from("campaigns")
@@ -1390,11 +1482,13 @@ function getSupportOfferRejectionReason(offer: MySupportOfferRow) {
     return (
         offer.owner_rejection_reason ||
         offer.rejection_reason ||
-        "Đề xuất hỗ trợ chưa phù hợp."
+        "Đăng ký đồng hành chưa phù hợp."
     );
 }
 function formatSupportTypeLabel(value?: string | null) {
     switch (value) {
+        case "implementation":
+            return "Đồng hành thực hiện";
         case "financial":
             return "Tài chính";
         case "goods":
@@ -1419,7 +1513,7 @@ function formatSupportTypeLabel(value?: string | null) {
 function formatSupportOfferStatus(status: string) {
     switch (status) {
         case "pending":
-            return "Chờ admin duyệt";
+            return "Chờ chủ dự án duyệt";
         case "owner_pending":
             return "Chờ chủ dự án duyệt";
         case "approved":
@@ -1444,4 +1538,14 @@ function getSupportOfferStatusBadgeClass(status: string) {
         default:
             return "bg-slate-100 text-slate-600";
     }
+}
+
+function formatOfferPhaseLabel(offer: Pick<MySupportOfferRow, "phase">) {
+    if (!offer.phase) {
+        return "Chưa xác định";
+    }
+
+    const order = offer.phase.sort_order ? `Giai đoạn ${offer.phase.sort_order}` : "Giai đoạn";
+
+    return offer.phase.title ? `${order}: ${offer.phase.title}` : order;
 }
