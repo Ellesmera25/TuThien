@@ -1,12 +1,10 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { createSupabaseBrowserAuthClient } from "@/lib/supabase/auth-client";
 
 export function AuthSignOutButton() {
-    const router = useRouter();
     const [loading, setLoading] = useState(false);
 
     const handleSignOut = async () => {
@@ -19,12 +17,7 @@ export function AuthSignOutButton() {
 
         await supabase.auth.signOut();
 
-        router.replace("/");
-        router.refresh();
-
-        setTimeout(() => {
-            window.location.href = "/";
-        }, 100);
+        window.location.replace("/dang-nhap?signed_out=1");
     };
 
     return (

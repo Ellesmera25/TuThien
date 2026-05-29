@@ -62,6 +62,8 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
       return;
     }
 
+    await supabase.auth.signOut({ scope: "local" });
+
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -73,7 +75,7 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
       return;
     }
 
-      window.location.href = nextPath || "/";
+    window.location.replace(nextPath || "/");
   };
 
   return (
