@@ -1,30 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
-
 import { getMobileAppLinks } from "@/lib/app-links";
 
 export default function MobileAppPage() {
   const { apkUrl, hasApk } = getMobileAppLinks();
 
-  // Logging để debug
-  useEffect(() => {
-    console.log("[Ứng dụng Page]", {
-      apkUrl,
-      hasApk,
-    });
-  }, [apkUrl, hasApk]);
-
   return (
     <div className="pb-8">
       <section className="flex flex-col items-center justify-center gap-8 py-16 text-center">
         <div className="space-y-4">
-          <div className="neo-badge w-max mx-auto">Ứng dụng di động</div>
+          <div className="neo-badge mx-auto w-max">Ứng dụng di động</div>
           <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
             Tải app TuThien.vn trên điện thoại
           </h1>
-          <p className="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8 mx-auto">
-            Quyên góp nhanh hơn với giao diện được tối ưu cho điện thoại
+          <p className="mx-auto max-w-2xl text-base leading-7 text-slate-600 sm:text-lg sm:leading-8">
+            Quyên góp nhanh hơn với giao diện được tối ưu cho điện thoại.
           </p>
         </div>
 
@@ -34,7 +24,7 @@ export default function MobileAppPage() {
             className="neo-btn neo-btn-primary px-8 py-3 text-lg"
             download
           >
-            ⬇️ Tải ứng dụng ngay
+            Tải ứng dụng ngay
           </a>
         ) : (
           <span className="neo-btn neo-btn-primary cursor-not-allowed px-8 py-3 text-lg opacity-60">

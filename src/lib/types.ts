@@ -43,6 +43,16 @@ export type ReelItem = {
   views: number;
   likes: number;
   comments: number;
+  isLikedByCurrentUser?: boolean;
+  isFollowedByCurrentUser?: boolean;
+  createdAt: string;
+};
+
+export type ReelComment = {
+  id: string;
+  reelId: string;
+  authorName: string;
+  content: string;
   createdAt: string;
 };
 

@@ -1,9 +1,10 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 import {
     getCurrentUserRole,
     createSupabaseServerAuthClient,
 } from "@/lib/supabase/auth-server";
+import { isSameOriginMutation } from "@/lib/http-security";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
 function createSlug(value: string) {
@@ -55,6 +56,13 @@ type CampaignPhasePayload = {
 };
 
 export async function POST(request: Request) {
+    if (!isSameOriginMutation(request)) {
+        return NextResponse.json(
+            { error: "Nguồn request không hợp lệ." },
+            { status: 403 },
+        );
+    }
+
     const { client: authClient } = await createSupabaseServerAuthClient();
 
     if (!authClient) {
@@ -84,16 +92,25 @@ export async function POST(request: Request) {
         );
     }
 
-    const body = (await request.json()) as {
-        title?: string;
-        summary?: string;
-        targetAmount?: number;
-        endDate?: string;
-        coverTag?: string;
-        images?: CampaignImagePayload[];
-        phase?: CampaignPhasePayload;
-        phases?: CampaignPhasePayload[];
-    };
+    const body = (await request.json().catch(() => null)) as
+        | {
+              title?: string;
+              summary?: string;
+              targetAmount?: number;
+              endDate?: string;
+              coverTag?: string;
+              images?: CampaignImagePayload[];
+              phase?: CampaignPhasePayload;
+              phases?: CampaignPhasePayload[];
+          }
+        | null;
+
+    if (!body) {
+        return NextResponse.json(
+            { error: "Nội dung request không hợp lệ." },
+            { status: 400 },
+        );
+    }
 
     const title = body.title?.trim() ?? "";
     const summary = body.summary?.trim() ?? "";

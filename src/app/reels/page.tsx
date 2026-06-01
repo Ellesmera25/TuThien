@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 
 import { ReelFeed } from "@/components/reel-feed";
-import { getReels } from "@/lib/data";
+import { getCurrentUser } from "@/lib/supabase/auth-server";
+import { getReels, getReelsWithUserState } from "@/lib/data";
 
 export const metadata: Metadata = {
   title: "Reels từ thiện",
@@ -10,7 +11,10 @@ export const metadata: Metadata = {
 };
 
 export default async function ReelsPage() {
-  const reels = await getReels();
+  const user = await getCurrentUser();
+  const reels = user
+    ? await getReelsWithUserState(user.id)
+    : await getReels();
 
   return (
     <div className="relative left-1/2 -my-8 w-screen -translate-x-1/2">

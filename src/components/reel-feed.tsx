@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 
 import { formatCompactNumber } from "@/lib/format";
-import type { ReelItem } from "@/lib/types";
+import type { ReelComment, ReelItem } from "@/lib/types";
 
 type ReelFeedProps = {
   reels: ReelItem[];
@@ -31,15 +31,45 @@ const fallbackCover: Record<ReelItem["coverTone"], string> = {
     "https://images.unsplash.com/photo-1491438590914-bc09fcaaf77a?auto=format&fit=crop&w=900&q=80",
 };
 
+type ReelsCommentResponse = {
+  comments: ReelComment[];
+  count: number;
+};
+
+type ReelsLikeResponse = {
+  liked: boolean;
+  likes: number;
+  canInteract: boolean;
+};
+
+type ReelsFollowResponse = {
+  followed: boolean;
+  canInteract: boolean;
+};
+
 export function ReelFeed({ reels }: ReelFeedProps) {
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
+
   const [commentDraft, setCommentDraft] = useState("");
   const [commentingReelId, setCommentingReelId] = useState("");
-  const [followedCampaigns, setFollowedCampaigns] = useState<string[]>([]);
-  const [likedIds, setLikedIds] = useState<string[]>([]);
-  const [localComments, setLocalComments] = useState<Record<string, string[]>>(
-    {},
+  const [followedCampaigns, setFollowedCampaigns] = useState<Record<string, boolean>>(
+    () =>
+      Object.fromEntries(
+        reels.map((reel) => [reel.campaignSlug, Boolean(reel.isFollowedByCurrentUser)]),
+      ),
   );
+  const [likedIds, setLikedIds] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(reels.map((reel) => [reel.id, Boolean(reel.isLikedByCurrentUser)])),
+  );
+  const [likeCounts, setLikeCounts] = useState<Record<string, number>>(() =>
+    Object.fromEntries(reels.map((reel) => [reel.id, reel.likes])),
+  );
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>(() =>
+    Object.fromEntries(reels.map((reel) => [reel.id, reel.comments])),
+  );
+  const [reelComments, setReelComments] = useState<Record<string, ReelComment[]>>({});
+  const [commentLoadingIds, setCommentLoadingIds] = useState<Record<string, boolean>>({});
+  const [interactionError, setInteractionError] = useState("");
   const [pausedIds, setPausedIds] = useState<string[]>([]);
   const [sharedId, setSharedId] = useState("");
 
@@ -57,20 +87,89 @@ export function ReelFeed({ reels }: ReelFeedProps) {
     );
   }
 
-  function toggleLike(reelId: string) {
-    setLikedIds((current) =>
-      current.includes(reelId)
-        ? current.filter((id) => id !== reelId)
-        : [...current, reelId],
-    );
+  async function toggleLike(reelId: string) {
+    setInteractionError("");
+    const previousLiked = Boolean(likedIds[reelId]);
+    const nextLiked = !previousLiked;
+    const previousCount = likeCounts[reelId] ?? 0;
+
+    setLikedIds((current) => ({ ...current, [reelId]: nextLiked }));
+    setLikeCounts((current) => ({
+      ...current,
+      [reelId]: Math.max(0, previousCount + (nextLiked ? 1 : -1)),
+    }));
+
+    try {
+      const response = await fetch(`/api/reels/${encodeURIComponent(reelId)}/like`, {
+        method: "POST",
+      });
+
+      const payload: ReelsLikeResponse | { error?: string } = await response.json();
+
+      if (!response.ok) {
+        throw new Error((payload as { error?: string }).error ?? "Không thể cập nhật tim.");
+      }
+
+      if ((payload as ReelsLikeResponse).canInteract === false) {
+        throw new Error("Bạn cần đăng nhập để thích reel này.");
+      }
+
+      const result = payload as ReelsLikeResponse;
+      setLikedIds((current) => ({ ...current, [reelId]: result.liked }));
+      setLikeCounts((current) => ({ ...current, [reelId]: Number(result.likes) }));
+    } catch (error) {
+      setLikedIds((current) => ({ ...current, [reelId]: previousLiked }));
+      setLikeCounts((current) => ({
+        ...current,
+        [reelId]: previousCount,
+      }));
+      setInteractionError(
+        error instanceof Error ? error.message : "Không thể lưu lượt thích vào database.",
+      );
+    }
   }
 
-  function toggleFollow(campaignSlug: string) {
-    setFollowedCampaigns((current) =>
-      current.includes(campaignSlug)
-        ? current.filter((slug) => slug !== campaignSlug)
-        : [...current, campaignSlug],
-    );
+  async function toggleFollow(campaignSlug: string) {
+    setInteractionError("");
+    const previousFollowed = Boolean(followedCampaigns[campaignSlug]);
+    const nextFollowed = !previousFollowed;
+
+    setFollowedCampaigns((current) => ({
+      ...current,
+      [campaignSlug]: nextFollowed,
+    }));
+
+    try {
+      const response = await fetch(
+        `/api/reels/${encodeURIComponent(campaignSlug)}/follow`,
+        {
+          method: "POST",
+        },
+      );
+
+      const payload: ReelsFollowResponse | { error?: string } = await response.json();
+
+      if (!response.ok) {
+        throw new Error((payload as { error?: string }).error ?? "Không thể cập nhật theo dõi.");
+      }
+
+      if ((payload as ReelsFollowResponse).canInteract === false) {
+        throw new Error("Bạn cần đăng nhập để theo dõi chiến dịch.");
+      }
+
+      setFollowedCampaigns((current) => ({
+        ...current,
+        [campaignSlug]: (payload as ReelsFollowResponse).followed,
+      }));
+    } catch (error) {
+      setFollowedCampaigns((current) => ({
+        ...current,
+        [campaignSlug]: previousFollowed,
+      }));
+      setInteractionError(
+        error instanceof Error ? error.message : "Không thể lưu trạng thái theo dõi.",
+      );
+    }
   }
 
   function togglePause(reelId: string) {
@@ -89,23 +188,81 @@ export function ReelFeed({ reels }: ReelFeedProps) {
     );
   }
 
-  function openComments(reelId: string) {
+  async function openComments(reelId: string) {
+    setInteractionError("");
+    const wasOpen = commentingReelId === reelId;
     setCommentingReelId((current) => (current === reelId ? "" : reelId));
     setCommentDraft("");
-  }
 
-  function submitComment(reelId: string) {
-    const comment = commentDraft.trim();
-
-    if (comment.length < 2 || comment.length > 180) {
+    if (wasOpen || reelComments[reelId]) {
       return;
     }
 
-    setLocalComments((current) => ({
-      ...current,
-      [reelId]: [comment, ...(current[reelId] ?? [])],
-    }));
-    setCommentDraft("");
+    setCommentLoadingIds((current) => ({ ...current, [reelId]: true }));
+    try {
+      const response = await fetch(`/api/reels/${encodeURIComponent(reelId)}/comments`);
+      const payload: ReelsCommentResponse | { error?: string } = await response.json();
+
+      if (!response.ok) {
+        const errorPayload = payload as { error?: string };
+        setInteractionError(errorPayload.error ?? "Không thể tải bình luận.");
+        return;
+      }
+
+      const result = payload as ReelsCommentResponse;
+      setReelComments((current) => ({
+        ...current,
+        [reelId]: result.comments ?? [],
+      }));
+      setCommentCounts((current) => ({
+        ...current,
+        [reelId]: result.count ?? result.comments.length,
+      }));
+    } finally {
+      setCommentLoadingIds((current) => ({ ...current, [reelId]: false }));
+    }
+  }
+
+  async function submitComment(reelId: string) {
+    setInteractionError("");
+    const content = commentDraft.trim();
+
+    if (content.length < 2 || content.length > 180) {
+      setInteractionError("Bình luận phải từ 2 đến 180 ký tự.");
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/reels/${encodeURIComponent(reelId)}/comments`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ content }),
+      });
+
+      const payload: ReelsCommentResponse & { error?: string } = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Không thể gửi bình luận.");
+      }
+
+      const createdComment = payload.comments?.[0];
+      if (!createdComment) {
+        throw new Error("Database đã nhận request nhưng không trả về bình luận mới.");
+      }
+
+      setCommentDraft("");
+      setReelComments((current) => ({
+        ...current,
+        [reelId]: [createdComment, ...(current[reelId] ?? [])],
+      }));
+      setCommentCounts((current) => ({ ...current, [reelId]: payload.count }));
+    } catch (error) {
+      setInteractionError(
+        error instanceof Error ? error.message : "Không thể lưu bình luận vào database.",
+      );
+    }
   }
 
   async function shareReel(reel: ReelItem) {
@@ -144,14 +301,20 @@ export function ReelFeed({ reels }: ReelFeedProps) {
       >
         Tạo reel
       </Link>
+      {interactionError ? (
+        <div className="fixed left-1/2 top-24 z-50 w-[min(92vw,420px)] -translate-x-1/2 rounded-lg border border-red-100 bg-white px-4 py-3 text-sm font-semibold text-red-700 shadow-xl">
+          {interactionError}
+        </div>
+      ) : null}
 
       {reels.map((reel, index) => {
-        const liked = likedIds.includes(reel.id);
-        const likeCount = reel.likes + (liked ? 1 : 0);
-        const comments = localComments[reel.id] ?? [];
-        const commentCount = reel.comments + comments.length;
+        const liked = Boolean(likedIds[reel.id]);
+        const likeCount = likeCounts[reel.id] ?? reel.likes;
+        const comments = reelComments[reel.id] ?? [];
+        const commentCount = commentCounts[reel.id] ?? reel.comments;
+        const commentLoading = Boolean(commentLoadingIds[reel.id]);
         const cover = fallbackCover[reel.coverTone];
-        const followed = followedCampaigns.includes(reel.campaignSlug);
+        const followed = Boolean(followedCampaigns[reel.campaignSlug]);
         const paused = pausedIds.includes(reel.id);
         const commentOpen = commentingReelId === reel.id;
 
@@ -295,32 +458,44 @@ export function ReelFeed({ reels }: ReelFeedProps) {
               </div>
 
               {commentOpen ? (
-                <div className="absolute inset-x-4 bottom-4 z-30 rounded-xl border border-white/12 bg-black/80 p-4 text-white shadow-2xl backdrop-blur sm:bottom-5 sm:left-5 sm:right-20">
+                <div
+                  className="absolute inset-x-4 bottom-4 z-30 rounded-xl border border-stone-200 bg-white/95 p-4 shadow-2xl backdrop-blur sm:bottom-5 sm:left-5 sm:right-20"
+                  style={{ color: "#1a1c1c" }}
+                >
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-bold">Bình luận</h3>
                     <button
                       type="button"
                       onClick={() => setCommentingReelId("")}
-                      className="rounded-full px-2 py-1 text-xs font-bold text-white/70 transition hover:bg-white/10 hover:text-white"
+                      className="rounded-full px-2 py-1 text-xs font-bold text-stone-600 transition hover:bg-stone-100 hover:text-stone-950"
                     >
                       Đóng
                     </button>
                   </div>
+                  {interactionError ? (
+                    <p className="mb-3 rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+                      {interactionError}
+                    </p>
+                  ) : null}
                   <div className="max-h-32 space-y-2 overflow-y-auto pr-1">
-                    {comments.length > 0 ? (
-                      comments.map((comment, commentIndex) => (
+                    {commentLoading ? (
+                      <p className="rounded-lg bg-stone-100 px-3 py-2 text-xs text-stone-700">
+                        Đang tải bình luận...
+                      </p>
+                    ) : comments.length > 0 ? (
+                      comments.map((comment) => (
                         <p
-                          key={`${comment}-${commentIndex}`}
-                          className="rounded-lg bg-white/10 px-3 py-2 text-xs leading-5 text-white/90"
+                          key={comment.id}
+                          className="rounded-lg bg-stone-100 px-3 py-2 text-xs leading-5 text-stone-900"
                         >
-                          <span className="font-bold text-primary-fixed">
-                            Bạn
+                          <span className="font-bold text-primary">
+                            {comment.authorName}
                           </span>{" "}
-                          {comment}
+                          {comment.content}
                         </p>
                       ))
                     ) : (
-                      <p className="rounded-lg bg-white/10 px-3 py-2 text-xs text-white/68">
+                      <p className="rounded-lg bg-stone-100 px-3 py-2 text-xs text-stone-700">
                         Chưa có bình luận mới trong phiên này.
                       </p>
                     )}
@@ -332,16 +507,21 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                       onKeyDown={(event) => {
                         if (event.key === "Enter") {
                           event.preventDefault();
-                          submitComment(reel.id);
+                          void submitComment(reel.id);
                         }
                       }}
                       maxLength={180}
-                      className="min-w-0 flex-1 rounded-lg border border-white/12 bg-white/12 px-3 py-2 text-sm text-white outline-none placeholder:text-white/48 focus:border-primary"
+                      className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-stone-500 focus:border-primary"
+                      style={{
+                        backgroundColor: "#ffffff",
+                        caretColor: "#a33900",
+                        color: "#1a1c1c",
+                      }}
                       placeholder="Viết bình luận..."
                     />
                     <button
                       type="button"
-                      onClick={() => submitComment(reel.id)}
+                      onClick={() => void submitComment(reel.id)}
                       className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
                     >
                       Gửi

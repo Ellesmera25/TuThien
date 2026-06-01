@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
+import { isSameOriginMutation } from "@/lib/http-security";
 import {
   buildSepayQrImageUrl,
   buildSepayTransferContent,
@@ -29,9 +30,18 @@ function isValidPayload(
 }
 
 export async function POST(request: Request) {
-  const body = (await request.json()) as Partial<DonationPayload>;
+  if (!isSameOriginMutation(request)) {
+    return NextResponse.json(
+      { error: "Nguồn request không hợp lệ." },
+      { status: 403 },
+    );
+  }
 
-  if (!isValidPayload(body)) {
+  const body = (await request.json().catch(() => null)) as
+    | Partial<DonationPayload>
+    | null;
+
+  if (!body || !isValidPayload(body)) {
     return NextResponse.json(
       { error: "Dữ liệu quyên góp không hợp lệ." },
       { status: 400 },
@@ -114,6 +124,7 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
+    console.error(error);
     return NextResponse.json(
       { error: "Không thể tạo phiếu quyên góp. Vui lòng thử lại." },
       { status: 500 },

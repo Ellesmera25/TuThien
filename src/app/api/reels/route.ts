@@ -1,10 +1,16 @@
 import { NextResponse } from "next/server";
 
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
-import { getSupabaseServiceClient } from "@/lib/supabase/server";
+import { isSameOriginMutation } from "@/lib/http-security";
 import type { ReelPayload } from "@/lib/types";
 
+const bucketName = "reel-videos";
+const maxVideoSizeBytes = 100 * 1024 * 1024;
 const coverTones = ["warm", "cool", "mint", "violet"] as const;
+
+function sanitizeText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
 
 function isValidUrl(value: string): boolean {
   try {
@@ -31,39 +37,27 @@ function isStorageVideoUrl(value: string): boolean {
 }
 
 function isValidPayload(payload: Partial<ReelPayload>): payload is ReelPayload {
-  if (typeof payload.campaignSlug !== "string" || !payload.campaignSlug.trim()) {
+  if (!sanitizeText(payload.campaignSlug)) {
     return false;
   }
 
-  if (
-    typeof payload.title !== "string" ||
-    payload.title.trim().length < 4 ||
-    payload.title.trim().length > 120
-  ) {
+  const title = sanitizeText(payload.title);
+  if (!title || title.length < 4 || title.length > 120) {
     return false;
   }
 
-  if (
-    typeof payload.caption !== "string" ||
-    payload.caption.trim().length < 8 ||
-    payload.caption.trim().length > 800
-  ) {
+  const caption = sanitizeText(payload.caption);
+  if (!caption || caption.length < 8 || caption.length > 800) {
     return false;
   }
 
-  if (
-    typeof payload.creatorName !== "string" ||
-    payload.creatorName.trim().length < 2 ||
-    payload.creatorName.trim().length > 120
-  ) {
+  const creatorName = sanitizeText(payload.creatorName);
+  if (!creatorName || creatorName.length < 2 || creatorName.length > 120) {
     return false;
   }
 
-  if (
-    typeof payload.location !== "string" ||
-    payload.location.trim().length < 2 ||
-    payload.location.trim().length > 160
-  ) {
+  const location = sanitizeText(payload.location);
+  if (!location || location.length < 2 || location.length > 160) {
     return false;
   }
 
@@ -71,19 +65,68 @@ function isValidPayload(payload: Partial<ReelPayload>): payload is ReelPayload {
     return false;
   }
 
-  if (typeof payload.videoUrl !== "string" || !isStorageVideoUrl(payload.videoUrl)) {
+  if (payload.videoUrl !== undefined && !isStorageVideoUrl(payload.videoUrl)) {
     return false;
   }
 
   return true;
 }
 
+function buildStoragePath(userId: string, fileName: string) {
+  const extension = sanitizeText(fileName).split(".").pop()?.toLowerCase() ?? "mp4";
+  const safeExtension = extension.replace(/[^a-z0-9]/g, "") || "mp4";
+  return `${userId}/${Date.now()}-${crypto.randomUUID()}.${safeExtension}`;
+}
+
+function parseMultipartBody(formData: FormData) {
+  const uploadedVideo = formData.get("videoFile");
+
+  return {
+    campaignSlug: sanitizeText(formData.get("campaignSlug")),
+    title: sanitizeText(formData.get("title")),
+    caption: sanitizeText(formData.get("caption")),
+    creatorName: sanitizeText(formData.get("creatorName")),
+    location: sanitizeText(formData.get("location")),
+    coverTone: sanitizeText(formData.get("coverTone")),
+    videoUrl: sanitizeText(formData.get("videoUrl")),
+    uploadedVideo: uploadedVideo instanceof File ? uploadedVideo : null,
+  };
+}
+
+function parseJsonBody(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const raw = payload as Partial<ReelPayload>;
+
+  return {
+    campaignSlug: sanitizeText(raw.campaignSlug),
+    title: sanitizeText(raw.title),
+    caption: sanitizeText(raw.caption),
+    creatorName: sanitizeText(raw.creatorName),
+    location: sanitizeText(raw.location),
+    coverTone: sanitizeText(raw.coverTone),
+    videoUrl: sanitizeText(raw.videoUrl),
+    uploadedVideo: null,
+  };
+}
+
 export async function POST(request: Request) {
+  if (!isSameOriginMutation(request)) {
+    return NextResponse.json(
+      { error: "Nguồn request không hợp lệ." },
+      { status: 403 },
+    );
+  }
+
   const { client: authClient } = await createSupabaseServerAuthClient();
 
   if (!authClient) {
     return NextResponse.json(
-      { error: "Chưa cấu hình Supabase Auth nên không thể tạo reel." },
+      {
+        error: "Chưa cấu hình Supabase Auth nên chưa thể tạo reel.",
+      },
       { status: 503 },
     );
   }
@@ -99,7 +142,41 @@ export async function POST(request: Request) {
     );
   }
 
-  const body = (await request.json()) as Partial<ReelPayload>;
+  const contentType = request.headers.get("content-type") ?? "";
+  let parsed:
+    | ReturnType<typeof parseMultipartBody>
+    | ReturnType<typeof parseJsonBody>
+    | null;
+
+  if (contentType.includes("multipart/form-data")) {
+    const formData = await request.formData();
+    parsed = parseMultipartBody(formData);
+  } else if (contentType.includes("application/json")) {
+    const body = (await request.json().catch(() => null)) as unknown;
+    parsed = parseJsonBody(body);
+  } else {
+    return NextResponse.json(
+      { error: "Nội dung request không hợp lệ." },
+      { status: 400 },
+    );
+  }
+
+  if (!parsed) {
+    return NextResponse.json(
+      { error: "Nội dung request không hợp lệ." },
+      { status: 400 },
+    );
+  }
+
+  const body: Partial<ReelPayload> = {
+    campaignSlug: parsed.campaignSlug,
+    title: parsed.title,
+    caption: parsed.caption,
+    creatorName: parsed.creatorName,
+    location: parsed.location,
+    coverTone: parsed.coverTone as ReelPayload["coverTone"],
+    videoUrl: parsed.videoUrl || undefined,
+  };
 
   if (!isValidPayload(body)) {
     return NextResponse.json(
@@ -108,18 +185,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = getSupabaseServiceClient();
-  if (!supabase) {
-    return NextResponse.json(
-      {
-        error:
-          "Chưa cấu hình Supabase service role key nên không thể ghi reel vào database.",
-      },
-      { status: 503 },
-    );
-  }
-
-  const { data: campaign, error: campaignError } = await supabase
+  const { data: campaign, error: campaignError } = await authClient
     .from("campaigns")
     .select("slug")
     .eq("slug", body.campaignSlug.trim())
@@ -127,12 +193,60 @@ export async function POST(request: Request) {
 
   if (campaignError || !campaign) {
     return NextResponse.json(
-      { error: "Chiến dịch được chọn không tồn tại trong database." },
+      { error: "Chiến dịch đã chọn không tồn tại trong cơ sở dữ liệu." },
       { status: 400 },
     );
   }
 
-  const { data, error } = await supabase
+  let uploadedPath: string | null = null;
+  let videoUrl = body.videoUrl;
+  if (parsed.uploadedVideo) {
+    if (!parsed.uploadedVideo.type.startsWith("video/")) {
+      return NextResponse.json({ error: "File đã chọn phải là video." }, { status: 400 });
+    }
+
+    if (!parsed.uploadedVideo.size || parsed.uploadedVideo.size > maxVideoSizeBytes) {
+      return NextResponse.json({ error: "Video phải nhỏ hơn hoặc bằng 100MB." }, { status: 400 });
+    }
+
+    uploadedPath = buildStoragePath(user.id, parsed.uploadedVideo.name);
+    const { error: uploadError } = await authClient.storage
+      .from(bucketName)
+      .upload(uploadedPath, parsed.uploadedVideo, {
+        cacheControl: "3600",
+        contentType: parsed.uploadedVideo.type || "video/mp4",
+        upsert: false,
+      });
+
+    if (uploadError) {
+      return NextResponse.json(
+        {
+          error:
+            uploadError.message === "Bucket not found"
+              ? "Chưa tạo bucket `reel-videos` trong Supabase Storage."
+              : "Không thể tải video lên. Vui lòng thử lại.",
+        },
+        { status: 500 },
+      );
+    }
+
+    const { data: publicUrlData } = authClient.storage
+      .from(bucketName)
+      .getPublicUrl(uploadedPath);
+    videoUrl = publicUrlData.publicUrl;
+  }
+
+  if (!videoUrl || !isStorageVideoUrl(videoUrl)) {
+    return NextResponse.json(
+      {
+        error:
+          "Video URL không hợp lệ. Vui lòng upload video hoặc cung cấp URL đã lưu trên Storage.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const { data, error } = await authClient
     .from("reels")
     .insert({
       user_id: user.id,
@@ -141,7 +255,7 @@ export async function POST(request: Request) {
       caption: body.caption.trim(),
       creator_name: body.creatorName.trim(),
       location: body.location.trim(),
-      video_url: body.videoUrl.trim(),
+      video_url: videoUrl.trim(),
       cover_tone: body.coverTone,
       views: 0,
       likes: 0,
@@ -151,6 +265,10 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
+    if (uploadedPath) {
+      await authClient.storage.from(bucketName).remove([uploadedPath]).catch(() => {});
+    }
+
     return NextResponse.json(
       { error: "Không thể tạo reel. Vui lòng thử lại." },
       { status: 500 },

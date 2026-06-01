@@ -28,7 +28,9 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
     setMessage("");
 
     if (!supabase) {
-      setError("Chưa cấu hình Supabase env. Không thể đăng nhập đăng ký.");
+      setError(
+        "Chưa cấu hình Supabase env. Không thể đăng nhập hoặc đăng ký.",
+      );
       return;
     }
 

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { createSupabaseBrowserAuthClient } from "@/lib/supabase/auth-client";
 import { useState } from "react";

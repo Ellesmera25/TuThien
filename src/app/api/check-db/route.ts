@@ -6,29 +6,43 @@ export async function GET() {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
+  const envStatus = {
+    hasSupabaseUrl: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
+    hasSupabaseAnonKey: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
+    hasSupabaseServiceRoleKey: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+  };
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
     return NextResponse.json({
       connected: false,
-      reason: "Supabase service client is not configured"
+      env: envStatus,
+      reason: "Supabase service client is not configured",
     });
   }
 
-  const { error } = await supabase
-    .from("donations")
-    .select("id")
-    .limit(1);
-
-  if (error) {
-    return NextResponse.json({
-      connected: false,
-      error: "Database check failed"
-    });
-  }
+  const tables = [
+    "donations",
+    "reels",
+    "reel_likes",
+    "reel_comments",
+    "campaign_follows",
+  ];
+  const checks = await Promise.all(
+    tables.map(async (table) => {
+      const { error } = await supabase.from(table).select("id").limit(1);
+      return {
+        ok: !error,
+        table,
+        error: error ? `${error.code ?? "ERR"}: ${error.message}` : null,
+      };
+    }),
+  );
 
   return NextResponse.json({
-    connected: true,
-    message: "Supabase connected successfully"
+    connected: checks.every((check) => check.ok),
+    env: envStatus,
+    tables: checks,
+    message: "Supabase check completed",
   });
 }

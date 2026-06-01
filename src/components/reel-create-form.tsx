@@ -1,9 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { createSupabaseBrowserAuthClient } from "@/lib/supabase/auth-client";
+import { useRouter } from "next/navigation";
 import type { ReelPayload } from "@/lib/types";
 
 type ReelCreateFormProps = {
@@ -13,7 +12,6 @@ type ReelCreateFormProps = {
 
 type FormState = Omit<ReelPayload, "videoUrl">;
 
-const bucketName = "reel-videos";
 const maxVideoSize = 100 * 1024 * 1024;
 const inputClass =
   "w-full rounded-lg border border-outline bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
@@ -23,7 +21,6 @@ export function ReelCreateForm({
   defaultCreatorName,
 }: ReelCreateFormProps) {
   const router = useRouter();
-  const supabase = useMemo(() => createSupabaseBrowserAuthClient(), []);
   const [state, setState] = useState<FormState>({
     campaignSlug: campaigns[0]?.slug ?? "",
     caption: "",
@@ -35,17 +32,30 @@ export function ReelCreateForm({
   const [error, setError] = useState("");
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingText, setUploadingText] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("");
   const [videoPreviewUrl, setVideoPreviewUrl] = useState("");
   const videoPreviewRef = useRef("");
+
+  const campaignsOptions = useMemo(() => campaigns, [campaigns]);
 
   useEffect(() => {
     return () => {
       if (videoPreviewRef.current) {
         URL.revokeObjectURL(videoPreviewRef.current);
+        videoPreviewRef.current = "";
       }
     };
   }, []);
+
+  if (campaignsOptions.length === 0) {
+    return (
+      <section className="surface-card rounded-xl p-6">
+        <p className="text-sm text-on-surface-variant">
+          Chưa có chiến dịch phù hợp để tạo reel.
+        </p>
+      </section>
+    );
+  }
 
   function handleVideoChange(file: File | null) {
     if (videoPreviewRef.current) {
@@ -54,7 +64,6 @@ export function ReelCreateForm({
     }
 
     setSelectedVideo(file);
-
     if (!file) {
       setVideoPreviewUrl("");
       return;
@@ -68,99 +77,65 @@ export function ReelCreateForm({
   async function submitReel(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    setUploadingText("");
+    setSelectedStatus("");
 
     if (!state.campaignSlug) {
-      setError("Cần có ít nhất một chiến dịch trong database trước khi tạo reel.");
+      setError("Vui lòng chọn một chiến dịch.");
       return;
     }
 
     if (!selectedVideo) {
-      setError("Vui lòng chọn một file video để upload.");
+      setError("Vui lòng chọn file video.");
       return;
     }
 
     if (!selectedVideo.type.startsWith("video/")) {
-      setError("File được chọn phải là video.");
+      setError("Tệp đã chọn phải là video.");
       return;
     }
 
-    if (selectedVideo.size > maxVideoSize) {
-      setError("Video tối đa 100MB để tránh tải quá lâu.");
+    if (!selectedVideo.size || selectedVideo.size > maxVideoSize) {
+      setError("Video phải nhỏ hơn hoặc bằng 100MB.");
       return;
     }
 
-    if (!supabase) {
-      setError("Chưa cấu hình Supabase nên không thể upload video.");
-      return;
-    }
+    const payload = new FormData();
+    payload.append("campaignSlug", state.campaignSlug);
+    payload.append("title", state.title.trim());
+    payload.append("caption", state.caption.trim());
+    payload.append("creatorName", state.creatorName.trim());
+    payload.append("location", state.location.trim());
+    payload.append("coverTone", state.coverTone);
+    payload.append("videoFile", selectedVideo);
 
-    let storagePath = "";
+    setSubmitting(true);
+    setSelectedStatus("Đang upload video và tạo reel...");
 
     try {
-      setSubmitting(true);
-      setUploadingText("Đang upload video...");
-
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-
-      if (userError || !user) {
-        setError("Bạn cần đăng nhập lại trước khi upload video.");
-        return;
-      }
-
-      storagePath = buildStoragePath(user.id, selectedVideo.name);
-      const { error: uploadError } = await supabase.storage
-        .from(bucketName)
-        .upload(storagePath, selectedVideo, {
-          cacheControl: "3600",
-          contentType: selectedVideo.type,
-          upsert: false,
-        });
-
-      if (uploadError) {
-        setError(
-          uploadError.message.includes("Bucket not found")
-            ? "Chưa tạo bucket `reel-videos` trong Supabase Storage."
-            : uploadError.message,
-        );
-        return;
-      }
-
-      const { data: publicUrlData } = supabase.storage
-        .from(bucketName)
-        .getPublicUrl(storagePath);
-
-      setUploadingText("Đang lưu thông tin reel...");
-
       const response = await fetch("/api/reels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...state,
-          videoUrl: publicUrlData.publicUrl,
-        }),
+        body: payload,
       });
-      const payload = (await response.json()) as { error?: string; id?: string };
+
+      const result = (await response.json()) as { error?: string; id?: string };
 
       if (!response.ok) {
-        await supabase.storage.from(bucketName).remove([storagePath]);
-        setError(payload.error ?? "Không thể tạo reel. Vui lòng thử lại.");
+        setError(result.error ?? "Không thể tạo reel.");
+        return;
+      }
+
+      if (!result.id) {
+        setError("Không thể tạo reel. Vui lòng thử lại.");
         return;
       }
 
       router.push("/reels");
       router.refresh();
     } catch {
-      if (storagePath && supabase) {
-        await supabase.storage.from(bucketName).remove([storagePath]);
-      }
-      setError("Mất kết nối máy chủ. Vui lòng thử lại.");
+      setError("Mất kết nối mạng. Vui lòng thử lại.");
     } finally {
       setSubmitting(false);
-      setUploadingText("");
+      setSelectedStatus("");
     }
   }
 
@@ -175,12 +150,8 @@ export function ReelCreateForm({
               setState((prev) => ({ ...prev, campaignSlug: event.target.value }))
             }
             className={inputClass}
-            disabled={campaigns.length === 0}
           >
-            {campaigns.length === 0 ? (
-              <option value="">Chưa có chiến dịch</option>
-            ) : null}
-            {campaigns.map((campaign) => (
+            {campaignsOptions.map((campaign) => (
               <option key={campaign.slug} value={campaign.slug}>
                 {campaign.title}
               </option>
@@ -230,12 +201,10 @@ export function ReelCreateForm({
           <div className="flex flex-col justify-center gap-1 text-sm">
             <p className="font-bold text-ink">{selectedVideo.name}</p>
             <p className="text-on-surface-variant">
-              {formatFileSize(selectedVideo.size)} ·{" "}
-              {selectedVideo.type || "video"}
+              {formatFileSize(selectedVideo.size)} · {selectedVideo.type || "video"}
             </p>
             <p className="text-xs leading-5 text-on-surface-variant">
-              Nếu lưu metadata thất bại sau khi upload, hệ thống sẽ tự xóa file
-              vừa upload để tránh rác trong Storage.
+              Nếu upload thất bại, file vừa chọn sẽ được giải phóng khỏi preview.
             </p>
           </div>
         </div>
@@ -250,7 +219,7 @@ export function ReelCreateForm({
             setState((prev) => ({ ...prev, title: event.target.value }))
           }
           className={inputClass}
-          placeholder="Dòng nước đầu tiên về bản"
+          placeholder="Dòng mở đầu mạnh mẽ cho câu chuyện"
         />
       </Field>
 
@@ -264,7 +233,7 @@ export function ReelCreateForm({
             setState((prev) => ({ ...prev, caption: event.target.value }))
           }
           className={inputClass}
-          placeholder="Tóm tắt câu chuyện, hoạt động tại hiện trường, kết quả đạt được..."
+          placeholder="Tóm tắt câu chuyện, hoạt động hiện tại, kết quả mong đạt..."
         />
       </Field>
 
@@ -281,7 +250,7 @@ export function ReelCreateForm({
           />
         </Field>
 
-        <Field label="Tông cover dự phòng">
+        <Field label="Tone nền">
           <select
             value={state.coverTone}
             onChange={(event) =>
@@ -306,27 +275,21 @@ export function ReelCreateForm({
         </p>
       ) : null}
 
-      {uploadingText ? (
+      {selectedStatus ? (
         <p className="rounded-lg border border-primary/20 bg-primary-fixed/30 px-3 py-2 text-sm font-semibold text-primary">
-          {uploadingText}
+          {selectedStatus}
         </p>
       ) : null}
 
       <button
         type="submit"
-        disabled={submitting || campaigns.length === 0}
+        disabled={submitting}
         className="neo-btn neo-btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? "Đang xử lý..." : "Upload và tạo reel"}
       </button>
     </form>
   );
-}
-
-function buildStoragePath(userId: string, fileName: string) {
-  const extension = fileName.split(".").pop()?.toLowerCase() ?? "mp4";
-  const safeExtension = extension.replace(/[^a-z0-9]/g, "") || "mp4";
-  return `${userId}/${Date.now()}-${crypto.randomUUID()}.${safeExtension}`;
 }
 
 function formatFileSize(size: number) {

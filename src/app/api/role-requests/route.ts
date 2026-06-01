@@ -1,5 +1,6 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
+import { isSameOriginMutation } from "@/lib/http-security";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
@@ -43,6 +44,13 @@ function isValidProofPath(value?: string | null) {
 }
 
 export async function POST(request: Request) {
+    if (!isSameOriginMutation(request)) {
+        return NextResponse.json(
+            { error: "Nguồn request không hợp lệ." },
+            { status: 403 },
+        );
+    }
+
     const { client: authClient } = await createSupabaseServerAuthClient();
 
     if (!authClient) {
@@ -63,24 +71,33 @@ export async function POST(request: Request) {
         );
     }
 
-    const body = (await request.json()) as {
-        requestedRole?: string;
-        applicantType?: string;
-        displayName?: string;
-        representativeName?: string;
-        representativePosition?: string;
-        phone?: string;
-        contactEmail?: string;
-        address?: string;
-        purpose?: string;
-        experience?: string;
-        supportType?: string;
-        websiteUrl?: string;
-        proofUrl?: string;
-        taxCode?: string;
-        note?: string;
-        acceptedCommitment?: boolean;
-    };
+    const body = (await request.json().catch(() => null)) as
+        | {
+              requestedRole?: string;
+              applicantType?: string;
+              displayName?: string;
+              representativeName?: string;
+              representativePosition?: string;
+              phone?: string;
+              contactEmail?: string;
+              address?: string;
+              purpose?: string;
+              experience?: string;
+              supportType?: string;
+              websiteUrl?: string;
+              proofUrl?: string;
+              taxCode?: string;
+              note?: string;
+              acceptedCommitment?: boolean;
+          }
+        | null;
+
+    if (!body) {
+        return NextResponse.json(
+            { error: "Nội dung request không hợp lệ." },
+            { status: 400 },
+        );
+    }
 
     if (!body.requestedRole || !allowedRoles.includes(body.requestedRole as RequestedRole)) {
         return NextResponse.json(
