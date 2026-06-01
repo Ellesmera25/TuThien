@@ -188,6 +188,20 @@ export function ReelFeed({ reels }: ReelFeedProps) {
     );
   }
 
+  function restartVideo(reelId: string) {
+    const video = videoRefs.current[reelId];
+
+    if (!video) {
+      return;
+    }
+
+    video.currentTime = 0;
+
+    if (!pausedIds.includes(reelId)) {
+      void video.play().catch(() => undefined);
+    }
+  }
+
   async function openComments(reelId: string) {
     setInteractionError("");
     const wasOpen = commentingReelId === reelId;
@@ -334,8 +348,10 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                   autoPlay={index === 0}
                   loop
                   muted
+                  preload="auto"
                   playsInline
                   onClick={() => togglePause(reel.id)}
+                  onEnded={() => restartVideo(reel.id)}
                 />
               ) : (
                 <div
