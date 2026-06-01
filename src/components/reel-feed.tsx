@@ -72,6 +72,7 @@ export function ReelFeed({ reels }: ReelFeedProps) {
   );
   const [reelComments, setReelComments] = useState<Record<string, ReelComment[]>>({});
   const [commentLoadingIds, setCommentLoadingIds] = useState<Record<string, boolean>>({});
+  const [submittingCommentIds, setSubmittingCommentIds] = useState<Record<string, boolean>>({});
   const [interactionError, setInteractionError] = useState("");
   const [pausedIds, setPausedIds] = useState<string[]>([]);
   const [failedVideoIds, setFailedVideoIds] = useState<string[]>([]);
@@ -288,12 +289,19 @@ export function ReelFeed({ reels }: ReelFeedProps) {
 
   async function submitComment(reelId: string) {
     setInteractionError("");
+    if (submittingCommentIds[reelId]) {
+      return;
+    }
+
     const content = commentDraft.trim();
 
     if (content.length < 2 || content.length > 180) {
       setInteractionError("Bình luận phải từ 2 đến 180 ký tự.");
       return;
     }
+
+    setCommentDraft("");
+    setSubmittingCommentIds((current) => ({ ...current, [reelId]: true }));
 
     try {
       const response = await fetch(`/api/reels/${encodeURIComponent(reelId)}/comments`, {
@@ -322,7 +330,6 @@ export function ReelFeed({ reels }: ReelFeedProps) {
             createdAt: new Date().toISOString(),
           };
 
-          setCommentDraft("");
           setReelComments((current) => ({
             ...current,
             [reelId]: [temporaryComment, ...(current[reelId] ?? [])],
@@ -342,16 +349,18 @@ export function ReelFeed({ reels }: ReelFeedProps) {
         throw new Error("Database đã nhận request nhưng không trả về bình luận mới.");
       }
 
-      setCommentDraft("");
       setReelComments((current) => ({
         ...current,
         [reelId]: [createdComment, ...(current[reelId] ?? [])],
       }));
       setCommentCounts((current) => ({ ...current, [reelId]: payload.count }));
     } catch (error) {
+      setCommentDraft(content);
       setInteractionError(
         error instanceof Error ? error.message : "Không thể lưu bình luận vào database.",
       );
+    } finally {
+      setSubmittingCommentIds((current) => ({ ...current, [reelId]: false }));
     }
   }
 
@@ -403,6 +412,7 @@ export function ReelFeed({ reels }: ReelFeedProps) {
         const comments = reelComments[reel.id] ?? [];
         const commentCount = commentCounts[reel.id] ?? reel.comments;
         const commentLoading = Boolean(commentLoadingIds[reel.id]);
+        const commentSubmitting = Boolean(submittingCommentIds[reel.id]);
         const cover = fallbackCover[reel.coverTone];
         const followed = Boolean(followedCampaigns[reel.campaignSlug]);
         const paused = pausedIds.includes(reel.id);
@@ -613,13 +623,14 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                       value={commentDraft}
                       onChange={(event) => setCommentDraft(event.target.value)}
                       onKeyDown={(event) => {
-                        if (event.key === "Enter") {
+                        if (event.key === "Enter" && !commentSubmitting) {
                           event.preventDefault();
                           void submitComment(reel.id);
                         }
                       }}
+                      disabled={commentSubmitting}
                       maxLength={180}
-                      className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-stone-500 focus:border-primary"
+                      className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-stone-500 focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
                       style={{
                         backgroundColor: "#ffffff",
                         caretColor: "#a33900",
@@ -630,9 +641,10 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                     <button
                       type="button"
                       onClick={() => void submitComment(reel.id)}
-                      className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
+                      disabled={commentSubmitting}
+                      className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white transition hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-70"
                     >
-                      Gửi
+                      {commentSubmitting ? "Đang gửi" : "Gửi"}
                     </button>
                   </div>
                 </div>
