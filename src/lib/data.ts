@@ -207,39 +207,22 @@ export async function getReels(): Promise<ReelItem[]> {
 }
 
 export async function getReelsWithUserState(userId?: string): Promise<ReelItem[]> {
-  const supabase = getSupabaseServerClient();
-  if (!supabase || !userId) {
-    return getReels();
+  const baseReels = await getReels();
+
+  if (!userId || baseReels.length === 0) {
+    return baseReels;
   }
 
   const authContext = await createSupabaseServerAuthClient();
-  const privilegedSupabase = getSupabaseServiceClient() ?? authContext.client ?? supabase;
+  const privilegedSupabase = getSupabaseServiceClient() ?? authContext.client;
 
-  const { data: reelsData, error: reelsError } = await supabase
-    .from("reels")
-    .select("*")
-    .order("created_at", { ascending: false })
-    .limit(20);
-
-  if (reelsError || !reelsData) {
-    if (reelsError) {
-      console.error(reelsError);
-    }
-
-    return [];
+  if (!privilegedSupabase) {
+    return baseReels;
   }
 
-  if (reelsData.length === 0) {
-    return [];
-  }
-
-  const reelIds = reelsData.map((row) => row.id) as string[];
+  const reelIds = baseReels.map((reel) => reel.id);
   const campaignSlugs = Array.from(
-    new Set(
-      reelsData
-        .map((row) => row.campaign_slug)
-        .filter((item): item is string => typeof item === "string" && item.length > 0),
-    ),
+    new Set(baseReels.map((reel) => reel.campaignSlug).filter(Boolean)),
   );
 
   const likesQuery = privilegedSupabase
@@ -257,17 +240,30 @@ export async function getReelsWithUserState(userId?: string): Promise<ReelItem[]
           .in("campaign_slug", campaignSlugs)
           .eq("user_id", userId);
 
-  const [
-    { data: likesData, error: likesError },
-    { data: followsData, error: followsError },
-  ] = await Promise.all([likesQuery, followQuery]);
+  const [likesResult, followsResult] = await Promise.allSettled([
+    likesQuery,
+    followQuery,
+  ]);
 
-  if (likesError) {
-    console.error(likesError);
+  const likesData =
+    likesResult.status === "fulfilled" && !likesResult.value.error
+      ? likesResult.value.data
+      : [];
+  const followsData =
+    followsResult.status === "fulfilled" && !followsResult.value.error
+      ? followsResult.value.data
+      : [];
+
+  if (likesResult.status === "rejected") {
+    console.error(likesResult.reason);
+  } else if (likesResult.value.error) {
+    console.error(likesResult.value.error);
   }
 
-  if (followsError) {
-    console.error(followsError);
+  if (followsResult.status === "rejected") {
+    console.error(followsResult.reason);
+  } else if (followsResult.value.error) {
+    console.error(followsResult.value.error);
   }
 
   const likedSet = new Set(
@@ -282,15 +278,11 @@ export async function getReelsWithUserState(userId?: string): Promise<ReelItem[]
       .filter((value): value is string => typeof value === "string"),
   );
 
-  return reelsData.map((row) => {
-    const baseReel = mapReel(row);
-
-    return {
-      ...baseReel,
-      isLikedByCurrentUser: likedSet.has(baseReel.id),
-      isFollowedByCurrentUser: followedSet.has(baseReel.campaignSlug),
-    };
-  });
+  return baseReels.map((reel) => ({
+    ...reel,
+    isLikedByCurrentUser: likedSet.has(reel.id),
+    isFollowedByCurrentUser: followedSet.has(reel.campaignSlug),
+  }));
 }
 
 export async function getReelsByUser(userId: string): Promise<ReelItem[]> {
