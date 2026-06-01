@@ -248,30 +248,30 @@ export default async function CampaignDetailPage({
         <div className="space-y-8 pb-8">
             <section className="neo-panel-strong p-8 sm:p-10">
                 <div className="max-w-4xl">
-                    <p className="neo-badge border-white/30 bg-white/20 text-white">
+                    <p className="neo-badge border-outline-variant/50 bg-primary-fixed/40 text-primary">
                         {campaign.coverTag}
                     </p>
-                    <h1 className="mt-3 font-display text-4xl font-bold text-white sm:text-5xl">
+                    <h1 className="mt-3 font-display text-4xl font-bold text-ink sm:text-5xl">
                         {campaign.title}
                     </h1>
-                    <p className="mt-4 max-w-3xl text-sm text-slate-100 sm:text-base">
+                    <p className="mt-4 max-w-3xl text-sm leading-7 text-on-surface-variant sm:text-base">
                         {campaign.summary}
                     </p>
                 </div>
 
                 <div className="mt-7 grid gap-4 md:grid-cols-[1fr_0.95fr]">
-                    <div className="rounded-2xl border border-white/20 bg-white/10 p-5 backdrop-blur-sm">
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-slate-100">
+                    <div className="rounded-2xl border border-outline-variant/40 bg-white p-5 shadow-soft">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-on-surface-variant">
                             <span>{Math.round(progress)}% hoàn thành</span>
                             <span>Kết thúc: {formatDate(campaign.endDate)}</span>
                         </div>
-                        <div className="mt-3 h-3 rounded-full bg-white/20">
+                        <div className="mt-3 h-3 overflow-hidden rounded-full bg-surface-container">
                             <div
-                                className="h-full rounded-full bg-gradient-to-r from-white to-accent"
+                                className="h-full rounded-full bg-primary"
                                 style={{ width: `${progress}%` }}
                             />
                         </div>
-                        <p className="mt-3 font-display text-xl font-bold text-white">
+                        <p className="mt-3 font-display text-xl font-bold text-ink">
                             {formatVnd(campaign.raisedAmount)} /{" "}
                             {formatVnd(campaign.targetAmount)}
                         </p>
@@ -499,11 +499,11 @@ export default async function CampaignDetailPage({
 
 function MiniStat({ label, value }: { label: string; value: string }) {
     return (
-        <article className="rounded-2xl border border-white/20 bg-white/10 p-4 text-white backdrop-blur-sm">
-            <p className="text-xs font-bold uppercase tracking-[0.1em] text-white/75">
+        <article className="rounded-2xl border border-outline-variant/40 bg-white p-4 shadow-soft">
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-on-surface-variant">
                 {label}
             </p>
-            <p className="mt-2 font-display text-lg font-bold">{value}</p>
+            <p className="mt-2 font-display text-lg font-bold text-ink">{value}</p>
         </article>
     );
 }
