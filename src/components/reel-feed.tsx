@@ -34,17 +34,20 @@ const fallbackCover: Record<ReelItem["coverTone"], string> = {
 type ReelsCommentResponse = {
   comments: ReelComment[];
   count: number;
+  needsMigration?: boolean;
 };
 
 type ReelsLikeResponse = {
   liked: boolean;
   likes: number;
   canInteract: boolean;
+  needsMigration?: boolean;
 };
 
 type ReelsFollowResponse = {
   followed: boolean;
   canInteract: boolean;
+  needsMigration?: boolean;
 };
 
 export function ReelFeed({ reels }: ReelFeedProps) {
@@ -139,9 +142,14 @@ export function ReelFeed({ reels }: ReelFeedProps) {
         method: "POST",
       });
 
-      const payload: ReelsLikeResponse | { error?: string } = await response.json();
+      const payload: ReelsLikeResponse | { error?: string; needsMigration?: boolean } =
+        await response.json();
 
       if (!response.ok) {
+        if ((payload as { needsMigration?: boolean }).needsMigration) {
+          return;
+        }
+
         throw new Error((payload as { error?: string }).error ?? "Không thể cập nhật tim.");
       }
 
@@ -182,9 +190,15 @@ export function ReelFeed({ reels }: ReelFeedProps) {
         },
       );
 
-      const payload: ReelsFollowResponse | { error?: string } = await response.json();
+      const payload:
+        | ReelsFollowResponse
+        | { error?: string; needsMigration?: boolean } = await response.json();
 
       if (!response.ok) {
+        if ((payload as { needsMigration?: boolean }).needsMigration) {
+          return;
+        }
+
         throw new Error((payload as { error?: string }).error ?? "Không thể cập nhật theo dõi.");
       }
 
@@ -290,9 +304,36 @@ export function ReelFeed({ reels }: ReelFeedProps) {
         body: JSON.stringify({ content }),
       });
 
-      const payload: ReelsCommentResponse & { error?: string } = await response.json();
+      const payload: ReelsCommentResponse & {
+        error?: string;
+        needsMigration?: boolean;
+      } = await response.json();
 
       if (!response.ok) {
+        if (payload.needsMigration) {
+          const temporaryComment: ReelComment = {
+            id:
+              typeof crypto !== "undefined" && "randomUUID" in crypto
+                ? crypto.randomUUID()
+                : `local-${Date.now()}`,
+            reelId,
+            authorName: "Bạn",
+            content,
+            createdAt: new Date().toISOString(),
+          };
+
+          setCommentDraft("");
+          setReelComments((current) => ({
+            ...current,
+            [reelId]: [temporaryComment, ...(current[reelId] ?? [])],
+          }));
+          setCommentCounts((current) => ({
+            ...current,
+            [reelId]: (current[reelId] ?? 0) + 1,
+          }));
+          return;
+        }
+
         throw new Error(payload.error ?? "Không thể gửi bình luận.");
       }
 
