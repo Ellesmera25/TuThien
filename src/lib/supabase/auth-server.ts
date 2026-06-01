@@ -100,6 +100,10 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
         return null;
     }
 
+    const fallbackFullName =
+        (user.user_metadata.full_name as string | undefined) ??
+        user.email?.split("@")[0] ??
+        null;
     const serviceClient = getSupabaseServiceClient();
 
     if (serviceClient) {
@@ -116,6 +120,27 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
                 role: normalizeRole(data.role),
             };
         }
+
+        const { data: createdProfile } = await serviceClient
+            .from("profiles")
+            .upsert(
+                {
+                    id: user.id,
+                    full_name: fallbackFullName,
+                    role: "donor",
+                },
+                { onConflict: "id" },
+            )
+            .select("id, full_name, role")
+            .maybeSingle();
+
+        if (createdProfile) {
+            return {
+                id: createdProfile.id,
+                fullName: createdProfile.full_name ?? null,
+                role: normalizeRole(createdProfile.role),
+            };
+        }
     }
 
     const { client } = await createSupabaseServerAuthClient();
@@ -123,10 +148,7 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
     if (!client) {
         return {
             id: user.id,
-            fullName:
-                (user.user_metadata.full_name as string | undefined) ??
-                user.email?.split("@")[0] ??
-                null,
+            fullName: fallbackFullName,
             role: "donor",
         };
     }
@@ -139,11 +161,7 @@ export async function getCurrentUserProfile(): Promise<CurrentUserProfile | null
 
     return {
         id: user.id,
-        fullName:
-            data?.full_name ??
-            (user.user_metadata.full_name as string | undefined) ??
-            user.email?.split("@")[0] ??
-            null,
+        fullName: data?.full_name ?? fallbackFullName,
         role: normalizeRole(data?.role),
     };
 }

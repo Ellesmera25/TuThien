@@ -10,6 +10,14 @@ type AuthCardProps = {
   nextPath?: string;
 };
 
+function normalizeNextPath(value: string) {
+  if (!value.startsWith("/") || value.startsWith("//")) {
+    return "/";
+  }
+
+  return value;
+}
+
 export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
   const supabase = useMemo(() => createSupabaseBrowserAuthClient(), []);
 
@@ -24,6 +32,11 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    if (loading) {
+      return;
+    }
+
     setError("");
     setMessage("");
 
@@ -34,20 +47,33 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedFullName = fullName.trim();
+
+    if (!normalizedEmail) {
+      setError("Vui lòng nhập email.");
+      return;
+    }
+
     if (password.length < 6) {
       setError("Mật khẩu tối thiểu 6 ký tự.");
+      return;
+    }
+
+    if (isSignUp && !normalizedFullName) {
+      setError("Vui lòng nhập họ tên.");
       return;
     }
 
     setLoading(true);
 
     if (isSignUp) {
-      const { error: signUpError } = await supabase.auth.signUp({
-        email,
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: normalizedEmail,
         password,
         options: {
           data: {
-            full_name: fullName,
+            full_name: normalizedFullName,
           },
         },
       });
@@ -55,6 +81,17 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
       if (signUpError) {
         setError(signUpError.message);
       } else {
+        if (signUpData.user) {
+          await supabase.from("profiles").upsert(
+            {
+              id: signUpData.user.id,
+              full_name: normalizedFullName,
+              role: "donor",
+            },
+            { onConflict: "id" },
+          );
+        }
+
         setMessage(
           "Đăng ký thành công. Vui lòng kiểm tra email để xác nhận tài khoản.",
         );
@@ -67,7 +104,7 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
     await supabase.auth.signOut({ scope: "local" });
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
@@ -77,14 +114,14 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
       return;
     }
 
-    window.location.replace(nextPath || "/");
+    window.location.replace(normalizeNextPath(nextPath || "/"));
   };
 
   return (
     <section className="mx-auto max-w-md">
       <div className="neo-panel p-6 sm:p-7">
         <p className="neo-badge">
-          {isSignUp ? "Create Account" : "Welcome Back"}
+          {isSignUp ? "Tạo tài khoản" : "Chào mừng trở lại"}
         </p>
         <h1 className="mt-3 font-display text-3xl font-bold text-ink">
           {isSignUp ? "Đăng ký thành viên" : "Đăng nhập tài khoản"}
@@ -103,6 +140,7 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
                 onChange={(event) => setFullName(event.target.value)}
                 className={inputClass}
                 placeholder="Nguyễn Văn A"
+                autoComplete="name"
                 required
               />
             </Field>
@@ -115,6 +153,7 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
               onChange={(event) => setEmail(event.target.value)}
               className={inputClass}
               placeholder="ban@example.com"
+              autoComplete="email"
               required
             />
           </Field>
@@ -126,6 +165,7 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
               onChange={(event) => setPassword(event.target.value)}
               className={inputClass}
               placeholder="******"
+              autoComplete={isSignUp ? "new-password" : "current-password"}
               required
             />
           </Field>

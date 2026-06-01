@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { formatCompactNumber } from "@/lib/format";
 import type { ReelComment, ReelItem } from "@/lib/types";
@@ -73,6 +73,40 @@ export function ReelFeed({ reels }: ReelFeedProps) {
   const [pausedIds, setPausedIds] = useState<string[]>([]);
   const [failedVideoIds, setFailedVideoIds] = useState<string[]>([]);
   const [sharedId, setSharedId] = useState("");
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const reelId = entry.target.getAttribute("data-reel-id");
+          const video =
+            reelId && videoRefs.current[reelId] ? videoRefs.current[reelId] : null;
+
+          if (!reelId || !video) {
+            return;
+          }
+
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+            if (!pausedIds.includes(reelId)) {
+              void video.play().catch(() => undefined);
+            }
+            return;
+          }
+
+          video.pause();
+        });
+      },
+      { threshold: [0, 0.65, 1] },
+    );
+
+    Object.values(videoRefs.current).forEach((video) => {
+      if (video) {
+        observer.observe(video);
+      }
+    });
+
+    return () => observer.disconnect();
+  }, [failedVideoIds, pausedIds, reels]);
 
   if (reels.length === 0) {
     return (
@@ -349,13 +383,20 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                     videoRefs.current[reel.id] = node;
                   }}
                   className="absolute inset-0 h-full w-full object-cover"
+                  data-reel-id={reel.id}
                   src={videoUrl}
                   autoPlay={index === 0}
                   loop
                   muted
                   preload="auto"
                   playsInline
+                  poster={cover}
                   onClick={() => togglePause(reel.id)}
+                  onCanPlay={() => {
+                    if (index === 0 && !pausedIds.includes(reel.id)) {
+                      void videoRefs.current[reel.id]?.play().catch(() => undefined);
+                    }
+                  }}
                   onEnded={() => restartVideo(reel.id)}
                   onError={() =>
                     setFailedVideoIds((current) =>
