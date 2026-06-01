@@ -11,6 +11,20 @@ function isValidCampaignSlug(value: string): boolean {
   return trimmed.length > 0 && trimmed.length <= maxCampaignSlugLength;
 }
 
+function isMissingInteractionTable(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false;
+  }
+
+  const message = error.message?.toLowerCase() ?? "";
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    message.includes("campaign_follows") ||
+    message.includes("could not find the table")
+  );
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ campaignSlug: string }> },
@@ -108,9 +122,22 @@ export async function POST(
 
   if (followLookupError) {
     console.error(followLookupError);
+    if (isMissingInteractionTable(followLookupError)) {
+      return NextResponse.json(
+        {
+          error:
+            "Database chưa có bảng theo dõi chiến dịch. Cần apply migration Supabase mới nhất.",
+          followed: false,
+          canInteract: true,
+          needsMigration: true,
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json(
       {
-        error: "Khong the tai trang thai theo doi.",
+        error: "Không thể tải trạng thái theo dõi.",
         followed: false,
         canInteract: true,
       },
@@ -146,9 +173,22 @@ export async function POST(
 
     if (insertError) {
       console.error(insertError);
+      if (isMissingInteractionTable(insertError)) {
+        return NextResponse.json(
+          {
+            error:
+              "Database chưa có bảng theo dõi chiến dịch. Cần apply migration Supabase mới nhất.",
+            followed: false,
+            canInteract: true,
+            needsMigration: true,
+          },
+          { status: 503 },
+        );
+      }
+
       return NextResponse.json(
         {
-          error: "Khong the theo doi chien dich.",
+          error: "Không thể theo dõi chiến dịch.",
           followed: false,
           canInteract: true,
         },

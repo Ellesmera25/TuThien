@@ -8,6 +8,20 @@ function isValidUuid(value: string): boolean {
   return /^[0-9a-fA-F-]{36}$/.test(value);
 }
 
+function isMissingInteractionTable(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false;
+  }
+
+  const message = error.message?.toLowerCase() ?? "";
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    message.includes("reel_likes") ||
+    message.includes("could not find the table")
+  );
+}
+
 export async function POST(
   request: Request,
   context: { params: Promise<{ reelId: string }> },
@@ -86,9 +100,21 @@ export async function POST(
 
   if (existingError) {
     console.error(existingError);
+    if (isMissingInteractionTable(existingError)) {
+      return NextResponse.json(
+        {
+          error:
+            "Database chưa có bảng lưu lượt thích reel. Cần apply migration Supabase mới nhất.",
+          canInteract: true,
+          needsMigration: true,
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json(
       {
-        error: "Khong the tai trang thai thich hien tai.",
+        error: "Không thể tải trạng thái thích hiện tại.",
         canInteract: true,
       },
       { status: 500 },
@@ -116,8 +142,20 @@ export async function POST(
 
     if (insertError) {
       console.error(insertError);
+      if (isMissingInteractionTable(insertError)) {
+        return NextResponse.json(
+          {
+            error:
+              "Database chưa có bảng lưu lượt thích reel. Cần apply migration Supabase mới nhất.",
+            canInteract: true,
+            needsMigration: true,
+          },
+          { status: 503 },
+        );
+      }
+
       return NextResponse.json(
-        { error: "Khong the thich reel.", canInteract: true },
+        { error: "Không thể thích reel.", canInteract: true },
         { status: 500 },
       );
     }

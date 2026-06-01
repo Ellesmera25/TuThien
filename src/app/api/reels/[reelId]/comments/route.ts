@@ -29,6 +29,20 @@ function mapComment(comment: ReelCommentRow) {
   };
 }
 
+function isMissingInteractionTable(error: { code?: string; message?: string } | null) {
+  if (!error) {
+    return false;
+  }
+
+  const message = error.message?.toLowerCase() ?? "";
+  return (
+    error.code === "42P01" ||
+    error.code === "PGRST205" ||
+    message.includes("reel_comments") ||
+    message.includes("could not find the table")
+  );
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ reelId: string }> },
@@ -74,9 +88,17 @@ export async function GET(
 
   if (queryError) {
     console.error(queryError);
+    if (isMissingInteractionTable(queryError)) {
+      return NextResponse.json({
+        comments: [],
+        count: 0,
+        needsMigration: true,
+      });
+    }
+
     return NextResponse.json(
       {
-        error: "Khong the tai binh luan.",
+        error: "Không thể tải bình luận.",
         comments: [],
         count: count ?? 0,
       },
@@ -211,8 +233,21 @@ export async function POST(
 
   if (insertError) {
     console.error(insertError);
+    if (isMissingInteractionTable(insertError)) {
+      return NextResponse.json(
+        {
+          error:
+            "Database chưa có bảng bình luận reel. Cần apply migration Supabase mới nhất.",
+          comments: [],
+          count: 0,
+          needsMigration: true,
+        },
+        { status: 503 },
+      );
+    }
+
     return NextResponse.json(
-      { error: "Gui binh luan that bai.", comments: [], count: 0 },
+      { error: "Gửi bình luận thất bại.", comments: [], count: 0 },
       { status: 500 },
     );
   }

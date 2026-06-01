@@ -71,6 +71,7 @@ export function ReelFeed({ reels }: ReelFeedProps) {
   const [commentLoadingIds, setCommentLoadingIds] = useState<Record<string, boolean>>({});
   const [interactionError, setInteractionError] = useState("");
   const [pausedIds, setPausedIds] = useState<string[]>([]);
+  const [failedVideoIds, setFailedVideoIds] = useState<string[]>([]);
   const [sharedId, setSharedId] = useState("");
 
   if (reels.length === 0) {
@@ -331,6 +332,10 @@ export function ReelFeed({ reels }: ReelFeedProps) {
         const followed = Boolean(followedCampaigns[reel.campaignSlug]);
         const paused = pausedIds.includes(reel.id);
         const commentOpen = commentingReelId === reel.id;
+        const videoUrl =
+          typeof reel.videoUrl === "string" && !failedVideoIds.includes(reel.id)
+            ? reel.videoUrl
+            : undefined;
 
         return (
           <article
@@ -338,13 +343,13 @@ export function ReelFeed({ reels }: ReelFeedProps) {
             className="flex min-h-[calc(100vh-80px)] snap-start snap-always items-center justify-center px-0 py-0 sm:px-4 sm:py-5"
           >
             <div className="relative h-[calc(100vh-80px)] w-full max-w-[500px] overflow-hidden bg-black shadow-2xl sm:h-[min(820px,calc(100vh-120px))] sm:rounded-2xl">
-              {reel.videoUrl ? (
+              {videoUrl ? (
                 <video
                   ref={(node) => {
                     videoRefs.current[reel.id] = node;
                   }}
                   className="absolute inset-0 h-full w-full object-cover"
-                  src={reel.videoUrl}
+                  src={videoUrl}
                   autoPlay={index === 0}
                   loop
                   muted
@@ -352,6 +357,11 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                   playsInline
                   onClick={() => togglePause(reel.id)}
                   onEnded={() => restartVideo(reel.id)}
+                  onError={() =>
+                    setFailedVideoIds((current) =>
+                      current.includes(reel.id) ? current : [...current, reel.id],
+                    )
+                  }
                 />
               ) : (
                 <div
@@ -364,7 +374,7 @@ export function ReelFeed({ reels }: ReelFeedProps) {
 
               <div className="absolute inset-0 bg-gradient-to-b from-black/28 via-transparent to-black/92" />
 
-              {reel.videoUrl ? (
+              {videoUrl ? (
                 <button
                   type="button"
                   onClick={() => togglePause(reel.id)}
