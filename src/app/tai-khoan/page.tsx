@@ -680,7 +680,7 @@ export default async function AccountPage() {
                                         <a
                                             href={offer.proofSignedUrl}
                                             target="_blank"
-                                            rel="noreferrer"
+                                            rel="noopener noreferrer"
                                             className="mt-4 inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
                                         >
                                             Xem hồ sơ đính kèm

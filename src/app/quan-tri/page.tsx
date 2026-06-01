@@ -1427,7 +1427,7 @@ export default async function AdminPage() {
                                                     key={image.id}
                                                     href={image.signedUrl ?? "#"}
                                                     target="_blank"
-                                                    rel="noreferrer"
+                                                    rel="noopener noreferrer"
                                                     className="group overflow-hidden rounded-xl border border-slate-100 bg-slate-50"
                                                 >
                                                     {image.signedUrl ? (
@@ -1502,7 +1502,7 @@ export default async function AdminPage() {
                                                     <a
                                                         href={phase.signedProofUrl}
                                                         target="_blank"
-                                                        rel="noreferrer"
+                                                        rel="noopener noreferrer"
                                                         className="mt-4 inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
                                                     >
                                                         Xem minh chứng giai đoạn
@@ -1651,7 +1651,7 @@ export default async function AdminPage() {
                                         <a
                                             href={offer.proofSignedUrl}
                                             target="_blank"
-                                            rel="noreferrer"
+                                            rel="noopener noreferrer"
                                             className="inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
                                         >
                                             Xem hồ sơ đính kèm
@@ -1774,7 +1774,7 @@ export default async function AdminPage() {
                                         <a
                                             href={round.proof_url}
                                             target="_blank"
-                                            rel="noreferrer"
+                                            rel="noopener noreferrer"
                                             className="mt-1 inline-flex break-all font-semibold text-primary hover:underline"
                                         >
                                             {round.proof_url}
@@ -1935,7 +1935,7 @@ export default async function AdminPage() {
                                         <a
                                             href={request.proofSignedUrl}
                                             target="_blank"
-                                            rel="noreferrer"
+                                            rel="noopener noreferrer"
                                             className="rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
                                         >
                                             Xem tài liệu minh chứng
