@@ -73,12 +73,12 @@ export function SupportOfferForm({
         }
 
         if (!roundId) {
-            setError("Vui lòng chọn đợt giải ngân muốn đồng hành.");
+            setError("Vui lòng chọn yêu cầu giải ngân muốn đồng hành.");
             return;
         }
 
         if (selectedRound?.hasApprovedPartner) {
-            setError("Đợt này đã có đơn vị đồng hành được duyệt.");
+            setError("Yêu cầu này đã có đơn vị đồng hành được duyệt.");
             return;
         }
 
@@ -247,7 +247,7 @@ export function SupportOfferForm({
                     </select>
                 </Field>
 
-                <Field label="Đợt giải ngân muốn đồng hành" required>
+                <Field label="Yêu cầu giải ngân muốn đồng hành" required>
                     <select
                         value={roundId}
                         onChange={(event) => setRoundId(event.target.value)}
@@ -260,7 +260,7 @@ export function SupportOfferForm({
                                 value={round.id}
                                 disabled={round.hasApprovedPartner}
                             >
-                                Đợt {round.round_number}: {round.percent}% - {formatVnd(round.planned_amount)}
+                                Yêu cầu {round.round_number}: tối đa {formatVnd(round.planned_amount)}
                                 {round.hasApprovedPartner ? " (đã có đơn vị đồng hành)" : ""}
                             </option>
                         ))}
@@ -293,13 +293,13 @@ export function SupportOfferForm({
                         {selectedRound ? (
                             <div className="mt-3 rounded-lg border border-outline-variant/40 bg-white p-3">
                                 <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
-                                    Đợt giải ngân đã chọn
+                                    Yêu cầu giải ngân đã chọn
                                 </p>
                                 <p className="mt-1 font-semibold text-ink">
-                                    Đợt {selectedRound.round_number}: {selectedRound.percent}% ngân sách
+                                    Yêu cầu {selectedRound.round_number}
                                 </p>
                                 <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                                    Kế hoạch giải ngân dự kiến: {formatVnd(selectedRound.planned_amount)}
+                                    Số tiền yêu cầu tối đa: {formatVnd(selectedRound.planned_amount)}
                                 </p>
                             </div>
                         ) : null}

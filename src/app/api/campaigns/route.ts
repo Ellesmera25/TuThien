@@ -162,13 +162,6 @@ export async function POST(request: Request) {
         );
     }
 
-    if (phases.length === 0) {
-        return NextResponse.json(
-            { error: "Mỗi chiến dịch cần ít nhất 1 giai đoạn nội dung." },
-            { status: 400 },
-        );
-    }
-
     const invalidPhaseIndex = phases.findIndex(
         (phase) => !phase.title?.trim() || !phase.description?.trim(),
     );
@@ -264,29 +257,31 @@ export async function POST(request: Request) {
         );
     }
 
-    const phaseRows = normalizedPhases.map((phase, index) => ({
-        campaign_id: campaignId,
-        title: phase.title,
-        description: phase.description,
-        target_amount: Math.round(phase.targetAmount),
-        start_date: phase.startDate,
-        end_date: phase.endDate,
-        status: "planned",
-        proof_url: phase.proofUrl,
-        sort_order: index + 1,
-    }));
+    if (normalizedPhases.length > 0) {
+        const phaseRows = normalizedPhases.map((phase, index) => ({
+            campaign_id: campaignId,
+            title: phase.title,
+            description: phase.description,
+            target_amount: Math.round(phase.targetAmount),
+            start_date: phase.startDate,
+            end_date: phase.endDate,
+            status: "planned",
+            proof_url: phase.proofUrl,
+            sort_order: index + 1,
+        }));
 
-    const { error: phaseError } = await supabase
-        .from("campaign_phases")
-        .insert(phaseRows);
+        const { error: phaseError } = await supabase
+            .from("campaign_phases")
+            .insert(phaseRows);
 
-    if (phaseError) {
-        console.error("Create campaign phase error:", phaseError);
+        if (phaseError) {
+            console.error("Create campaign phase error:", phaseError);
 
-        return NextResponse.json(
-            { error: "Không thể lưu giai đoạn dự án. Vui lòng thử lại." },
-            { status: 500 },
-        );
+            return NextResponse.json(
+                { error: "Không thể lưu giai đoạn dự án. Vui lòng thử lại." },
+                { status: 500 },
+            );
+        }
     }
 
     return NextResponse.json({

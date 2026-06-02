@@ -37,6 +37,7 @@ type CampaignDisbursementRoundRow = {
     round_number: number;
     percent: number;
     planned_amount: number;
+    requested_amount: number | null;
     status: string;
     proof_status: string;
     partnerName: string | null;
@@ -168,7 +169,7 @@ async function getCampaignDisbursementRounds(
         supabase
             .from("disbursement_rounds")
             .select(
-                "id, round_number, percent, planned_amount, status, proof_status",
+                "id, round_number, percent, planned_amount, requested_amount, status, proof_status",
             )
             .eq("campaign_id", campaignId)
             .order("round_number", { ascending: true }),
@@ -217,6 +218,7 @@ async function getCampaignDisbursementRounds(
         round_number: round.round_number,
         percent: round.percent,
         planned_amount: round.planned_amount,
+        requested_amount: round.requested_amount,
         status: round.status,
         proof_status: round.proof_status,
         partnerName: partnerByRoundId.get(round.id) ?? null,
@@ -304,11 +306,11 @@ export default async function CampaignDetailPage({
                             Tiến độ giải ngân
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                            Chiến dịch có 3 đợt giải ngân cố định 40% - 40% - 20%.
+                            Đơn vị đồng hành gửi yêu cầu giải ngân theo số tiền và lý do cụ thể. Mỗi yêu cầu có hóa đơn/chứng từ riêng sau khi admin xác nhận giải ngân.
                         </p>
                     </div>
                     <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
-                        {rounds.length} đợt
+                        {rounds.length} yêu cầu
                     </span>
                 </div>
 
@@ -327,13 +329,13 @@ export default async function CampaignDetailPage({
                                     <div className="flex flex-wrap items-start justify-between gap-3">
                                         <div>
                                             <p className="text-xs font-bold uppercase tracking-[0.1em] text-slate-500">
-                                                Đợt giải ngân {round.round_number}
+                                                Yêu cầu giải ngân {round.round_number}
                                             </p>
                                             <h3 className="mt-1 font-display text-xl font-bold text-ink">
-                                                {round.percent}% ngân sách
+                                                {formatVnd(getRequestedDisbursementAmount(round))}
                                             </h3>
                                             <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                                                Kế hoạch giải ngân dự kiến: {formatVnd(round.planned_amount)}
+                                                Số tiền tối đa của yêu cầu: {formatVnd(round.planned_amount)}
                                             </p>
                                         </div>
                                         <span
@@ -351,8 +353,8 @@ export default async function CampaignDetailPage({
                                             value={`${round.percent}%`}
                                         />
                                         <PartnerInfo
-                                            label="Số tiền dự kiến"
-                                            value={formatVnd(round.planned_amount)}
+                                            label="Số tiền yêu cầu"
+                                            value={formatVnd(getRequestedDisbursementAmount(round))}
                                         />
                                         <PartnerInfo
                                             label="Đơn vị đồng hành"
@@ -598,6 +600,12 @@ function getRoundStatusBadgeClass(status: string) {
         default:
             return "bg-slate-100 text-slate-700";
     }
+}
+
+function getRequestedDisbursementAmount(
+    round: Pick<CampaignDisbursementRoundRow, "requested_amount" | "planned_amount">,
+) {
+    return Number(round.requested_amount ?? round.planned_amount);
 }
 
 function formatProofStatus(status: string) {

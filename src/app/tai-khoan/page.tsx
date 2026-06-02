@@ -103,6 +103,7 @@ type AccountDisbursementRoundRow = {
     round_number: number;
     percent: number;
     planned_amount: number;
+    requested_amount: number | null;
     status: DisbursementRoundStatus;
     proof_status: DisbursementProofStatus;
     proof_due_at: string | null;
@@ -349,7 +350,7 @@ export default async function AccountPage() {
                                 Đăng ký đồng hành của tôi
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Theo dõi trạng thái đăng ký thực hiện giai đoạn đã gửi cho các dự án.
+                                Theo dõi trạng thái đăng ký đồng hành đã gửi cho các dự án.
                             </p>
                         </div>
 
@@ -456,7 +457,7 @@ export default async function AccountPage() {
                                         <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
                                             <p className="font-bold">Đăng ký đã được chủ dự án chấp thuận</p>
                                             <p className="mt-1">
-                                                Đơn vị đồng hành đã được gắn với giai đoạn và có thể triển khai theo kế hoạch.
+                                                Đơn vị đồng hành đã được gắn với yêu cầu giải ngân và có thể triển khai theo kế hoạch.
                                             </p>
                                         </div>
                                     ) : null}
@@ -573,7 +574,7 @@ export default async function AccountPage() {
                                     <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-700">
                                         <p className="font-bold">Đang tìm đơn vị đồng hành</p>
                                         <p className="mt-1">
-                                            Dự án đã được admin duyệt nhưng chưa mở công khai/quyên góp. Khi bạn chấp nhận một đơn vị đồng hành cho giai đoạn, dự án sẽ tự chuyển sang trạng thái công khai.
+                                            Dự án đã được admin duyệt nhưng chưa mở công khai/quyên góp. Khi bạn chấp nhận một đơn vị đồng hành cho yêu cầu giải ngân, dự án sẽ tự chuyển sang trạng thái công khai.
                                         </p>
                                     </div>
                                 ) : null}
@@ -590,7 +591,7 @@ export default async function AccountPage() {
                                 Đăng ký đồng hành cho dự án của tôi
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Theo dõi các đăng ký thực hiện giai đoạn do đơn vị đồng hành gửi trực tiếp.
+                                Theo dõi các đăng ký đồng hành do đơn vị đồng hành gửi trực tiếp.
                             </p>
                         </div>
 
@@ -739,7 +740,7 @@ export default async function AccountPage() {
                                         <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
                                             <p className="font-bold">Admin đã xác nhận đồng hành</p>
                                             <p className="mt-1">
-                                                Đơn vị này đang được hiển thị là đơn vị đồng hành thực hiện giai đoạn trên trang dự án công khai.
+                                                Đơn vị này đang được hiển thị là đơn vị đồng hành trên trang dự án công khai.
                                             </p>
                                         </div>
                                     ) : null}
@@ -766,7 +767,7 @@ export default async function AccountPage() {
                                 Đợt giải ngân của dự án tôi
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Mỗi dự án sau khi được duyệt có 3 đợt 40% - 40% - 20%. Đơn vị đồng hành gửi yêu cầu, chủ dự án duyệt, admin xác nhận đã giải ngân, sau đó đơn vị đồng hành nộp hóa đơn/chứng từ sử dụng tiền trong 30 ngày.
+                                Đơn vị đồng hành gửi yêu cầu giải ngân bằng số tiền và lý do cụ thể. Chủ dự án duyệt, admin xác nhận đã giải ngân, sau đó đơn vị đồng hành nộp hóa đơn/chứng từ sử dụng tiền trong 30 ngày.
                             </p>
                         </div>
 
@@ -812,7 +813,7 @@ export default async function AccountPage() {
                                     </div>
 
                                     <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
-                                        <CampaignInfo label="Số tiền dự kiến" value={formatVnd(round.planned_amount)} />
+                                        <CampaignInfo label="Số tiền yêu cầu" value={formatVnd(getRequestedDisbursementAmount(round))} />
                                         <CampaignInfo label="Hóa đơn/chứng từ" value={formatProofStatus(round.proof_status)} />
                                         <CampaignInfo label="Hạn nộp" value={round.proof_due_at ? formatDate(round.proof_due_at) : "Chưa có"} />
                                         <CampaignInfo label="Đã nộp" value={round.proof_submitted_at ? formatDate(round.proof_submitted_at) : "Chưa có"} />
@@ -824,6 +825,9 @@ export default async function AccountPage() {
                                             {round.partner_request_note ? (
                                                 <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-800">
                                                     <p className="font-bold">Yêu cầu từ đơn vị đồng hành</p>
+                                                    <p className="mt-1 font-semibold">
+                                                        Số tiền yêu cầu: {formatVnd(getRequestedDisbursementAmount(round))}
+                                                    </p>
                                                     <p className="mt-1 whitespace-pre-wrap">{round.partner_request_note}</p>
                                                 </div>
                                             ) : null}
@@ -841,7 +845,7 @@ export default async function AccountPage() {
                                                     required
                                                 />
                                                 <span>
-                                                    Tôi xác nhận yêu cầu giải ngân của đơn vị đồng hành đúng với tiến độ giai đoạn và chuyển request tới admin.
+                                                    Tôi xác nhận yêu cầu giải ngân của đơn vị đồng hành hợp lệ và chuyển request tới admin.
                                                 </span>
                                             </label>
                                             <button
@@ -883,7 +887,7 @@ export default async function AccountPage() {
                                 Yêu cầu giải ngân và hóa đơn/chứng từ
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Đơn vị đồng hành gửi yêu cầu giải ngân theo giai đoạn đã bắt đầu. Sau khi chủ dự án và admin duyệt, bạn phải nộp hóa đơn/chứng từ trong 30 ngày kể từ lúc nhận giải ngân.
+                                Đơn vị đồng hành gửi yêu cầu giải ngân bằng số tiền và lý do cụ thể. Sau khi chủ dự án và admin duyệt, bạn phải nộp hóa đơn/chứng từ trong 30 ngày kể từ lúc nhận giải ngân.
                             </p>
                         </div>
 
@@ -909,7 +913,7 @@ export default async function AccountPage() {
                                                 {round.campaign?.title ?? "Dự án"}
                                             </p>
                                             <h3 className="mt-1 font-display text-xl font-bold text-ink">
-                                                Đợt {round.round_number} - {formatVnd(round.planned_amount)}
+                                                Yêu cầu {round.round_number} - {formatVnd(getRequestedDisbursementAmount(round))}
                                             </h3>
                                             <p className="mt-1 text-sm text-on-surface-variant">
                                                 Trạng thái hóa đơn/chứng từ:{" "}
@@ -931,10 +935,20 @@ export default async function AccountPage() {
                                     {round.status === "open" ? (
                                         <form action={requestDisbursementRound} className="mt-4 grid gap-3">
                                             <input type="hidden" name="roundId" value={round.id} />
+                                            <input
+                                                name="requestedAmount"
+                                                type="number"
+                                                min="1000"
+                                                step="1000"
+                                                max={round.planned_amount}
+                                                placeholder="Số tiền muốn yêu cầu giải ngân"
+                                                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                required
+                                            />
                                             <textarea
                                                 name="confirmationNote"
                                                 rows={3}
-                                                placeholder="Nội dung yêu cầu giải ngân: hạng mục cần chi, kế hoạch sử dụng tiền, đầu mối phụ trách..."
+                                                placeholder="Lý do yêu cầu giải ngân: hạng mục cần chi, kế hoạch sử dụng tiền, đầu mối phụ trách..."
                                                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                 required
                                             />
@@ -946,7 +960,7 @@ export default async function AccountPage() {
                                                     required
                                                 />
                                                 <span>
-                                                    Tôi xác nhận đơn vị đồng hành yêu cầu giải ngân cho giai đoạn đã bắt đầu và sẽ nộp hóa đơn/chứng từ trong 30 ngày sau khi nhận tiền.
+                                                    Tôi xác nhận đơn vị đồng hành yêu cầu giải ngân đúng nhu cầu thực tế và sẽ nộp hóa đơn/chứng từ sử dụng tiền trong 30 ngày sau khi nhận tiền.
                                                 </span>
                                             </label>
                                             <button
@@ -1592,7 +1606,7 @@ async function getOwnerDisbursementRounds(
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note",
+            "id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note",
         )
         .in("campaign_id", campaignIds)
         .order("round_number", { ascending: true });
@@ -1639,7 +1653,7 @@ async function getPartnerDisbursementRounds(
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note",
+            "id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note",
         )
         .in("id", roundIds)
         .order("round_number", { ascending: true });
@@ -1669,6 +1683,7 @@ async function enrichAccountDisbursementRounds(
         round_number: number;
         percent: number;
         planned_amount: number;
+        requested_amount: number | null;
         status: DisbursementRoundStatus;
         proof_status: DisbursementProofStatus;
         proof_due_at: string | null;
@@ -1749,10 +1764,17 @@ async function requestDisbursementRound(formData: FormData) {
     }
 
     const roundId = String(formData.get("roundId") ?? "");
+    const requestedAmount = Number(formData.get("requestedAmount") ?? 0);
     const confirmationNote = String(formData.get("confirmationNote") ?? "").trim();
     const accepted = String(formData.get("acceptedDisbursementRequest") ?? "") === "on";
 
-    if (!roundId || !confirmationNote || !accepted) {
+    if (
+        !roundId ||
+        !Number.isFinite(requestedAmount) ||
+        requestedAmount < 1000 ||
+        !confirmationNote ||
+        !accepted
+    ) {
         return;
     }
 
@@ -1764,7 +1786,7 @@ async function requestDisbursementRound(formData: FormData) {
 
     const { data: round } = await client
         .from("disbursement_rounds")
-        .select("id, campaign_id, round_number, status")
+        .select("id, campaign_id, planned_amount, status")
         .eq("id", roundId)
         .eq("status", "open")
         .maybeSingle();
@@ -1773,9 +1795,13 @@ async function requestDisbursementRound(formData: FormData) {
         return;
     }
 
+    if (requestedAmount > Number(round.planned_amount)) {
+        return;
+    }
+
     const { data: campaign } = await client
         .from("campaigns")
-        .select("id, owner_id, slug, created_at")
+        .select("id, owner_id, slug")
         .eq("id", round.campaign_id)
         .maybeSingle();
 
@@ -1795,34 +1821,13 @@ async function requestDisbursementRound(formData: FormData) {
         return;
     }
 
-    const { data: phase } = await client
-        .from("campaign_phases")
-        .select("start_date")
-        .eq("campaign_id", round.campaign_id)
-        .eq("sort_order", round.round_number)
-        .maybeSingle();
-
-    const phaseStart = phase?.start_date ? new Date(phase.start_date) : null;
-    const campaignCreatedAt = campaign.created_at
-        ? new Date(campaign.created_at)
-        : null;
-    const now = new Date();
-
-    if (
-        !phaseStart ||
-        !campaignCreatedAt ||
-        phaseStart <= campaignCreatedAt ||
-        phaseStart > now
-    ) {
-        return;
-    }
-
     await client
         .from("disbursement_rounds")
         .update({
             status: "requested",
             requested_by: user.id,
             requested_at: new Date().toISOString(),
+            requested_amount: Math.round(requestedAmount),
             partner_request_note: confirmationNote,
             owner_approved_by: null,
             owner_approved_at: null,
@@ -2404,6 +2409,12 @@ function isProofSubmissionOverdue(
     }
 
     return new Date(round.proof_due_at).getTime() < Date.now();
+}
+
+function getRequestedDisbursementAmount(
+    round: Pick<AccountDisbursementRoundRow, "requested_amount" | "planned_amount">,
+) {
+    return Number(round.requested_amount ?? round.planned_amount);
 }
 
 function formatProofStatus(status: DisbursementProofStatus) {

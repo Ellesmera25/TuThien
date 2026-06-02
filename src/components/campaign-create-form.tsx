@@ -59,9 +59,7 @@ export function CampaignCreateForm() {
 
     const [images, setImages] = useState<File[]>([]);
 
-    const [phases, setPhases] = useState<PhaseFormState[]>(() => [
-        createEmptyPhase(),
-    ]);
+    const [phases, setPhases] = useState<PhaseFormState[]>([]);
 
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
@@ -132,17 +130,12 @@ export function CampaignCreateForm() {
             return;
         }
 
-        if (phases.length === 0) {
-            setError("Mỗi chiến dịch cần ít nhất 1 giai đoạn nội dung.");
-            return;
-        }
-
         const invalidPhaseIndex = phases.findIndex(
             (phase) => !phase.title.trim() || !phase.description.trim(),
         );
 
         if (invalidPhaseIndex >= 0) {
-            setError(`Vui lòng nhập đủ tên và mô tả cho giai đoạn ${invalidPhaseIndex + 1}.`);
+            setError(`Vui lòng nhập đủ tên và mô tả cho kế hoạch ${invalidPhaseIndex + 1}.`);
             return;
         }
 
@@ -151,7 +144,7 @@ export function CampaignCreateForm() {
         );
 
         if (invalidProofPhaseIndex >= 0) {
-            setError("Minh chứng giai đoạn chỉ chấp nhận ảnh hoặc PDF.");
+            setError("Minh chứng kế hoạch chỉ chấp nhận ảnh hoặc PDF.");
             return;
         }
 
@@ -160,7 +153,7 @@ export function CampaignCreateForm() {
         );
 
         if (oversizedProofPhaseIndex >= 0) {
-            setError("File minh chứng giai đoạn không được vượt quá 5MB.");
+            setError("File minh chứng kế hoạch không được vượt quá 5MB.");
             return;
         }
 
@@ -232,7 +225,7 @@ export function CampaignCreateForm() {
 
                     if (proofUploadError) {
                         setError(
-                            `Không thể tải minh chứng giai đoạn ${index + 1}: ${proofUploadError.message}`,
+                            `Không thể tải minh chứng kế hoạch ${index + 1}: ${proofUploadError.message}`,
                         );
                         return;
                     }
@@ -368,10 +361,10 @@ export function CampaignCreateForm() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="font-display text-2xl font-semibold text-ink">
-                            Giai đoạn hỗ trợ
+                            Kế hoạch triển khai bổ sung
                         </h2>
                         <p className="mt-1 text-sm text-slate-500">
-                            Giai đoạn là phần mô tả kế hoạch triển khai. Lịch giải ngân sẽ được hệ thống tạo riêng theo 3 đợt 40% - 40% - 20%.
+                            Phần này không bắt buộc. Đơn vị đồng hành có thể gửi yêu cầu giải ngân bằng số tiền và lý do cụ thể sau khi được duyệt.
                         </p>
                     </div>
 
@@ -380,7 +373,7 @@ export function CampaignCreateForm() {
                         onClick={() => setPhases((current) => [...current, createEmptyPhase()])}
                         className="rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        Thêm giai đoạn
+                        Thêm kế hoạch
                     </button>
                 </div>
 
@@ -391,7 +384,7 @@ export function CampaignCreateForm() {
                     >
                         <div className="flex items-center justify-between gap-3">
                             <h3 className="font-display text-lg font-bold text-ink">
-                                Giai đoạn {index + 1}
+                                Kế hoạch {index + 1}
                             </h3>
                             {phases.length > 1 ? (
                                 <button
@@ -408,7 +401,7 @@ export function CampaignCreateForm() {
                             ) : null}
                         </div>
 
-                        <Field label="Tên giai đoạn" required>
+                        <Field label="Tên kế hoạch" required>
                             <input
                                 value={phase.title}
                                 onChange={(event) =>
@@ -420,7 +413,7 @@ export function CampaignCreateForm() {
                             />
                         </Field>
 
-                        <Field label="Mô tả giai đoạn" required>
+                        <Field label="Mô tả kế hoạch" required>
                             <textarea
                                 rows={4}
                                 value={phase.description}
@@ -457,7 +450,7 @@ export function CampaignCreateForm() {
                             </Field>
                         </div>
 
-                        <Field label="Minh chứng giai đoạn">
+                        <Field label="Minh chứng kế hoạch">
                             <input
                                 type="file"
                                 accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
@@ -469,7 +462,7 @@ export function CampaignCreateForm() {
                                 className={fileInputClass}
                             />
                             <span className="text-xs font-normal text-slate-500">
-                                Có thể tải ảnh hoặc PDF minh chứng cho giai đoạn. Tối đa 5MB.
+                                Có thể tải ảnh hoặc PDF minh chứng cho kế hoạch. Tối đa 5MB.
                             </span>
                         </Field>
                     </div>

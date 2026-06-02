@@ -35,8 +35,6 @@ export type SupportCampaignRoundOption = {
     planned_amount: number;
     status: string;
     hasApprovedPartner: boolean;
-    phaseStartDate: string | null;
-    isPhaseEligible: boolean;
 };
 
 async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
@@ -61,7 +59,7 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
 
     const campaignIds = data.map((campaign) => campaign.id);
 
-    const [{ data: roundRows }, { data: lockedOfferRows }, { data: phaseRows }] =
+    const [{ data: roundRows }, { data: lockedOfferRows }] =
         campaignIds.length > 0
             ? await Promise.all([
                 supabase
@@ -74,12 +72,8 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
                     .select("disbursement_round_id")
                     .in("campaign_id", campaignIds)
                     .in("status", ["owner_pending", "approved"]),
-                supabase
-                    .from("campaign_phases")
-                    .select("campaign_id, sort_order, start_date")
-                    .in("campaign_id", campaignIds),
             ])
-            : [{ data: [] }, { data: [] }, { data: [] }];
+            : [{ data: [] }, { data: [] }];
 
     const lockedRoundIds = new Set(
         (lockedOfferRows ?? [])
@@ -88,34 +82,9 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
     );
 
     const roundsByCampaign = new Map<string, SupportCampaignRoundOption[]>();
-    const phaseByCampaignAndOrder = new Map<string, { start_date: string | null }>();
-
-    for (const phase of phaseRows ?? []) {
-        phaseByCampaignAndOrder.set(
-            `${phase.campaign_id}:${phase.sort_order}`,
-            { start_date: phase.start_date },
-        );
-    }
-
-    const now = new Date();
-    const campaignCreatedAt = new Map(
-        data.map((campaign) => [campaign.id, new Date(campaign.created_at)]),
-    );
 
     for (const round of roundRows ?? []) {
         const list = roundsByCampaign.get(round.campaign_id) ?? [];
-        const phase = phaseByCampaignAndOrder.get(
-            `${round.campaign_id}:${round.round_number}`,
-        );
-        const phaseStartDate = phase?.start_date ?? null;
-        const phaseStart = phaseStartDate ? new Date(phaseStartDate) : null;
-        const createdAt = campaignCreatedAt.get(round.campaign_id);
-        const isPhaseEligible = Boolean(
-            phaseStart &&
-            createdAt &&
-            phaseStart > createdAt &&
-            phaseStart <= now,
-        );
 
         list.push({
             id: round.id,
@@ -124,8 +93,6 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
             planned_amount: round.planned_amount,
             status: round.status,
             hasApprovedPartner: lockedRoundIds.has(round.id),
-            phaseStartDate,
-            isPhaseEligible,
         });
 
         roundsByCampaign.set(round.campaign_id, list);
@@ -135,7 +102,7 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
         .map((campaign) => ({
             ...campaign,
             rounds: (roundsByCampaign.get(campaign.id) ?? []).filter(
-                (round) => !round.hasApprovedPartner && round.isPhaseEligible,
+                (round) => !round.hasApprovedPartner && round.status === "open",
             ),
         }))
         .filter((campaign) => campaign.rounds.length > 0) as SupportCampaignOption[];

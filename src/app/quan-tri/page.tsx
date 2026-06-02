@@ -162,6 +162,7 @@ type AdminDisbursementRoundRow = {
     round_number: number;
     percent: number;
     planned_amount: number;
+    requested_amount: number | null;
     status: DisbursementRoundStatus;
     proof_status: DisbursementProofStatus;
     proof_due_at: string | null;
@@ -748,7 +749,7 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
     const { data: rounds, error } = await supabase
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, owner_approved_at, manager_confirmed_at, manager_confirmation_note",
+            "id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, owner_approved_at, manager_confirmed_at, manager_confirmation_note",
         )
         .in("status", ["requested", "owner_approved", "manager_confirmed", "disbursed", "needs_admin_review", "completed"])
         .order("created_at", { ascending: false })
@@ -1041,7 +1042,7 @@ async function approveDisbursementRound(formData: FormData) {
 
     const { data: round } = await supabase
         .from("disbursement_rounds")
-        .select("id, campaign_id, round_number, percent, planned_amount, status")
+        .select("id, campaign_id, round_number, percent, planned_amount, requested_amount, status")
         .eq("id", roundId)
         .in("status", ["owner_approved", "manager_confirmed"])
         .maybeSingle();
@@ -1099,8 +1100,8 @@ async function approveDisbursementRound(formData: FormData) {
     await supabase.from("disbursements").insert({
         campaign_slug: campaign.slug,
         title: `Giải ngân đợt ${round.round_number}`,
-        description: `Đợt ${round.round_number} (${round.percent}%) được giải ngân cho đơn vị đồng hành đã được duyệt.`,
-        amount: round.planned_amount,
+        description: `Yêu cầu giải ngân ${round.round_number} được chuyển thủ công cho đơn vị đồng hành đã được duyệt.`,
+        amount: getRequestedDisbursementAmount(round),
         spent_at: now.toISOString().slice(0, 10),
         proof_url: null,
     });
@@ -1488,7 +1489,7 @@ export default async function AdminPage() {
                                 {campaign.phases.length > 0 ? (
                                     <div className="mt-5 grid gap-3">
                                         <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                                            Giai đoạn hỗ trợ
+                                            Kế hoạch bổ sung
                                         </p>
 
                                         {campaign.phases.map((phase, index) => (
@@ -1499,7 +1500,7 @@ export default async function AdminPage() {
                                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                                     <div>
                                                         <p className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
-                                                            Giai đoạn {index + 1}
+                                                            Kế hoạch {index + 1}
                                                         </p>
                                                         <h4 className="mt-1 font-display text-lg font-bold text-ink">
                                                             {phase.title}
@@ -1527,19 +1528,19 @@ export default async function AdminPage() {
                                                         rel="noopener noreferrer"
                                                         className="mt-4 inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
                                                     >
-                                                        Xem minh chứng giai đoạn
+                                                        Xem minh chứng kế hoạch
                                                     </a>
                                                 ) : (
                                                     <p className="mt-4 text-sm font-semibold text-slate-500">
-                                                        Chưa có minh chứng giai đoạn.
+                                                        Chưa có minh chứng kế hoạch.
                                                     </p>
                                                 )}
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="mt-5 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
-                                        Dự án chưa có giai đoạn hỗ trợ.
+                                    <p className="mt-5 rounded-xl border border-slate-100 bg-surface-low px-3 py-2 text-sm font-semibold text-slate-600">
+                                        Dự án chưa có kế hoạch bổ sung. Phần này không bắt buộc.
                                     </p>
                                 )}
 
@@ -1581,7 +1582,7 @@ export default async function AdminPage() {
                             Theo dõi đăng ký đồng hành
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                            Theo dõi các đăng ký thực hiện giai đoạn do đơn vị đồng hành gửi, kể cả khi người tạo dự án đã xử lý.
+                            Theo dõi các đăng ký đồng hành do đơn vị đồng hành gửi, kể cả khi người tạo dự án đã xử lý.
                         </p>
                     </div>
 
@@ -1707,7 +1708,7 @@ export default async function AdminPage() {
                                     <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
                                         <p className="font-bold">Admin đã xác nhận đồng hành</p>
                                         <p className="mt-1">
-                                            Đơn vị này đang được gắn với giai đoạn công khai của chiến dịch.
+                                            Đơn vị này đang được gắn với yêu cầu giải ngân công khai của chiến dịch.
                                         </p>
                                     </div>
                                 ) : null}
@@ -1758,7 +1759,7 @@ export default async function AdminPage() {
                                             {round.campaign?.title ?? "Dự án"}
                                         </p>
                                         <h3 className="mt-1 font-display text-xl font-bold text-ink">
-                                            Đợt {round.round_number} - {round.percent}% ({formatVnd(round.planned_amount)})
+                                            Yêu cầu {round.round_number} - {formatVnd(getRequestedDisbursementAmount(round))}
                                         </h3>
                                         <p className="mt-2 text-sm text-slate-600">
                                             Owner:{" "}
@@ -2132,16 +2133,17 @@ function hasPayoutAccount(round: Pick<AdminDisbursementRoundRow, "approvedOffer"
 
 function getManualTransferQrData(round: AdminDisbursementRoundRow) {
     const offer = round.approvedOffer;
+    const amount = getRequestedDisbursementAmount(round);
 
     return [
         "TuThien.vn - chuyen khoan giai ngan thu cong",
         `Du an: ${round.campaign?.title ?? round.campaign?.slug ?? round.campaign_id}`,
-        `Dot: ${round.round_number}`,
-        `So tien: ${round.planned_amount} VND`,
+        `Yeu cau: ${round.round_number}`,
+        `So tien: ${amount} VND`,
         `Ngan hang: ${offer?.payout_bank_name ?? ""}`,
         `So tai khoan: ${offer?.payout_account_number ?? ""}`,
         `Chu tai khoan: ${offer?.payout_account_holder ?? ""}`,
-        `Noi dung: GIAI NGAN DOT ${round.round_number} ${round.campaign?.slug ?? round.campaign_id}`,
+        `Noi dung: GIAI NGAN YC ${round.round_number} ${round.campaign?.slug ?? round.campaign_id}`,
     ].join("\n");
 }
 
@@ -2149,6 +2151,12 @@ function getManualTransferQrUrl(round: AdminDisbursementRoundRow) {
     return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(
         getManualTransferQrData(round),
     )}`;
+}
+
+function getRequestedDisbursementAmount(
+    round: Pick<AdminDisbursementRoundRow, "requested_amount" | "planned_amount">,
+) {
+    return Number(round.requested_amount ?? round.planned_amount);
 }
 
 function formatApplicantType(value?: null | string) {

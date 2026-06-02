@@ -41,8 +41,7 @@ export default async function CreateCampaignPage() {
                     </h1>
 
                     <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">
-                        Cung cấp thông tin dự án, hình ảnh thực tế và giai đoạn hỗ trợ đầu
-                        tiên. Dự án sẽ được gửi đến admin để xét duyệt trước khi hiển thị
+                        Cung cấp thông tin dự án và hình ảnh thực tế. Dự án sẽ được gửi đến admin để xét duyệt trước khi hiển thị
                         công khai.
                     </p>
 
@@ -65,7 +64,7 @@ export default async function CreateCampaignPage() {
                             <p className="text-xs uppercase tracking-[0.12em] text-slate-500">
                                 Bước 3
                             </p>
-                            <p className="mt-1 text-ink">Giai đoạn đầu tiên</p>
+                            <p className="mt-1 text-ink">Gửi xét duyệt</p>
                         </div>
                     </div>
                 </div>
