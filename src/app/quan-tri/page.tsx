@@ -1063,7 +1063,7 @@ async function approveDisbursementRound(formData: FormData) {
 
     const now = new Date();
     const proofDueAt = new Date(now);
-    proofDueAt.setDate(proofDueAt.getDate() + 14);
+    proofDueAt.setDate(proofDueAt.getDate() + 30);
 
     await supabase
         .from("disbursement_rounds")
@@ -1711,10 +1711,10 @@ export default async function AdminPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="font-display text-2xl font-bold text-ink">
-                            Theo dõi giải ngân và hóa đơn đỏ
+                            Theo dõi giải ngân và hóa đơn/chứng từ
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                            Admin chỉ duyệt giải ngân sau khi đơn vị quản lý xác nhận yêu cầu. Sau giải ngân, admin theo dõi hóa đơn đỏ và mở đợt kế tiếp khi hóa đơn hợp lệ.
+                            Admin chỉ duyệt giải ngân sau khi đơn vị quản lý xác nhận yêu cầu. Sau giải ngân, admin theo dõi hóa đơn/chứng từ trong hạn 30 ngày và mở đợt kế tiếp khi hồ sơ hợp lệ.
                         </p>
                     </div>
 
@@ -1725,7 +1725,7 @@ export default async function AdminPage() {
 
                 {disbursementRoundsForAdmin.length === 0 ? (
                     <p className="mt-5 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
-                        Chưa có yêu cầu giải ngân hoặc hóa đơn đỏ cần xử lý.
+                        Chưa có yêu cầu giải ngân hoặc hóa đơn/chứng từ cần xử lý.
                     </p>
                 ) : (
                     <div className="mt-5 grid gap-4">
@@ -1766,7 +1766,7 @@ export default async function AdminPage() {
                                 </div>
 
                                 <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
-                                    <Info label="Hóa đơn đỏ" value={formatProofStatus(round.proof_status)} />
+                                    <Info label="Hóa đơn/chứng từ" value={formatProofStatus(round.proof_status)} />
                                     <Info label="Hạn nộp" value={round.proof_due_at ? round.proof_due_at.slice(0, 10) : null} />
                                     <Info label="Đã nộp" value={round.proof_submitted_at ? round.proof_submitted_at.slice(0, 10) : null} />
                                     <Info label="Liên hệ đơn vị" value={round.approvedOffer?.contact_email ?? round.approvedOffer?.contact_phone} />
@@ -1774,7 +1774,7 @@ export default async function AdminPage() {
 
                                 {round.proof_url ? (
                                     <div className="mt-4 rounded-xl border border-slate-100 bg-surface-low p-3 text-sm text-slate-700">
-                                        <p className="font-bold text-ink">Hóa đơn đỏ đã nộp</p>
+                                        <p className="font-bold text-ink">Hóa đơn/chứng từ đã nộp</p>
                                         <a
                                             href={round.proof_url}
                                             target="_blank"
@@ -1825,9 +1825,9 @@ export default async function AdminPage() {
                                     round.status === "needs_admin_review" ? (
                                     <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
                                         <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-700">
-                                            <p className="font-bold">Đang chờ xử lý hóa đơn đỏ</p>
+                                            <p className="font-bold">Đang chờ xử lý hóa đơn/chứng từ</p>
                                             <p className="mt-1">
-                                                Duyệt hóa đơn đỏ sẽ hoàn tất đợt này và tự mở đợt kế tiếp.
+                                                Duyệt hóa đơn/chứng từ sẽ hoàn tất đợt này và tự mở đợt kế tiếp.
                                             </p>
                                         </div>
 
@@ -1848,7 +1848,7 @@ export default async function AdminPage() {
                                                 className="w-full rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
                                                 disabled={!round.proof_url}
                                             >
-                                                Duyệt hóa đơn đỏ
+                                                Duyệt hóa đơn/chứng từ
                                             </button>
                                         </form>
                                     </div>

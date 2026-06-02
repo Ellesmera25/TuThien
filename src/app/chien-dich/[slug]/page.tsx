@@ -359,7 +359,7 @@ export default async function CampaignDetailPage({
                                             value={round.partnerName || "Chưa xác nhận"}
                                         />
                                         <PartnerInfo
-                                            label="Hóa đơn đỏ"
+                                            label="Hóa đơn/chứng từ"
                                             value={formatProofStatus(round.proof_status)}
                                         />
                                     </div>

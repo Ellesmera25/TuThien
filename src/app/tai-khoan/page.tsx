@@ -760,7 +760,7 @@ export default async function AccountPage() {
                                 Đợt giải ngân của dự án tôi
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Mỗi dự án sau khi được duyệt có 3 đợt 40% - 40% - 20%. Owner xác thực yêu cầu, đơn vị quản lý xác nhận, admin duyệt giải ngân, sau đó đơn vị quản lý nộp hóa đơn đỏ.
+                                Mỗi dự án sau khi được duyệt có 3 đợt 40% - 40% - 20%. Owner xác thực yêu cầu, đơn vị quản lý xác nhận, admin duyệt giải ngân, sau đó đơn vị quản lý nộp hóa đơn/chứng từ trong 30 ngày.
                             </p>
                         </div>
 
@@ -807,7 +807,7 @@ export default async function AccountPage() {
 
                                     <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
                                         <CampaignInfo label="Số tiền dự kiến" value={formatVnd(round.planned_amount)} />
-                                        <CampaignInfo label="Hóa đơn đỏ" value={formatProofStatus(round.proof_status)} />
+                                        <CampaignInfo label="Hóa đơn/chứng từ" value={formatProofStatus(round.proof_status)} />
                                         <CampaignInfo label="Hạn nộp" value={round.proof_due_at ? formatDate(round.proof_due_at) : "Chưa có"} />
                                         <CampaignInfo label="Đã nộp" value={round.proof_submitted_at ? formatDate(round.proof_submitted_at) : "Chưa có"} />
                                     </div>
@@ -872,7 +872,7 @@ export default async function AccountPage() {
 
                                     {round.status === "disbursed" ? (
                                         <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-700">
-                                            Admin đã giải ngân. Đơn vị quản lý phải nộp hóa đơn đỏ để hoàn tất đợt.
+                                            Admin đã giải ngân. Đơn vị quản lý phải nộp hóa đơn/chứng từ trong 30 ngày để hoàn tất đợt.
                                         </p>
                                     ) : null}
                                 </article>
@@ -886,10 +886,10 @@ export default async function AccountPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-display text-2xl font-semibold text-ink">
-                                Yêu cầu giải ngân và hóa đơn đỏ
+                                Yêu cầu giải ngân và hóa đơn/chứng từ
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Đơn vị quản lý xác nhận yêu cầu giải ngân của chủ dự án. Sau khi admin giải ngân, bạn phải nộp hóa đơn đỏ để admin duyệt.
+                                Đơn vị quản lý xác nhận yêu cầu giải ngân của chủ dự án. Sau khi admin giải ngân, bạn phải nộp hóa đơn/chứng từ trong 30 ngày để admin duyệt.
                             </p>
                         </div>
 
@@ -918,7 +918,7 @@ export default async function AccountPage() {
                                                 Đợt {round.round_number} - {formatVnd(round.planned_amount)}
                                             </h3>
                                             <p className="mt-1 text-sm text-on-surface-variant">
-                                                Trạng thái hóa đơn đỏ:{" "}
+                                                Trạng thái hóa đơn/chứng từ:{" "}
                                                 <strong className="text-ink">
                                                     {formatProofStatus(round.proof_status)}
                                                 </strong>
@@ -957,7 +957,7 @@ export default async function AccountPage() {
                                                     required
                                                 />
                                                 <span>
-                                                    Tôi xác nhận đơn vị quản lý sẵn sàng nhận giải ngân và sẽ nộp hóa đơn đỏ sau khi nhận tiền.
+                                                    Tôi xác nhận đơn vị quản lý sẵn sàng nhận giải ngân và sẽ nộp hóa đơn/chứng từ trong 30 ngày sau khi nhận tiền.
                                                 </span>
                                             </label>
                                             <button
@@ -981,16 +981,16 @@ export default async function AccountPage() {
                                         <form action={submitDisbursementProof} className="mt-4 grid gap-3">
                                             <input type="hidden" name="roundId" value={round.id} />
                                             <input
-                                                name="redInvoiceUrl"
+                                                name="invoiceDocumentUrl"
                                                 defaultValue={round.proof_url ?? ""}
-                                                placeholder="Link hóa đơn đỏ sau giải ngân"
+                                                placeholder="Link hóa đơn/chứng từ sau giải ngân"
                                                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                 required
                                             />
                                             <textarea
-                                                name="redInvoiceNote"
+                                                name="invoiceDocumentNote"
                                                 defaultValue={round.proof_note ?? ""}
-                                                placeholder="Ghi chú hóa đơn đỏ: số hóa đơn, nội dung chi, đơn vị phát hành..."
+                                                placeholder="Ghi chú hóa đơn/chứng từ: số hóa đơn, nội dung chi, đơn vị phát hành..."
                                                 rows={3}
                                                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                             />
@@ -998,7 +998,7 @@ export default async function AccountPage() {
                                                 type="submit"
                                                 className="w-fit rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
                                             >
-                                                Nộp hóa đơn đỏ
+                                                Nộp hóa đơn/chứng từ
                                             </button>
                                         </form>
                                     ) : null}
@@ -1886,10 +1886,16 @@ async function submitDisbursementProof(formData: FormData) {
 
     const roundId = String(formData.get("roundId") ?? "");
     const proofUrl = String(
-        formData.get("redInvoiceUrl") ?? formData.get("proofUrl") ?? "",
+        formData.get("invoiceDocumentUrl") ??
+        formData.get("redInvoiceUrl") ??
+        formData.get("proofUrl") ??
+        "",
     ).trim();
     const proofNote = String(
-        formData.get("redInvoiceNote") ?? formData.get("proofNote") ?? "",
+        formData.get("invoiceDocumentNote") ??
+        formData.get("redInvoiceNote") ??
+        formData.get("proofNote") ??
+        "",
     ).trim();
 
     if (!roundId || !proofUrl) {
