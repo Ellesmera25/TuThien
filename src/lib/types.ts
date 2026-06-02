@@ -31,6 +31,21 @@ export type DonationItem = {
   note?: string | null;
 };
 
+export type DonationChainItem = {
+  id: string;
+  donationId: string;
+  blockNumber: number;
+  donorName: string;
+  amount: number;
+  createdAt: string;
+  campaignSlug?: string | null;
+  paymentReference: string;
+  providerTransactionId?: string | null;
+  status: "pending" | "confirmed" | "failed" | string;
+  hash: string;
+  previousHash: string;
+};
+
 export type ReelItem = {
   id: string;
   campaignSlug: string;

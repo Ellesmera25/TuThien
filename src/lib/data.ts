@@ -6,6 +6,7 @@ import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
 import type {
   Campaign,
   DashboardSummary,
+  DonationChainItem,
   DonationItem,
   ReelItem,
   TransparencyItem,
@@ -68,6 +69,31 @@ function mapDonation(row: Record<string, unknown>): DonationItem {
     createdAt: toStringValue(row.created_at, new Date().toISOString()),
     campaignSlug: toStringValue(row.campaign_slug, ""),
     note: toStringValue(row.message, ""),
+  };
+}
+
+function mapDonationChain(
+  row: Record<string, unknown>,
+  blockNumber: number,
+  donation?: {
+    campaign_slug?: string | null;
+    status?: string | null;
+    provider_transaction_id?: string | null;
+  },
+): DonationChainItem {
+  return {
+    id: toStringValue(row.id, crypto.randomUUID()),
+    donationId: toStringValue(row.donation_id, ""),
+    blockNumber,
+    donorName: toStringValue(row.donor_name, "Ẩn danh"),
+    amount: toNumber(row.amount),
+    createdAt: toStringValue(row.created_at, new Date().toISOString()),
+    campaignSlug: donation?.campaign_slug ?? null,
+    paymentReference: toStringValue(row.payment_reference, ""),
+    providerTransactionId: donation?.provider_transaction_id ?? null,
+    status: donation?.status ?? "confirmed",
+    hash: toStringValue(row.hash, ""),
+    previousHash: toStringValue(row.previous_hash, ""),
   };
 }
 
@@ -184,6 +210,56 @@ export async function getRecentDonations(): Promise<DonationItem[]> {
   }
 
   return (data ?? []).map(mapDonation);
+}
+
+export async function getDonationChain(limit = 40): Promise<DonationChainItem[]> {
+  const supabase = getSupabaseServiceClient();
+  if (!supabase) {
+    return [];
+  }
+
+  const { data: chainRows, error: chainError } = await supabase
+    .from("donation_blockchain")
+    .select(
+      "id, donation_id, donor_name, amount, created_at, payment_reference, hash, previous_hash",
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (chainError || !chainRows || chainRows.length === 0) {
+    if (chainError) {
+      console.error(chainError);
+    }
+    return [];
+  }
+
+  const donationIds = chainRows.map((row) => row.donation_id).filter(Boolean);
+  const { data: donationRows, error: donationError } =
+    donationIds.length > 0
+      ? await supabase
+          .from("donations")
+          .select("id, campaign_slug, status, provider_transaction_id")
+          .in("id", donationIds)
+      : { data: [], error: null };
+
+  if (donationError) {
+    console.error(donationError);
+  }
+
+  const donationById = new Map(
+    (donationRows ?? []).map((row) => [
+      row.id,
+      {
+        campaign_slug: row.campaign_slug,
+        status: row.status,
+        provider_transaction_id: row.provider_transaction_id,
+      },
+    ]),
+  );
+
+  return chainRows.map((row, index) =>
+    mapDonationChain(row, index + 1, donationById.get(row.donation_id)),
+  );
 }
 
 export async function getReels(): Promise<ReelItem[]> {
