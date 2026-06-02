@@ -26,6 +26,7 @@ type DisbursementRoundStatus =
     | "open"
     | "requested"
     | "manager_confirmed"
+    | "owner_approved"
     | "disbursed"
     | "completed"
     | "needs_admin_review";
@@ -167,7 +168,10 @@ type AdminDisbursementRoundRow = {
     proof_submitted_at: string | null;
     proof_url: string | null;
     proof_note: string | null;
+    partner_request_note: string | null;
     owner_confirmation_note: string | null;
+    owner_approval_note: string | null;
+    owner_approved_at: string | null;
     manager_confirmed_at: string | null;
     manager_confirmation_note: string | null;
     campaign: {
@@ -181,6 +185,9 @@ type AdminDisbursementRoundRow = {
         partner_id: string;
         contact_email: string | null;
         contact_phone: string | null;
+        payout_bank_name: string | null;
+        payout_account_number: string | null;
+        payout_account_holder: string | null;
         partnerName: string | null;
     } | null;
 };
@@ -741,9 +748,9 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
     const { data: rounds, error } = await supabase
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, owner_confirmation_note, manager_confirmed_at, manager_confirmation_note",
+            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, owner_approved_at, manager_confirmed_at, manager_confirmation_note",
         )
-        .in("status", ["requested", "manager_confirmed", "disbursed", "needs_admin_review", "completed"])
+        .in("status", ["requested", "owner_approved", "manager_confirmed", "disbursed", "needs_admin_review", "completed"])
         .order("created_at", { ascending: false })
         .limit(80);
 
@@ -766,7 +773,7 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
         roundIds.length > 0
             ? supabase
                 .from("support_offers")
-                .select("title, disbursement_round_id, partner_id, contact_email, contact_phone")
+                .select("title, disbursement_round_id, partner_id, contact_email, contact_phone, payout_bank_name, payout_account_number, payout_account_holder")
                 .in("disbursement_round_id", roundIds)
                 .eq("status", "approved")
             : Promise.resolve({ data: [] }),
@@ -816,6 +823,9 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
                 partner_id: offer.partner_id,
                 contact_email: offer.contact_email,
                 contact_phone: offer.contact_phone,
+                payout_bank_name: offer.payout_bank_name,
+                payout_account_number: offer.payout_account_number,
+                payout_account_holder: offer.payout_account_holder,
                 partnerName: profileById.get(offer.partner_id)?.full_name ?? null,
             },
         ]),
@@ -1033,7 +1043,7 @@ async function approveDisbursementRound(formData: FormData) {
         .from("disbursement_rounds")
         .select("id, campaign_id, round_number, percent, planned_amount, status")
         .eq("id", roundId)
-        .eq("status", "manager_confirmed")
+        .in("status", ["owner_approved", "manager_confirmed"])
         .maybeSingle();
 
     if (!round) {
@@ -1042,12 +1052,20 @@ async function approveDisbursementRound(formData: FormData) {
 
     const { data: approvedOffer } = await supabase
         .from("support_offers")
-        .select("id")
+        .select("id, payout_bank_name, payout_account_number, payout_account_holder")
         .eq("disbursement_round_id", round.id)
         .eq("status", "approved")
         .maybeSingle();
 
     if (!approvedOffer) {
+        return;
+    }
+
+    if (
+        !approvedOffer.payout_bank_name ||
+        !approvedOffer.payout_account_number ||
+        !approvedOffer.payout_account_holder
+    ) {
         return;
     }
 
@@ -1076,7 +1094,7 @@ async function approveDisbursementRound(formData: FormData) {
             proof_due_at: proofDueAt.toISOString(),
         })
         .eq("id", round.id)
-        .eq("status", "manager_confirmed");
+        .in("status", ["owner_approved", "manager_confirmed"]);
 
     await supabase.from("disbursements").insert({
         campaign_slug: campaign.slug,
@@ -1714,7 +1732,7 @@ export default async function AdminPage() {
                             Theo dõi giải ngân và hóa đơn/chứng từ
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                            Admin chỉ duyệt giải ngân sau khi đơn vị quản lý xác nhận yêu cầu. Sau giải ngân, admin theo dõi hóa đơn/chứng từ trong hạn 30 ngày và mở đợt kế tiếp khi hồ sơ hợp lệ.
+                            Admin chỉ xác nhận giải ngân sau khi chủ dự án duyệt yêu cầu của đơn vị đồng hành. Sau giải ngân, admin theo dõi hóa đơn/chứng từ sử dụng tiền trong hạn 30 ngày và mở đợt kế tiếp khi hồ sơ hợp lệ.
                         </p>
                     </div>
 
@@ -1791,32 +1809,76 @@ export default async function AdminPage() {
 
                                 {round.status === "requested" ? (
                                     <div className="mt-5 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-800">
-                                        <p className="font-bold">Đang chờ đơn vị quản lý xác nhận</p>
+                                        <p className="font-bold">Đang chờ chủ dự án duyệt</p>
                                         <p className="mt-1">
-                                            Chủ dự án đã xác thực yêu cầu giải ngân nhưng đơn vị quản lý chưa xác nhận nhận giải ngân.
+                                            Đơn vị đồng hành đã gửi yêu cầu giải ngân. Admin chỉ duyệt sau khi chủ dự án xác nhận và tài khoản nhận giải ngân đã có trong hồ sơ đồng hành.
                                         </p>
-                                        {round.owner_confirmation_note ? (
+                                        {round.partner_request_note ? (
                                             <p className="mt-2 whitespace-pre-wrap">
-                                                <strong>Xác thực owner:</strong> {round.owner_confirmation_note}
+                                                <strong>Yêu cầu đồng hành:</strong> {round.partner_request_note}
                                             </p>
                                         ) : null}
                                     </div>
                                 ) : null}
 
-                                {round.status === "manager_confirmed" ? (
+                                {round.status === "owner_approved" || round.status === "manager_confirmed" ? (
                                     <form action={approveDisbursementRound} className="mt-5">
                                         <input type="hidden" name="roundId" value={round.id} />
+                                        <div className="mb-3 rounded-xl border border-primary-fixed bg-primary-fixed/20 p-3 text-sm text-ink">
+                                            <p className="font-bold">Tài khoản đơn vị đồng hành để admin chuyển tiền</p>
+                                            <div className="mt-2 grid gap-2 md:grid-cols-3">
+                                                <Info
+                                                    label="Ngân hàng"
+                                                    value={round.approvedOffer?.payout_bank_name}
+                                                />
+                                                <Info
+                                                    label="Số tài khoản"
+                                                    value={round.approvedOffer?.payout_account_number}
+                                                />
+                                                <Info
+                                                    label="Chủ tài khoản"
+                                                    value={round.approvedOffer?.payout_account_holder}
+                                                />
+                                            </div>
+                                            {hasPayoutAccount(round) ? (
+                                                <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-white/70 bg-white/70 p-3">
+                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                    <img
+                                                        src={getManualTransferQrUrl(round)}
+                                                        alt="QR chuyển khoản thủ công"
+                                                        className="h-36 w-36 rounded-lg border border-outline-variant/50 bg-white p-2"
+                                                    />
+                                                    <div className="max-w-md">
+                                                        <p className="font-bold">QR chuyển khoản thủ công</p>
+                                                        <p className="mt-1 text-sm text-slate-700">
+                                                            QR này chứa thông tin tài khoản, số tiền và nội dung chuyển khoản để admin đối chiếu nhanh. Admin vẫn chuyển tiền thủ công ngoài hệ thống, sau đó bấm xác nhận đã giải ngân.
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">
+                                                    Thiếu tài khoản nhận giải ngân của đơn vị đồng hành. Chưa thể xác nhận giải ngân.
+                                                </p>
+                                            )}
+                                        </div>
+                                        {round.owner_approval_note ? (
+                                            <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
+                                                <p className="font-bold">Chủ dự án đã duyệt</p>
+                                                <p className="mt-1 whitespace-pre-wrap">{round.owner_approval_note}</p>
+                                            </div>
+                                        ) : null}
                                         {round.manager_confirmation_note ? (
                                             <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
-                                                <p className="font-bold">Đơn vị quản lý đã xác nhận</p>
+                                                <p className="font-bold">Xác nhận cũ của đơn vị đồng hành</p>
                                                 <p className="mt-1 whitespace-pre-wrap">{round.manager_confirmation_note}</p>
                                             </div>
                                         ) : null}
                                         <button
                                             type="submit"
-                                            className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
+                                            className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
+                                            disabled={!hasPayoutAccount(round)}
                                         >
-                                            Duyệt giải ngân
+                                            Xác nhận đã giải ngân
                                         </button>
                                     </form>
                                 ) : null}
@@ -2058,6 +2120,37 @@ function Info({
     );
 }
 
+function hasPayoutAccount(round: Pick<AdminDisbursementRoundRow, "approvedOffer">) {
+    const offer = round.approvedOffer;
+
+    return Boolean(
+        offer?.payout_bank_name?.trim() &&
+        offer.payout_account_number?.trim() &&
+        offer.payout_account_holder?.trim(),
+    );
+}
+
+function getManualTransferQrData(round: AdminDisbursementRoundRow) {
+    const offer = round.approvedOffer;
+
+    return [
+        "TuThien.vn - chuyen khoan giai ngan thu cong",
+        `Du an: ${round.campaign?.title ?? round.campaign?.slug ?? round.campaign_id}`,
+        `Dot: ${round.round_number}`,
+        `So tien: ${round.planned_amount} VND`,
+        `Ngan hang: ${offer?.payout_bank_name ?? ""}`,
+        `So tai khoan: ${offer?.payout_account_number ?? ""}`,
+        `Chu tai khoan: ${offer?.payout_account_holder ?? ""}`,
+        `Noi dung: GIAI NGAN DOT ${round.round_number} ${round.campaign?.slug ?? round.campaign_id}`,
+    ].join("\n");
+}
+
+function getManualTransferQrUrl(round: AdminDisbursementRoundRow) {
+    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(
+        getManualTransferQrData(round),
+    )}`;
+}
+
 function formatApplicantType(value?: null | string) {
     switch (value) {
         case "individual":
@@ -2145,9 +2238,10 @@ function formatDisbursementStatus(status: DisbursementRoundStatus) {
         case "open":
             return "Đang mở";
         case "requested":
-            return "Chờ quản lý xác nhận";
+            return "Chờ chủ dự án duyệt";
+        case "owner_approved":
         case "manager_confirmed":
-            return "Chờ duyệt giải ngân";
+            return "Chờ admin duyệt";
         case "disbursed":
             return "Đã giải ngân";
         case "completed":
@@ -2163,6 +2257,7 @@ function getDisbursementStatusBadgeClass(status: DisbursementRoundStatus) {
     switch (status) {
         case "requested":
             return "bg-amber-50 text-amber-700";
+        case "owner_approved":
         case "manager_confirmed":
             return "bg-emerald-50 text-emerald-700";
         case "disbursed":

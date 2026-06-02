@@ -41,6 +41,9 @@ export function SupportOfferForm({
     const [contactName, setContactName] = useState("");
     const [contactPhone, setContactPhone] = useState("");
     const [contactEmail, setContactEmail] = useState("");
+    const [payoutBankName, setPayoutBankName] = useState("");
+    const [payoutAccountNumber, setPayoutAccountNumber] = useState("");
+    const [payoutAccountHolder, setPayoutAccountHolder] = useState("");
     const [proofFile, setProofFile] = useState<File | null>(null);
 
     const [submitting, setSubmitting] = useState(false);
@@ -111,6 +114,15 @@ export function SupportOfferForm({
             return;
         }
 
+        if (
+            !payoutBankName.trim() ||
+            !payoutAccountNumber.trim() ||
+            !payoutAccountHolder.trim()
+        ) {
+            setError("Vui lòng nhập đầy đủ tài khoản nhận giải ngân.");
+            return;
+        }
+
         setSubmitting(true);
 
         try {
@@ -160,6 +172,9 @@ export function SupportOfferForm({
                     contactName,
                     contactPhone,
                     contactEmail,
+                    payoutBankName,
+                    payoutAccountNumber,
+                    payoutAccountHolder,
                     proofUrl: proofPath,
                 }),
             });
@@ -354,6 +369,50 @@ export function SupportOfferForm({
                             placeholder="Số điện thoại liên hệ"
                         />
                     </Field>
+                </div>
+
+                <div className="rounded-xl border border-primary-fixed bg-primary-fixed/20 p-4">
+                    <p className="text-sm font-bold text-ink">
+                        Tài khoản nhận giải ngân
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-on-surface-variant">
+                        Admin sẽ dùng thông tin này để chuyển tiền cho đơn vị đồng hành sau khi chủ dự án duyệt yêu cầu giải ngân.
+                    </p>
+                    <div className="mt-4 grid gap-4 md:grid-cols-3">
+                        <Field label="Ngân hàng" required>
+                            <input
+                                value={payoutBankName}
+                                onChange={(event) =>
+                                    setPayoutBankName(event.target.value)
+                                }
+                                className={inputClass}
+                                placeholder="Ví dụ: Vietcombank"
+                                required
+                            />
+                        </Field>
+                        <Field label="Số tài khoản" required>
+                            <input
+                                value={payoutAccountNumber}
+                                onChange={(event) =>
+                                    setPayoutAccountNumber(event.target.value)
+                                }
+                                className={inputClass}
+                                placeholder="Số tài khoản nhận tiền"
+                                required
+                            />
+                        </Field>
+                        <Field label="Chủ tài khoản" required>
+                            <input
+                                value={payoutAccountHolder}
+                                onChange={(event) =>
+                                    setPayoutAccountHolder(event.target.value)
+                                }
+                                className={inputClass}
+                                placeholder="Tên chủ tài khoản"
+                                required
+                            />
+                        </Field>
+                    </div>
                 </div>
 
                 <Field label="Hồ sơ năng lực / tài liệu đính kèm">

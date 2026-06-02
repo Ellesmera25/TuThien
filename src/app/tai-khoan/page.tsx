@@ -48,6 +48,7 @@ type DisbursementRoundStatus =
     | "open"
     | "requested"
     | "manager_confirmed"
+    | "owner_approved"
     | "disbursed"
     | "completed"
     | "needs_admin_review";
@@ -108,7 +109,9 @@ type AccountDisbursementRoundRow = {
     proof_submitted_at: string | null;
     proof_url: string | null;
     proof_note: string | null;
+    partner_request_note: string | null;
     owner_confirmation_note: string | null;
+    owner_approval_note: string | null;
     manager_confirmed_at: string | null;
     manager_confirmation_note: string | null;
     approvedOffer: {
@@ -116,6 +119,9 @@ type AccountDisbursementRoundRow = {
         partner_id: string;
         contact_email: string | null;
         contact_phone: string | null;
+        payout_bank_name: string | null;
+        payout_account_number: string | null;
+        payout_account_holder: string | null;
         partnerName: string | null;
     } | null;
 };
@@ -760,7 +766,7 @@ export default async function AccountPage() {
                                 Đợt giải ngân của dự án tôi
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Mỗi dự án sau khi được duyệt có 3 đợt 40% - 40% - 20%. Owner xác thực yêu cầu, đơn vị quản lý xác nhận, admin duyệt giải ngân, sau đó đơn vị quản lý nộp hóa đơn/chứng từ trong 30 ngày.
+                                Mỗi dự án sau khi được duyệt có 3 đợt 40% - 40% - 20%. Đơn vị đồng hành gửi yêu cầu, chủ dự án duyệt, admin xác nhận đã giải ngân, sau đó đơn vị đồng hành nộp hóa đơn/chứng từ sử dụng tiền trong 30 ngày.
                             </p>
                         </div>
 
@@ -812,56 +818,44 @@ export default async function AccountPage() {
                                         <CampaignInfo label="Đã nộp" value={round.proof_submitted_at ? formatDate(round.proof_submitted_at) : "Chưa có"} />
                                     </div>
 
-                                    {round.status === "open" ? (
-                                        round.approvedOffer ? (
-                                            <form action={requestDisbursementRound} className="mt-4 grid gap-3">
-                                                <input type="hidden" name="roundId" value={round.id} />
-                                                <textarea
-                                                    name="confirmationNote"
-                                                    rows={3}
-                                                    placeholder="Nội dung xác thực yêu cầu giải ngân: mục đích sử dụng, số tiền, đơn vị quản lý nhận giải ngân..."
-                                                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                    {round.status === "requested" ? (
+                                        <form action={approveOwnerDisbursementRequest} className="mt-4 grid gap-3">
+                                            <input type="hidden" name="roundId" value={round.id} />
+                                            {round.partner_request_note ? (
+                                                <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-800">
+                                                    <p className="font-bold">Yêu cầu từ đơn vị đồng hành</p>
+                                                    <p className="mt-1 whitespace-pre-wrap">{round.partner_request_note}</p>
+                                                </div>
+                                            ) : null}
+                                            <textarea
+                                                name="ownerApprovalNote"
+                                                rows={3}
+                                                placeholder="Ghi chú duyệt giải ngân của chủ dự án..."
+                                                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                            />
+                                            <label className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+                                                <input
+                                                    name="acceptedOwnerApproval"
+                                                    type="checkbox"
+                                                    className="mt-1 rounded border-emerald-300 text-primary focus:ring-primary"
                                                     required
                                                 />
-                                                <label className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
-                                                    <input
-                                                        name="acceptedDisbursementRequest"
-                                                        type="checkbox"
-                                                        className="mt-1 rounded border-amber-300 text-primary focus:ring-primary"
-                                                        required
-                                                    />
-                                                    <span>
-                                                        Tôi xác nhận yêu cầu giải ngân này đúng kế hoạch dự án và chịu trách nhiệm đối soát với đơn vị quản lý.
-                                                    </span>
-                                                </label>
-                                                <button
-                                                    type="submit"
-                                                    className="w-fit rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
-                                                >
-                                                    Xác thực và gửi yêu cầu giải ngân
-                                                </button>
-                                            </form>
-                                        ) : (
-                                            <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-700">
-                                                Cần duyệt một đơn vị đồng hành cho đợt này trước khi yêu cầu giải ngân.
-                                            </p>
-                                        )
-                                    ) : null}
-
-                                    {round.status === "requested" ? (
-                                        <p className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm font-semibold text-sky-700">
-                                            Đã gửi yêu cầu giải ngân. Đang chờ đơn vị quản lý dự án xác nhận trước khi admin duyệt.
-                                            {round.owner_confirmation_note ? (
-                                                <span className="mt-2 block font-normal text-sky-800">
-                                                    Xác thực owner: {round.owner_confirmation_note}
+                                                <span>
+                                                    Tôi xác nhận yêu cầu giải ngân của đơn vị đồng hành đúng với tiến độ giai đoạn và chuyển request tới admin.
                                                 </span>
-                                            ) : null}
-                                        </p>
+                                            </label>
+                                            <button
+                                                type="submit"
+                                                className="w-fit rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
+                                            >
+                                                Duyệt và gửi admin
+                                            </button>
+                                        </form>
                                     ) : null}
 
-                                    {round.status === "manager_confirmed" ? (
+                                    {round.status === "manager_confirmed" || round.status === "owner_approved" ? (
                                         <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">
-                                            Đơn vị quản lý đã xác nhận yêu cầu giải ngân. Đang chờ admin duyệt.
+                                            Chủ dự án đã duyệt yêu cầu giải ngân. Đang chờ admin duyệt.
                                             {round.manager_confirmation_note ? (
                                                 <span className="mt-2 block font-normal text-emerald-800">
                                                     Xác nhận quản lý: {round.manager_confirmation_note}
@@ -872,7 +866,7 @@ export default async function AccountPage() {
 
                                     {round.status === "disbursed" ? (
                                         <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-700">
-                                            Admin đã giải ngân. Đơn vị quản lý phải nộp hóa đơn/chứng từ trong 30 ngày để hoàn tất đợt.
+                                            Admin đã giải ngân. Đơn vị đồng hành phải nộp hóa đơn/chứng từ sử dụng tiền trong 30 ngày để hoàn tất đợt.
                                         </p>
                                     ) : null}
                                 </article>
@@ -889,7 +883,7 @@ export default async function AccountPage() {
                                 Yêu cầu giải ngân và hóa đơn/chứng từ
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Đơn vị quản lý xác nhận yêu cầu giải ngân của chủ dự án. Sau khi admin giải ngân, bạn phải nộp hóa đơn/chứng từ trong 30 ngày để admin duyệt.
+                                Đơn vị đồng hành gửi yêu cầu giải ngân theo giai đoạn đã bắt đầu. Sau khi chủ dự án và admin duyệt, bạn phải nộp hóa đơn/chứng từ trong 30 ngày kể từ lúc nhận giải ngân.
                             </p>
                         </div>
 
@@ -934,44 +928,62 @@ export default async function AccountPage() {
                                         </span>
                                     </div>
 
-                                    {round.status === "requested" ? (
-                                        <form action={confirmManagerDisbursementRequest} className="mt-4 grid gap-3">
+                                    {round.status === "open" ? (
+                                        <form action={requestDisbursementRound} className="mt-4 grid gap-3">
                                             <input type="hidden" name="roundId" value={round.id} />
-                                            {round.owner_confirmation_note ? (
-                                                <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-800">
-                                                    <p className="font-bold">Xác thực từ chủ dự án</p>
-                                                    <p className="mt-1 whitespace-pre-wrap">{round.owner_confirmation_note}</p>
-                                                </div>
-                                            ) : null}
                                             <textarea
-                                                name="managerConfirmationNote"
+                                                name="confirmationNote"
                                                 rows={3}
-                                                placeholder="Ghi chú xác nhận của đơn vị quản lý: tài khoản nhận, kế hoạch sử dụng tiền, đầu mối phụ trách..."
+                                                placeholder="Nội dung yêu cầu giải ngân: hạng mục cần chi, kế hoạch sử dụng tiền, đầu mối phụ trách..."
                                                 className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                required
                                             />
                                             <label className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
                                                 <input
-                                                    name="acceptedManagerConfirmation"
+                                                    name="acceptedDisbursementRequest"
                                                     type="checkbox"
                                                     className="mt-1 rounded border-emerald-300 text-primary focus:ring-primary"
                                                     required
                                                 />
                                                 <span>
-                                                    Tôi xác nhận đơn vị quản lý sẵn sàng nhận giải ngân và sẽ nộp hóa đơn/chứng từ trong 30 ngày sau khi nhận tiền.
+                                                    Tôi xác nhận đơn vị đồng hành yêu cầu giải ngân cho giai đoạn đã bắt đầu và sẽ nộp hóa đơn/chứng từ trong 30 ngày sau khi nhận tiền.
                                                 </span>
                                             </label>
                                             <button
                                                 type="submit"
                                                 className="w-fit rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
                                             >
-                                                Xác nhận yêu cầu giải ngân
+                                                Gửi yêu cầu giải ngân cho chủ dự án
                                             </button>
                                         </form>
                                     ) : null}
 
-                                    {round.status === "manager_confirmed" ? (
+                                    {round.status === "requested" ? (
+                                        <p className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm font-semibold text-sky-700">
+                                            Đã gửi yêu cầu giải ngân. Đang chờ chủ dự án duyệt.
+                                        </p>
+                                    ) : null}
+
+                                    {round.status === "manager_confirmed" || round.status === "owner_approved" ? (
                                         <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">
-                                            Bạn đã xác nhận yêu cầu giải ngân. Đang chờ admin duyệt.
+                                            Chủ dự án đã duyệt yêu cầu giải ngân. Đang chờ admin chuyển tiền.
+                                        </p>
+                                    ) : null}
+
+                                    {round.status === "disbursed" || round.status === "needs_admin_review" ? (
+                                        <p
+                                            className={`mt-4 rounded-xl border p-3 text-sm font-semibold ${
+                                                isProofSubmissionOverdue(round)
+                                                    ? "border-red-100 bg-red-50 text-red-700"
+                                                    : "border-emerald-100 bg-emerald-50 text-emerald-700"
+                                            }`}
+                                        >
+                                            {isProofSubmissionOverdue(round)
+                                                ? "Yêu cầu giải ngân này đã quá hạn nộp hóa đơn/chứng từ sử dụng tiền."
+                                                : "Giải ngân thành công. Bạn cần nộp hóa đơn/chứng từ cho khoản tiền đã sử dụng."}
+                                            <span className="mt-1 block font-normal">
+                                                Hạn nộp: {round.proof_due_at ? formatDate(round.proof_due_at) : "Chưa có"}
+                                            </span>
                                         </p>
                                     ) : null}
 
@@ -1580,7 +1592,7 @@ async function getOwnerDisbursementRounds(
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, owner_confirmation_note, manager_confirmed_at, manager_confirmation_note",
+            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note",
         )
         .in("campaign_id", campaignIds)
         .order("round_number", { ascending: true });
@@ -1627,7 +1639,7 @@ async function getPartnerDisbursementRounds(
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, owner_confirmation_note, manager_confirmed_at, manager_confirmation_note",
+            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note",
         )
         .in("id", roundIds)
         .order("round_number", { ascending: true });
@@ -1663,7 +1675,9 @@ async function enrichAccountDisbursementRounds(
         proof_submitted_at: string | null;
         proof_url: string | null;
         proof_note: string | null;
+        partner_request_note: string | null;
         owner_confirmation_note: string | null;
+        owner_approval_note: string | null;
         manager_confirmed_at: string | null;
         manager_confirmation_note: string | null;
     }>,
@@ -1678,7 +1692,7 @@ async function enrichAccountDisbursementRounds(
     const roundIds = rounds.map((round) => round.id);
     const { data: offers } = await client
         .from("support_offers")
-        .select("title, disbursement_round_id, partner_id, contact_email, contact_phone")
+        .select("title, disbursement_round_id, partner_id, contact_email, contact_phone, payout_bank_name, payout_account_number, payout_account_holder")
         .in("disbursement_round_id", roundIds)
         .eq("status", "approved");
 
@@ -1710,6 +1724,9 @@ async function enrichAccountDisbursementRounds(
                 partner_id: offer.partner_id,
                 contact_email: offer.contact_email,
                 contact_phone: offer.contact_phone,
+                payout_bank_name: offer.payout_bank_name,
+                payout_account_number: offer.payout_account_number,
+                payout_account_holder: offer.payout_account_holder,
                 partnerName: partnerById.get(offer.partner_id) ?? null,
             },
         ]),
@@ -1747,7 +1764,7 @@ async function requestDisbursementRound(formData: FormData) {
 
     const { data: round } = await client
         .from("disbursement_rounds")
-        .select("id, campaign_id, status")
+        .select("id, campaign_id, round_number, status")
         .eq("id", roundId)
         .eq("status", "open")
         .maybeSingle();
@@ -1758,9 +1775,8 @@ async function requestDisbursementRound(formData: FormData) {
 
     const { data: campaign } = await client
         .from("campaigns")
-        .select("id, owner_id, slug")
+        .select("id, owner_id, slug, created_at")
         .eq("id", round.campaign_id)
-        .eq("owner_id", user.id)
         .maybeSingle();
 
     if (!campaign) {
@@ -1771,10 +1787,33 @@ async function requestDisbursementRound(formData: FormData) {
         .from("support_offers")
         .select("id")
         .eq("disbursement_round_id", round.id)
+        .eq("partner_id", user.id)
         .eq("status", "approved")
         .maybeSingle();
 
     if (!approvedOffer) {
+        return;
+    }
+
+    const { data: phase } = await client
+        .from("campaign_phases")
+        .select("start_date")
+        .eq("campaign_id", round.campaign_id)
+        .eq("sort_order", round.round_number)
+        .maybeSingle();
+
+    const phaseStart = phase?.start_date ? new Date(phase.start_date) : null;
+    const campaignCreatedAt = campaign.created_at
+        ? new Date(campaign.created_at)
+        : null;
+    const now = new Date();
+
+    if (
+        !phaseStart ||
+        !campaignCreatedAt ||
+        phaseStart <= campaignCreatedAt ||
+        phaseStart > now
+    ) {
         return;
     }
 
@@ -1784,7 +1823,11 @@ async function requestDisbursementRound(formData: FormData) {
             status: "requested",
             requested_by: user.id,
             requested_at: new Date().toISOString(),
-            owner_confirmation_note: confirmationNote,
+            partner_request_note: confirmationNote,
+            owner_approved_by: null,
+            owner_approved_at: null,
+            owner_approval_note: null,
+            owner_confirmation_note: null,
             manager_confirmed_by: null,
             manager_confirmed_at: null,
             manager_confirmation_note: null,
@@ -1802,7 +1845,7 @@ async function requestDisbursementRound(formData: FormData) {
     redirect("/tai-khoan");
 }
 
-async function confirmManagerDisbursementRequest(formData: FormData) {
+async function approveOwnerDisbursementRequest(formData: FormData) {
     "use server";
 
     const user = await getCurrentUser();
@@ -1812,8 +1855,8 @@ async function confirmManagerDisbursementRequest(formData: FormData) {
     }
 
     const roundId = String(formData.get("roundId") ?? "");
-    const confirmationNote = String(formData.get("managerConfirmationNote") ?? "").trim();
-    const accepted = String(formData.get("acceptedManagerConfirmation") ?? "") === "on";
+    const approvalNote = String(formData.get("ownerApprovalNote") ?? "").trim();
+    const accepted = String(formData.get("acceptedOwnerApproval") ?? "") === "on";
 
     if (!roundId || !accepted) {
         return;
@@ -1822,18 +1865,6 @@ async function confirmManagerDisbursementRequest(formData: FormData) {
     const client = getSupabaseServiceClient();
 
     if (!client) {
-        return;
-    }
-
-    const { data: approvedOffer } = await client
-        .from("support_offers")
-        .select("id")
-        .eq("disbursement_round_id", roundId)
-        .eq("partner_id", user.id)
-        .eq("status", "approved")
-        .maybeSingle();
-
-    if (!approvedOffer) {
         return;
     }
 
@@ -1848,22 +1879,27 @@ async function confirmManagerDisbursementRequest(formData: FormData) {
         return;
     }
 
+    const { data: campaign } = await client
+        .from("campaigns")
+        .select("slug, owner_id")
+        .eq("id", round.campaign_id)
+        .eq("owner_id", user.id)
+        .maybeSingle();
+
+    if (!campaign) {
+        return;
+    }
+
     await client
         .from("disbursement_rounds")
         .update({
-            status: "manager_confirmed",
-            manager_confirmed_by: user.id,
-            manager_confirmed_at: new Date().toISOString(),
-            manager_confirmation_note: confirmationNote || null,
+            status: "owner_approved",
+            owner_approved_by: user.id,
+            owner_approved_at: new Date().toISOString(),
+            owner_approval_note: approvalNote || null,
         })
         .eq("id", round.id)
         .eq("status", "requested");
-
-    const { data: campaign } = await client
-        .from("campaigns")
-        .select("slug")
-        .eq("id", round.campaign_id)
-        .maybeSingle();
 
     revalidatePath("/tai-khoan");
     revalidatePath("/quan-tri");
@@ -2325,7 +2361,8 @@ function formatDisbursementStatus(status: DisbursementRoundStatus) {
         case "open":
             return "Có thể yêu cầu";
         case "requested":
-            return "Chờ quản lý xác nhận";
+            return "Chờ chủ dự án duyệt";
+        case "owner_approved":
         case "manager_confirmed":
             return "Chờ admin duyệt";
         case "disbursed":
@@ -2345,6 +2382,7 @@ function getDisbursementStatusBadgeClass(status: DisbursementRoundStatus) {
             return "bg-sky-50 text-sky-700";
         case "requested":
             return "bg-amber-50 text-amber-700";
+        case "owner_approved":
         case "manager_confirmed":
             return "bg-emerald-50 text-emerald-700";
         case "disbursed":
@@ -2356,6 +2394,16 @@ function getDisbursementStatusBadgeClass(status: DisbursementRoundStatus) {
         default:
             return "bg-slate-100 text-slate-600";
     }
+}
+
+function isProofSubmissionOverdue(
+    round: Pick<AccountDisbursementRoundRow, "proof_due_at" | "proof_status">,
+) {
+    if (round.proof_status === "approved" || !round.proof_due_at) {
+        return false;
+    }
+
+    return new Date(round.proof_due_at).getTime() < Date.now();
 }
 
 function formatProofStatus(status: DisbursementProofStatus) {

@@ -567,7 +567,8 @@ function formatRoundStatus(status: string) {
         case "open":
             return "Đang mở";
         case "requested":
-            return "Chờ quản lý xác nhận";
+            return "Chờ chủ dự án duyệt";
+        case "owner_approved":
         case "manager_confirmed":
             return "Chờ admin duyệt giải ngân";
         case "disbursed":
@@ -586,6 +587,7 @@ function getRoundStatusBadgeClass(status: string) {
         case "open":
         case "requested":
             return "bg-amber-50 text-amber-700";
+        case "owner_approved":
         case "manager_confirmed":
             return "bg-sky-50 text-sky-700";
         case "disbursed":

@@ -83,6 +83,9 @@ export async function POST(request: Request) {
         contactName?: string;
         contactPhone?: string;
         contactEmail?: string;
+        payoutBankName?: string;
+        payoutAccountNumber?: string;
+        payoutAccountHolder?: string;
         proofUrl?: string | null;
       }
     | null;
@@ -106,6 +109,9 @@ export async function POST(request: Request) {
   const contactName = body.contactName?.trim() ?? "";
   const contactPhone = body.contactPhone?.trim() ?? "";
   const contactEmail = body.contactEmail?.trim() || user.email || "";
+  const payoutBankName = body.payoutBankName?.trim() ?? "";
+  const payoutAccountNumber = body.payoutAccountNumber?.trim() ?? "";
+  const payoutAccountHolder = body.payoutAccountHolder?.trim() ?? "";
   const proofUrl = body.proofUrl?.trim() || null;
 
   if (!campaignId) {
@@ -156,6 +162,13 @@ export async function POST(request: Request) {
   if (!isSafeStoragePath(proofUrl)) {
     return NextResponse.json(
       { error: "Đường dẫn minh chứng không hợp lệ." },
+      { status: 400 },
+    );
+  }
+
+  if (!payoutBankName || !payoutAccountNumber || !payoutAccountHolder) {
+    return NextResponse.json(
+      { error: "Vui lòng nhập đầy đủ tài khoản nhận giải ngân." },
       { status: 400 },
     );
   }
@@ -254,6 +267,9 @@ export async function POST(request: Request) {
     contact_name: contactName || null,
     contact_phone: contactPhone || null,
     contact_email: contactEmail || null,
+    payout_bank_name: payoutBankName,
+    payout_account_number: payoutAccountNumber,
+    payout_account_holder: payoutAccountHolder,
     proof_url: proofUrl,
     status: "pending",
   });
