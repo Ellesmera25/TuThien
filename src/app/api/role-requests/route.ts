@@ -87,6 +87,9 @@ export async function POST(request: Request) {
               websiteUrl?: string;
               proofUrl?: string;
               taxCode?: string;
+              payoutBankName?: string;
+              payoutAccountNumber?: string;
+              payoutAccountHolder?: string;
               note?: string;
               acceptedCommitment?: boolean;
           }
@@ -130,6 +133,18 @@ export async function POST(request: Request) {
     if (!body.acceptedCommitment) {
         return NextResponse.json(
             { error: "Vui lòng xác nhận cam kết minh bạch." },
+            { status: 400 },
+        );
+    }
+
+    if (
+        body.requestedRole === "partner_org" &&
+        (!body.payoutBankName?.trim() ||
+            !body.payoutAccountNumber?.trim() ||
+            !body.payoutAccountHolder?.trim())
+    ) {
+        return NextResponse.json(
+            { error: "Vui lòng nhập đầy đủ tài khoản ngân hàng của đơn vị đồng hành." },
             { status: 400 },
         );
     }
@@ -188,6 +203,18 @@ export async function POST(request: Request) {
         website_url: body.websiteUrl?.trim() || null,
         proof_url: body.proofUrl?.trim() || null,
         tax_code: body.taxCode?.trim() || null,
+        payout_bank_name:
+            body.requestedRole === "partner_org"
+                ? body.payoutBankName?.trim() || null
+                : null,
+        payout_account_number:
+            body.requestedRole === "partner_org"
+                ? body.payoutAccountNumber?.trim() || null
+                : null,
+        payout_account_holder:
+            body.requestedRole === "partner_org"
+                ? body.payoutAccountHolder?.trim() || null
+                : null,
         note: body.note?.trim() || null,
         accepted_commitment: true,
         status: "pending",

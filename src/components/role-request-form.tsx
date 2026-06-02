@@ -32,6 +32,9 @@ export function RoleRequestForm() {
     const [supportType, setSupportType] = useState("");
     const [websiteUrl, setWebsiteUrl] = useState("");
     const [taxCode, setTaxCode] = useState("");
+    const [payoutBankName, setPayoutBankName] = useState("");
+    const [payoutAccountNumber, setPayoutAccountNumber] = useState("");
+    const [payoutAccountHolder, setPayoutAccountHolder] = useState("");
     const [note, setNote] = useState("");
 
     const [submitting, setSubmitting] = useState(false);
@@ -64,6 +67,16 @@ export function RoleRequestForm() {
 
         if (!allCommitmentsAccepted) {
             setError("Vui lòng xác nhận đầy đủ các cam kết trước khi gửi yêu cầu.");
+            return;
+        }
+
+        if (
+            isPartner &&
+            (!payoutBankName.trim() ||
+                !payoutAccountNumber.trim() ||
+                !payoutAccountHolder.trim())
+        ) {
+            setError("Vui lòng nhập đầy đủ tài khoản ngân hàng của đơn vị đồng hành.");
             return;
         }
 
@@ -142,6 +155,9 @@ export function RoleRequestForm() {
                     websiteUrl,
                     proofUrl: proofPath,
                     taxCode,
+                    payoutBankName,
+                    payoutAccountNumber,
+                    payoutAccountHolder,
                     note,
                     acceptedCommitment: allCommitmentsAccepted,
                 }),
@@ -400,6 +416,53 @@ export function RoleRequestForm() {
                             required
                         />
                     </Field>
+                ) : null}
+
+                {isPartner ? (
+                    <div className="rounded-xl border border-primary-fixed bg-primary-fixed/20 p-4">
+                        <p className="text-sm font-bold text-ink">
+                            Tài khoản ngân hàng nhận giải ngân
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-on-surface-variant">
+                            Thông tin này được lưu vào hồ sơ đơn vị đồng hành. Khi yêu cầu giải ngân,
+                            hệ thống sẽ lấy từ hồ sơ này, không nhập lại từng lần.
+                        </p>
+                        <div className="mt-4 grid gap-4 md:grid-cols-3">
+                            <Field label="Ngân hàng" required>
+                                <input
+                                    value={payoutBankName}
+                                    onChange={(event) =>
+                                        setPayoutBankName(event.target.value)
+                                    }
+                                    className={inputClass}
+                                    placeholder="Ví dụ: Vietcombank"
+                                    required
+                                />
+                            </Field>
+                            <Field label="Số tài khoản" required>
+                                <input
+                                    value={payoutAccountNumber}
+                                    onChange={(event) =>
+                                        setPayoutAccountNumber(event.target.value)
+                                    }
+                                    className={inputClass}
+                                    placeholder="Số tài khoản nhận tiền"
+                                    required
+                                />
+                            </Field>
+                            <Field label="Chủ tài khoản" required>
+                                <input
+                                    value={payoutAccountHolder}
+                                    onChange={(event) =>
+                                        setPayoutAccountHolder(event.target.value)
+                                    }
+                                    className={inputClass}
+                                    placeholder="Tên chủ tài khoản"
+                                    required
+                                />
+                            </Field>
+                        </div>
+                    </div>
                 ) : null}
 
                 <div className="grid gap-4 md:grid-cols-2">

@@ -1718,7 +1718,7 @@ async function enrichAccountDisbursementRounds(
         partnerIds.length > 0
             ? await client
                 .from("profiles")
-                .select("id, full_name")
+                .select("id, full_name, payout_bank_name, payout_account_number, payout_account_holder")
                 .in("id", partnerIds)
             : { data: [] };
 
@@ -1729,7 +1729,15 @@ async function enrichAccountDisbursementRounds(
         ]),
     );
     const partnerById = new Map(
-        (partners ?? []).map((partner) => [partner.id, partner.full_name ?? null]),
+        (partners ?? []).map((partner) => [
+            partner.id,
+            {
+                full_name: partner.full_name ?? null,
+                payout_bank_name: partner.payout_bank_name ?? null,
+                payout_account_number: partner.payout_account_number ?? null,
+                payout_account_holder: partner.payout_account_holder ?? null,
+            },
+        ]),
     );
     const offerByRoundId = new Map(
         (offers ?? []).map((offer) => [
@@ -1739,10 +1747,19 @@ async function enrichAccountDisbursementRounds(
                 partner_id: offer.partner_id,
                 contact_email: offer.contact_email,
                 contact_phone: offer.contact_phone,
-                payout_bank_name: offer.payout_bank_name,
-                payout_account_number: offer.payout_account_number,
-                payout_account_holder: offer.payout_account_holder,
-                partnerName: partnerById.get(offer.partner_id) ?? null,
+                payout_bank_name:
+                    offer.payout_bank_name ??
+                    partnerById.get(offer.partner_id)?.payout_bank_name ??
+                    null,
+                payout_account_number:
+                    offer.payout_account_number ??
+                    partnerById.get(offer.partner_id)?.payout_account_number ??
+                    null,
+                payout_account_holder:
+                    offer.payout_account_holder ??
+                    partnerById.get(offer.partner_id)?.payout_account_holder ??
+                    null,
+                partnerName: partnerById.get(offer.partner_id)?.full_name ?? null,
             },
         ]),
     );

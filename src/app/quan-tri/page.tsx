@@ -50,6 +50,9 @@ type RoleRequestRow = {
     website_url: string | null;
     proof_url: string | null;
     tax_code: string | null;
+    payout_bank_name: string | null;
+    payout_account_number: string | null;
+    payout_account_holder: string | null;
     note: string | null;
     rejection_reason: string | null;
     reviewed_by: string | null;
@@ -792,7 +795,7 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
         profileIds.length > 0
             ? await supabase
                 .from("profiles")
-                .select("id, full_name, role")
+                .select("id, full_name, role, payout_bank_name, payout_account_number, payout_account_holder")
                 .in("id", profileIds)
             : { data: [] };
 
@@ -813,6 +816,9 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
                 id: profile.id,
                 full_name: profile.full_name,
                 role: profile.role,
+                payout_bank_name: profile.payout_bank_name,
+                payout_account_number: profile.payout_account_number,
+                payout_account_holder: profile.payout_account_holder,
             },
         ]),
     );
@@ -824,9 +830,18 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
                 partner_id: offer.partner_id,
                 contact_email: offer.contact_email,
                 contact_phone: offer.contact_phone,
-                payout_bank_name: offer.payout_bank_name,
-                payout_account_number: offer.payout_account_number,
-                payout_account_holder: offer.payout_account_holder,
+                payout_bank_name:
+                    offer.payout_bank_name ??
+                    profileById.get(offer.partner_id)?.payout_bank_name ??
+                    null,
+                payout_account_number:
+                    offer.payout_account_number ??
+                    profileById.get(offer.partner_id)?.payout_account_number ??
+                    null,
+                payout_account_holder:
+                    offer.payout_account_holder ??
+                    profileById.get(offer.partner_id)?.payout_account_holder ??
+                    null,
                 partnerName: profileById.get(offer.partner_id)?.full_name ?? null,
             },
         ]),
@@ -863,7 +878,7 @@ async function approveRoleRequest(formData: FormData) {
 
     const { data: request, error } = await supabase
         .from("role_requests")
-        .select("id, user_id, requested_role, status")
+        .select("id, user_id, requested_role, status, payout_bank_name, payout_account_number, payout_account_holder")
         .eq("id", requestId)
         .eq("status", "pending")
         .maybeSingle();
@@ -878,11 +893,23 @@ async function approveRoleRequest(formData: FormData) {
         return;
     }
 
+    const profilePatch =
+        requestedRole === "partner_org"
+            ? {
+                role: requestedRole,
+                payout_bank_name: request.payout_bank_name?.trim() || null,
+                payout_account_number:
+                    request.payout_account_number?.trim() || null,
+                payout_account_holder:
+                    request.payout_account_holder?.trim() || null,
+            }
+            : {
+                role: requestedRole,
+            };
+
     const { error: profileError } = await supabase
         .from("profiles")
-        .update({
-            role: requestedRole,
-        })
+        .update(profilePatch)
         .eq("id", request.user_id);
 
     if (profileError) {
@@ -1053,7 +1080,7 @@ async function approveDisbursementRound(formData: FormData) {
 
     const { data: approvedOffer } = await supabase
         .from("support_offers")
-        .select("id, payout_bank_name, payout_account_number, payout_account_holder")
+        .select("id, partner_id, payout_bank_name, payout_account_number, payout_account_holder")
         .eq("disbursement_round_id", round.id)
         .eq("status", "approved")
         .maybeSingle();
@@ -1062,11 +1089,22 @@ async function approveDisbursementRound(formData: FormData) {
         return;
     }
 
-    if (
-        !approvedOffer.payout_bank_name ||
-        !approvedOffer.payout_account_number ||
-        !approvedOffer.payout_account_holder
-    ) {
+    const { data: partnerProfile } = await supabase
+        .from("profiles")
+        .select("payout_bank_name, payout_account_number, payout_account_holder")
+        .eq("id", approvedOffer.partner_id)
+        .maybeSingle();
+
+    const payoutBankName =
+        approvedOffer.payout_bank_name || partnerProfile?.payout_bank_name;
+    const payoutAccountNumber =
+        approvedOffer.payout_account_number ||
+        partnerProfile?.payout_account_number;
+    const payoutAccountHolder =
+        approvedOffer.payout_account_holder ||
+        partnerProfile?.payout_account_holder;
+
+    if (!payoutBankName || !payoutAccountNumber || !payoutAccountHolder) {
         return;
     }
 
@@ -1988,6 +2026,18 @@ export default async function AdminPage() {
                                             <Info
                                                 label="Mã số thuế / đăng ký"
                                                 value={request.tax_code}
+                                            />
+                                            <Info
+                                                label="Ngân hàng nhận giải ngân"
+                                                value={request.payout_bank_name}
+                                            />
+                                            <Info
+                                                label="Số tài khoản"
+                                                value={request.payout_account_number}
+                                            />
+                                            <Info
+                                                label="Chủ tài khoản"
+                                                value={request.payout_account_holder}
                                             />
                                         </>
                                     ) : null}

@@ -83,9 +83,6 @@ export async function POST(request: Request) {
         contactName?: string;
         contactPhone?: string;
         contactEmail?: string;
-        payoutBankName?: string;
-        payoutAccountNumber?: string;
-        payoutAccountHolder?: string;
         proofUrl?: string | null;
       }
     | null;
@@ -109,9 +106,6 @@ export async function POST(request: Request) {
   const contactName = body.contactName?.trim() ?? "";
   const contactPhone = body.contactPhone?.trim() ?? "";
   const contactEmail = body.contactEmail?.trim() || user.email || "";
-  const payoutBankName = body.payoutBankName?.trim() ?? "";
-  const payoutAccountNumber = body.payoutAccountNumber?.trim() ?? "";
-  const payoutAccountHolder = body.payoutAccountHolder?.trim() ?? "";
   const proofUrl = body.proofUrl?.trim() || null;
 
   if (!campaignId) {
@@ -166,13 +160,6 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!payoutBankName || !payoutAccountNumber || !payoutAccountHolder) {
-    return NextResponse.json(
-      { error: "Vui lòng nhập đầy đủ tài khoản nhận giải ngân." },
-      { status: 400 },
-    );
-  }
-
   const supabase = getSupabaseServiceClient();
 
   if (!supabase) {
@@ -205,6 +192,27 @@ export async function POST(request: Request) {
       {
         error:
           "Bạn không thể gửi đề xuất đồng hành cho dự án của chính mình.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const { data: partnerProfile, error: partnerProfileError } = await supabase
+    .from("profiles")
+    .select("payout_bank_name, payout_account_number, payout_account_holder")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (
+    partnerProfileError ||
+    !partnerProfile?.payout_bank_name?.trim() ||
+    !partnerProfile?.payout_account_number?.trim() ||
+    !partnerProfile?.payout_account_holder?.trim()
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Hồ sơ đơn vị đồng hành chưa có tài khoản ngân hàng nhận giải ngân. Vui lòng đăng ký vai trò đơn vị đồng hành với đầy đủ thông tin ngân hàng hoặc liên hệ admin cập nhật.",
       },
       { status: 400 },
     );
@@ -267,9 +275,9 @@ export async function POST(request: Request) {
     contact_name: contactName || null,
     contact_phone: contactPhone || null,
     contact_email: contactEmail || null,
-    payout_bank_name: payoutBankName,
-    payout_account_number: payoutAccountNumber,
-    payout_account_holder: payoutAccountHolder,
+    payout_bank_name: partnerProfile.payout_bank_name.trim(),
+    payout_account_number: partnerProfile.payout_account_number.trim(),
+    payout_account_holder: partnerProfile.payout_account_holder.trim(),
     proof_url: proofUrl,
     status: "pending",
   });

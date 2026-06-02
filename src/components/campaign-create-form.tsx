@@ -17,36 +17,6 @@ function isAllowedImage(file: File) {
     );
 }
 
-function isAllowedProof(file: File) {
-    return [
-        "image/png",
-        "image/jpeg",
-        "image/jpg",
-        "image/webp",
-        "application/pdf",
-    ].includes(file.type);
-}
-
-type PhaseFormState = {
-    id: string;
-    title: string;
-    description: string;
-    startDate: string;
-    endDate: string;
-    proofFile: File | null;
-};
-
-function createEmptyPhase(): PhaseFormState {
-    return {
-        id: crypto.randomUUID(),
-        title: "",
-        description: "",
-        startDate: "",
-        endDate: "",
-        proofFile: null,
-    };
-}
-
 export function CampaignCreateForm() {
     const router = useRouter();
     const supabase = useMemo(() => createSupabaseBrowserAuthClient(), []);
@@ -59,19 +29,9 @@ export function CampaignCreateForm() {
 
     const [images, setImages] = useState<File[]>([]);
 
-    const [phases, setPhases] = useState<PhaseFormState[]>([]);
-
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState("");
     const [message, setMessage] = useState("");
-
-    function updatePhase(id: string, patch: Partial<PhaseFormState>) {
-        setPhases((current) =>
-            current.map((phase) =>
-                phase.id === id ? { ...phase, ...patch } : phase,
-            ),
-        );
-    }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -130,33 +90,6 @@ export function CampaignCreateForm() {
             return;
         }
 
-        const invalidPhaseIndex = phases.findIndex(
-            (phase) => !phase.title.trim() || !phase.description.trim(),
-        );
-
-        if (invalidPhaseIndex >= 0) {
-            setError(`Vui lòng nhập đủ tên và mô tả cho kế hoạch ${invalidPhaseIndex + 1}.`);
-            return;
-        }
-
-        const invalidProofPhaseIndex = phases.findIndex(
-            (phase) => phase.proofFile && !isAllowedProof(phase.proofFile),
-        );
-
-        if (invalidProofPhaseIndex >= 0) {
-            setError("Minh chứng kế hoạch chỉ chấp nhận ảnh hoặc PDF.");
-            return;
-        }
-
-        const oversizedProofPhaseIndex = phases.findIndex(
-            (phase) => phase.proofFile && phase.proofFile.size > 5 * 1024 * 1024,
-        );
-
-        if (oversizedProofPhaseIndex >= 0) {
-            setError("File minh chứng kế hoạch không được vượt quá 5MB.");
-            return;
-        }
-
         setSubmitting(true);
 
         try {
@@ -204,43 +137,6 @@ export function CampaignCreateForm() {
                 });
             }
 
-            const uploadedPhases = [];
-
-            for (let index = 0; index < phases.length; index += 1) {
-                const phase = phases[index];
-                let phaseProofPath: string | null = null;
-
-                if (phase.proofFile) {
-                    const fileExt =
-                        phase.proofFile.name.split(".").pop()?.toLowerCase() ?? "file";
-                    phaseProofPath = `${user.id}/campaigns/${tempId}/proofs/${Date.now()}-${index}.${fileExt}`;
-
-                    const { error: proofUploadError } = await supabase.storage
-                        .from("campaign-assets")
-                        .upload(phaseProofPath, phase.proofFile, {
-                            cacheControl: "3600",
-                            contentType: phase.proofFile.type,
-                            upsert: false,
-                        });
-
-                    if (proofUploadError) {
-                        setError(
-                            `Không thể tải minh chứng kế hoạch ${index + 1}: ${proofUploadError.message}`,
-                        );
-                        return;
-                    }
-                }
-
-                uploadedPhases.push({
-                    title: phase.title,
-                    description: phase.description,
-                    targetAmount: 0,
-                    startDate: phase.startDate || null,
-                    endDate: phase.endDate || null,
-                    proofUrl: phaseProofPath,
-                });
-            }
-
             const response = await fetch("/api/campaigns", {
                 method: "POST",
                 headers: {
@@ -253,7 +149,6 @@ export function CampaignCreateForm() {
                     endDate,
                     coverTag,
                     images: uploadedImages,
-                    phases: uploadedPhases,
                 }),
             });
 
@@ -355,118 +250,6 @@ export function CampaignCreateForm() {
                         đa 5MB.
                     </span>
                 </Field>
-            </section>
-
-            <section className="grid gap-4 rounded-xl border border-outline-variant/40 bg-surface-low p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <h2 className="font-display text-2xl font-semibold text-ink">
-                            Kế hoạch triển khai bổ sung
-                        </h2>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Phần này không bắt buộc. Đơn vị đồng hành có thể gửi yêu cầu giải ngân bằng số tiền và lý do cụ thể sau khi được duyệt.
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        onClick={() => setPhases((current) => [...current, createEmptyPhase()])}
-                        className="rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        Thêm kế hoạch
-                    </button>
-                </div>
-
-                {phases.map((phase, index) => (
-                    <div
-                        key={phase.id}
-                        className="grid gap-4 rounded-xl border border-outline-variant/40 bg-white p-4"
-                    >
-                        <div className="flex items-center justify-between gap-3">
-                            <h3 className="font-display text-lg font-bold text-ink">
-                                Kế hoạch {index + 1}
-                            </h3>
-                            {phases.length > 1 ? (
-                                <button
-                                    type="button"
-                                    onClick={() =>
-                                        setPhases((current) =>
-                                            current.filter((item) => item.id !== phase.id),
-                                        )
-                                    }
-                                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 transition hover:bg-red-100"
-                                >
-                                    Xóa
-                                </button>
-                            ) : null}
-                        </div>
-
-                        <Field label="Tên kế hoạch" required>
-                            <input
-                                value={phase.title}
-                                onChange={(event) =>
-                                    updatePhase(phase.id, { title: event.target.value })
-                                }
-                                className={inputClass}
-                                placeholder="Ví dụ: Khảo sát và xác minh hoàn cảnh"
-                                required
-                            />
-                        </Field>
-
-                        <Field label="Mô tả kế hoạch" required>
-                            <textarea
-                                rows={4}
-                                value={phase.description}
-                                onChange={(event) =>
-                                    updatePhase(phase.id, { description: event.target.value })
-                                }
-                                className={inputClass}
-                                placeholder="Mô tả việc cần làm, đối tượng hỗ trợ, cách thực hiện..."
-                                required
-                            />
-                        </Field>
-
-                        <div className="grid gap-4 md:grid-cols-2">
-                            <Field label="Ngày bắt đầu">
-                                <input
-                                    type="date"
-                                    value={phase.startDate}
-                                    onChange={(event) =>
-                                        updatePhase(phase.id, { startDate: event.target.value })
-                                    }
-                                    className={inputClass}
-                                />
-                            </Field>
-
-                            <Field label="Ngày kết thúc">
-                                <input
-                                    type="date"
-                                    value={phase.endDate}
-                                    onChange={(event) =>
-                                        updatePhase(phase.id, { endDate: event.target.value })
-                                    }
-                                    className={inputClass}
-                                />
-                            </Field>
-                        </div>
-
-                        <Field label="Minh chứng kế hoạch">
-                            <input
-                                type="file"
-                                accept="image/png,image/jpeg,image/jpg,image/webp,application/pdf"
-                                onChange={(event) => {
-                                    updatePhase(phase.id, {
-                                        proofFile: event.target.files?.[0] ?? null,
-                                    });
-                                }}
-                                className={fileInputClass}
-                            />
-                            <span className="text-xs font-normal text-slate-500">
-                                Có thể tải ảnh hoặc PDF minh chứng cho kế hoạch. Tối đa 5MB.
-                            </span>
-                        </Field>
-                    </div>
-                ))}
             </section>
 
             {error ? (
