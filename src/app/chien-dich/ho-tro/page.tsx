@@ -10,7 +10,7 @@ import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
     title: "Đồng hành dự án",
-    description: "Đăng ký đồng hành theo đợt giải ngân dự án thiện nguyện trên TuThien.vn",
+    description: "Đăng ký đồng hành triển khai dự án thiện nguyện trên TuThien.vn",
 };
 
 export const dynamic = "force-dynamic";
@@ -133,13 +133,13 @@ export default async function SupportCampaignPage() {
                     <p className="neo-badge">Đơn vị đồng hành</p>
 
                     <h1 className="mt-4 font-display text-4xl font-black tracking-tight text-ink md:text-5xl">
-                        Đăng ký đồng hành theo đợt giải ngân.
+                        Đăng ký đồng hành dự án.
                     </h1>
 
                     <p className="mt-4 max-w-2xl text-base leading-7 text-on-surface-variant">
-                        Chọn dự án và đợt giải ngân đơn vị có thể đồng hành triển khai.
-                        Yêu cầu sẽ được gửi thẳng đến người tạo dự án duyệt, đồng
-                        thời hiển thị cho quản trị theo dõi.
+                        Chọn dự án và phạm vi đơn vị có thể đồng hành triển khai.
+                        Đăng ký sẽ được gửi đến người tạo dự án duyệt trước. Sau khi được duyệt,
+                        đơn vị đồng hành mới có thể gửi yêu cầu giải ngân trong trang tài khoản.
                     </p>
                 </div>
             </section>

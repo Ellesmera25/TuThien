@@ -73,12 +73,12 @@ export function SupportOfferForm({
         }
 
         if (!roundId) {
-            setError("Vui lòng chọn yêu cầu giải ngân muốn đồng hành.");
+            setError("Vui lòng chọn phạm vi đồng hành.");
             return;
         }
 
         if (selectedRound?.hasApprovedPartner) {
-            setError("Yêu cầu này đã có đơn vị đồng hành được duyệt.");
+            setError("Phạm vi này đã có đơn vị đồng hành được duyệt.");
             return;
         }
 
@@ -247,7 +247,7 @@ export function SupportOfferForm({
                     </select>
                 </Field>
 
-                <Field label="Yêu cầu giải ngân muốn đồng hành" required>
+                <Field label="Phạm vi đồng hành" required>
                     <select
                         value={roundId}
                         onChange={(event) => setRoundId(event.target.value)}
@@ -260,11 +260,15 @@ export function SupportOfferForm({
                                 value={round.id}
                                 disabled={round.hasApprovedPartner}
                             >
-                                Yêu cầu {round.round_number}: tối đa {formatVnd(round.planned_amount)}
+                                Phạm vi {round.round_number}: ngân sách tối đa {formatVnd(round.planned_amount)}
                                 {round.hasApprovedPartner ? " (đã có đơn vị đồng hành)" : ""}
                             </option>
                         ))}
                     </select>
+                    <span className="text-xs font-normal leading-5 text-slate-500">
+                        Đây là bước đăng ký đồng hành để người tạo dự án duyệt. Sau khi được duyệt,
+                        đơn vị đồng hành mới gửi yêu cầu giải ngân trong trang tài khoản.
+                    </span>
                 </Field>
 
                 {selectedCampaign ? (
@@ -293,13 +297,13 @@ export function SupportOfferForm({
                         {selectedRound ? (
                             <div className="mt-3 rounded-lg border border-outline-variant/40 bg-white p-3">
                                 <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
-                                    Yêu cầu giải ngân đã chọn
+                                    Phạm vi đồng hành đã chọn
                                 </p>
                                 <p className="mt-1 font-semibold text-ink">
-                                    Yêu cầu {selectedRound.round_number}
+                                    Phạm vi {selectedRound.round_number}
                                 </p>
                                 <p className="mt-1 text-sm leading-6 text-on-surface-variant">
-                                    Số tiền yêu cầu tối đa: {formatVnd(selectedRound.planned_amount)}
+                                    Ngân sách tối đa của phạm vi: {formatVnd(selectedRound.planned_amount)}
                                 </p>
                             </div>
                         ) : null}

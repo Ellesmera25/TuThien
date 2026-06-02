@@ -66,7 +66,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Chỉ đơn vị đồng hành mới được đăng ký thực hiện giai đoạn.",
+          "Chỉ đơn vị đồng hành mới được đăng ký thực hiện dự án.",
       },
       { status: 403 },
     );
@@ -123,7 +123,7 @@ export async function POST(request: Request) {
 
   if (!disbursementRoundId) {
     return NextResponse.json(
-      { error: "Vui lòng chọn đợt giải ngân muốn đồng hành." },
+      { error: "Vui lòng chọn phạm vi đồng hành." },
       { status: 400 },
     );
   }
@@ -187,7 +187,7 @@ export async function POST(request: Request) {
     .select("id, review_status, status, owner_id")
     .eq("id", campaignId)
     .eq("review_status", "published")
-    .eq("status", "active")
+    .in("status", ["active", "paused"])
     .maybeSingle();
 
   if (campaignError || !campaign) {
@@ -219,7 +219,7 @@ export async function POST(request: Request) {
 
   if (roundError || !round) {
     return NextResponse.json(
-      { error: "Đợt giải ngân không tồn tại trong dự án đã chọn." },
+      { error: "Phạm vi đồng hành không tồn tại trong dự án đã chọn." },
       { status: 400 },
     );
   }
@@ -235,7 +235,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Đợt này đã có đơn vị đồng hành được chủ dự án chấp thuận.",
+          "Phạm vi này đã có đơn vị đồng hành được chủ dự án chấp thuận.",
       },
       { status: 409 },
     );
@@ -251,7 +251,7 @@ export async function POST(request: Request) {
 
   if (existingOffer) {
     return NextResponse.json(
-      { error: "Bạn đã gửi yêu cầu đồng hành cho đợt này." },
+      { error: "Bạn đã gửi đăng ký đồng hành cho phạm vi này." },
       { status: 409 },
     );
   }
