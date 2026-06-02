@@ -359,7 +359,7 @@ export default async function CampaignDetailPage({
                                             value={round.partnerName || "Chưa xác nhận"}
                                         />
                                         <PartnerInfo
-                                            label="Chứng từ"
+                                            label="Hóa đơn đỏ"
                                             value={formatProofStatus(round.proof_status)}
                                         />
                                     </div>
@@ -567,7 +567,9 @@ function formatRoundStatus(status: string) {
         case "open":
             return "Đang mở";
         case "requested":
-            return "Đã yêu cầu giải ngân";
+            return "Chờ quản lý xác nhận";
+        case "manager_confirmed":
+            return "Chờ admin duyệt giải ngân";
         case "disbursed":
             return "Đã giải ngân";
         case "completed":
@@ -584,6 +586,8 @@ function getRoundStatusBadgeClass(status: string) {
         case "open":
         case "requested":
             return "bg-amber-50 text-amber-700";
+        case "manager_confirmed":
+            return "bg-sky-50 text-sky-700";
         case "disbursed":
         case "completed":
             return "bg-emerald-50 text-emerald-700";

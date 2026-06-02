@@ -25,6 +25,7 @@ type DisbursementRoundStatus =
     | "locked"
     | "open"
     | "requested"
+    | "manager_confirmed"
     | "disbursed"
     | "completed"
     | "needs_admin_review";
@@ -166,6 +167,9 @@ type AdminDisbursementRoundRow = {
     proof_submitted_at: string | null;
     proof_url: string | null;
     proof_note: string | null;
+    owner_confirmation_note: string | null;
+    manager_confirmed_at: string | null;
+    manager_confirmation_note: string | null;
     campaign: {
         title: string | null;
         slug: string | null;
@@ -737,9 +741,9 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
     const { data: rounds, error } = await supabase
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note",
+            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, owner_confirmation_note, manager_confirmed_at, manager_confirmation_note",
         )
-        .in("status", ["requested", "disbursed", "needs_admin_review", "completed"])
+        .in("status", ["requested", "manager_confirmed", "disbursed", "needs_admin_review", "completed"])
         .order("created_at", { ascending: false })
         .limit(80);
 
@@ -1029,7 +1033,7 @@ async function approveDisbursementRound(formData: FormData) {
         .from("disbursement_rounds")
         .select("id, campaign_id, round_number, percent, planned_amount, status")
         .eq("id", roundId)
-        .eq("status", "requested")
+        .eq("status", "manager_confirmed")
         .maybeSingle();
 
     if (!round) {
@@ -1072,7 +1076,7 @@ async function approveDisbursementRound(formData: FormData) {
             proof_due_at: proofDueAt.toISOString(),
         })
         .eq("id", round.id)
-        .eq("status", "requested");
+        .eq("status", "manager_confirmed");
 
     await supabase.from("disbursements").insert({
         campaign_slug: campaign.slug,
@@ -1707,10 +1711,10 @@ export default async function AdminPage() {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 className="font-display text-2xl font-bold text-ink">
-                            Theo dõi giải ngân và chứng từ
+                            Theo dõi giải ngân và hóa đơn đỏ
                         </h2>
                         <p className="mt-1 text-sm text-slate-600">
-                            Admin duyệt yêu cầu giải ngân, theo dõi chứng từ của đơn vị đồng hành và mở đợt kế tiếp khi chứng từ hợp lệ.
+                            Admin chỉ duyệt giải ngân sau khi đơn vị quản lý xác nhận yêu cầu. Sau giải ngân, admin theo dõi hóa đơn đỏ và mở đợt kế tiếp khi hóa đơn hợp lệ.
                         </p>
                     </div>
 
@@ -1721,7 +1725,7 @@ export default async function AdminPage() {
 
                 {disbursementRoundsForAdmin.length === 0 ? (
                     <p className="mt-5 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
-                        Chưa có yêu cầu giải ngân hoặc chứng từ cần xử lý.
+                        Chưa có yêu cầu giải ngân hoặc hóa đơn đỏ cần xử lý.
                     </p>
                 ) : (
                     <div className="mt-5 grid gap-4">
@@ -1762,7 +1766,7 @@ export default async function AdminPage() {
                                 </div>
 
                                 <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
-                                    <Info label="Chứng từ" value={formatProofStatus(round.proof_status)} />
+                                    <Info label="Hóa đơn đỏ" value={formatProofStatus(round.proof_status)} />
                                     <Info label="Hạn nộp" value={round.proof_due_at ? round.proof_due_at.slice(0, 10) : null} />
                                     <Info label="Đã nộp" value={round.proof_submitted_at ? round.proof_submitted_at.slice(0, 10) : null} />
                                     <Info label="Liên hệ đơn vị" value={round.approvedOffer?.contact_email ?? round.approvedOffer?.contact_phone} />
@@ -1770,7 +1774,7 @@ export default async function AdminPage() {
 
                                 {round.proof_url ? (
                                     <div className="mt-4 rounded-xl border border-slate-100 bg-surface-low p-3 text-sm text-slate-700">
-                                        <p className="font-bold text-ink">Chứng từ đã nộp</p>
+                                        <p className="font-bold text-ink">Hóa đơn đỏ đã nộp</p>
                                         <a
                                             href={round.proof_url}
                                             target="_blank"
@@ -1786,8 +1790,28 @@ export default async function AdminPage() {
                                 ) : null}
 
                                 {round.status === "requested" ? (
+                                    <div className="mt-5 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-800">
+                                        <p className="font-bold">Đang chờ đơn vị quản lý xác nhận</p>
+                                        <p className="mt-1">
+                                            Chủ dự án đã xác thực yêu cầu giải ngân nhưng đơn vị quản lý chưa xác nhận nhận giải ngân.
+                                        </p>
+                                        {round.owner_confirmation_note ? (
+                                            <p className="mt-2 whitespace-pre-wrap">
+                                                <strong>Xác thực owner:</strong> {round.owner_confirmation_note}
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                ) : null}
+
+                                {round.status === "manager_confirmed" ? (
                                     <form action={approveDisbursementRound} className="mt-5">
                                         <input type="hidden" name="roundId" value={round.id} />
+                                        {round.manager_confirmation_note ? (
+                                            <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
+                                                <p className="font-bold">Đơn vị quản lý đã xác nhận</p>
+                                                <p className="mt-1 whitespace-pre-wrap">{round.manager_confirmation_note}</p>
+                                            </div>
+                                        ) : null}
                                         <button
                                             type="submit"
                                             className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
@@ -1801,9 +1825,9 @@ export default async function AdminPage() {
                                     round.status === "needs_admin_review" ? (
                                     <div className="mt-5 grid gap-3 md:grid-cols-[1fr_auto_auto]">
                                         <div className="rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm text-amber-700">
-                                            <p className="font-bold">Đang chờ xử lý chứng từ</p>
+                                            <p className="font-bold">Đang chờ xử lý hóa đơn đỏ</p>
                                             <p className="mt-1">
-                                                Duyệt chứng từ sẽ hoàn tất đợt này và tự mở đợt kế tiếp.
+                                                Duyệt hóa đơn đỏ sẽ hoàn tất đợt này và tự mở đợt kế tiếp.
                                             </p>
                                         </div>
 
@@ -1824,7 +1848,7 @@ export default async function AdminPage() {
                                                 className="w-full rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
                                                 disabled={!round.proof_url}
                                             >
-                                                Duyệt chứng từ
+                                                Duyệt hóa đơn đỏ
                                             </button>
                                         </form>
                                     </div>
@@ -2121,6 +2145,8 @@ function formatDisbursementStatus(status: DisbursementRoundStatus) {
         case "open":
             return "Đang mở";
         case "requested":
+            return "Chờ quản lý xác nhận";
+        case "manager_confirmed":
             return "Chờ duyệt giải ngân";
         case "disbursed":
             return "Đã giải ngân";
@@ -2137,6 +2163,8 @@ function getDisbursementStatusBadgeClass(status: DisbursementRoundStatus) {
     switch (status) {
         case "requested":
             return "bg-amber-50 text-amber-700";
+        case "manager_confirmed":
+            return "bg-emerald-50 text-emerald-700";
         case "disbursed":
             return "bg-indigo-50 text-indigo-700";
         case "completed":

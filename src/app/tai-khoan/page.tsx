@@ -47,6 +47,7 @@ type DisbursementRoundStatus =
     | "locked"
     | "open"
     | "requested"
+    | "manager_confirmed"
     | "disbursed"
     | "completed"
     | "needs_admin_review";
@@ -107,6 +108,9 @@ type AccountDisbursementRoundRow = {
     proof_submitted_at: string | null;
     proof_url: string | null;
     proof_note: string | null;
+    owner_confirmation_note: string | null;
+    manager_confirmed_at: string | null;
+    manager_confirmation_note: string | null;
     approvedOffer: {
         title: string | null;
         partner_id: string;
@@ -756,7 +760,7 @@ export default async function AccountPage() {
                                 Đợt giải ngân của dự án tôi
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Mỗi dự án sau khi được duyệt có 3 đợt 40% - 40% - 20%. Owner yêu cầu giải ngân, admin duyệt, đơn vị đồng hành nộp chứng từ.
+                                Mỗi dự án sau khi được duyệt có 3 đợt 40% - 40% - 20%. Owner xác thực yêu cầu, đơn vị quản lý xác nhận, admin duyệt giải ngân, sau đó đơn vị quản lý nộp hóa đơn đỏ.
                             </p>
                         </div>
 
@@ -803,20 +807,38 @@ export default async function AccountPage() {
 
                                     <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
                                         <CampaignInfo label="Số tiền dự kiến" value={formatVnd(round.planned_amount)} />
-                                        <CampaignInfo label="Chứng từ" value={formatProofStatus(round.proof_status)} />
+                                        <CampaignInfo label="Hóa đơn đỏ" value={formatProofStatus(round.proof_status)} />
                                         <CampaignInfo label="Hạn nộp" value={round.proof_due_at ? formatDate(round.proof_due_at) : "Chưa có"} />
                                         <CampaignInfo label="Đã nộp" value={round.proof_submitted_at ? formatDate(round.proof_submitted_at) : "Chưa có"} />
                                     </div>
 
                                     {round.status === "open" ? (
                                         round.approvedOffer ? (
-                                            <form action={requestDisbursementRound} className="mt-4">
+                                            <form action={requestDisbursementRound} className="mt-4 grid gap-3">
                                                 <input type="hidden" name="roundId" value={round.id} />
+                                                <textarea
+                                                    name="confirmationNote"
+                                                    rows={3}
+                                                    placeholder="Nội dung xác thực yêu cầu giải ngân: mục đích sử dụng, số tiền, đơn vị quản lý nhận giải ngân..."
+                                                    className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                    required
+                                                />
+                                                <label className="flex items-start gap-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-800">
+                                                    <input
+                                                        name="acceptedDisbursementRequest"
+                                                        type="checkbox"
+                                                        className="mt-1 rounded border-amber-300 text-primary focus:ring-primary"
+                                                        required
+                                                    />
+                                                    <span>
+                                                        Tôi xác nhận yêu cầu giải ngân này đúng kế hoạch dự án và chịu trách nhiệm đối soát với đơn vị quản lý.
+                                                    </span>
+                                                </label>
                                                 <button
                                                     type="submit"
-                                                    className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
+                                                    className="w-fit rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
                                                 >
-                                                    Yêu cầu admin giải ngân
+                                                    Xác thực và gửi yêu cầu giải ngân
                                                 </button>
                                             </form>
                                         ) : (
@@ -828,13 +850,29 @@ export default async function AccountPage() {
 
                                     {round.status === "requested" ? (
                                         <p className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm font-semibold text-sky-700">
-                                            Đã gửi yêu cầu giải ngân, đang chờ admin duyệt.
+                                            Đã gửi yêu cầu giải ngân. Đang chờ đơn vị quản lý dự án xác nhận trước khi admin duyệt.
+                                            {round.owner_confirmation_note ? (
+                                                <span className="mt-2 block font-normal text-sky-800">
+                                                    Xác thực owner: {round.owner_confirmation_note}
+                                                </span>
+                                            ) : null}
+                                        </p>
+                                    ) : null}
+
+                                    {round.status === "manager_confirmed" ? (
+                                        <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">
+                                            Đơn vị quản lý đã xác nhận yêu cầu giải ngân. Đang chờ admin duyệt.
+                                            {round.manager_confirmation_note ? (
+                                                <span className="mt-2 block font-normal text-emerald-800">
+                                                    Xác nhận quản lý: {round.manager_confirmation_note}
+                                                </span>
+                                            ) : null}
                                         </p>
                                     ) : null}
 
                                     {round.status === "disbursed" ? (
                                         <p className="mt-4 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-700">
-                                            Admin đã giải ngân. Đang chờ đơn vị đồng hành nộp sao kê / hóa đơn.
+                                            Admin đã giải ngân. Đơn vị quản lý phải nộp hóa đơn đỏ để hoàn tất đợt.
                                         </p>
                                     ) : null}
                                 </article>
@@ -848,10 +886,10 @@ export default async function AccountPage() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-display text-2xl font-semibold text-ink">
-                                Chứng từ giải ngân cần nộp
+                                Yêu cầu giải ngân và hóa đơn đỏ
                             </h2>
                             <p className="mt-1 text-sm text-on-surface-variant">
-                                Khi admin giải ngân cho đợt bạn đồng hành, bạn nộp link sao kê, hóa đơn hoặc chứng từ để admin duyệt.
+                                Đơn vị quản lý xác nhận yêu cầu giải ngân của chủ dự án. Sau khi admin giải ngân, bạn phải nộp hóa đơn đỏ để admin duyệt.
                             </p>
                         </div>
 
@@ -880,7 +918,7 @@ export default async function AccountPage() {
                                                 Đợt {round.round_number} - {formatVnd(round.planned_amount)}
                                             </h3>
                                             <p className="mt-1 text-sm text-on-surface-variant">
-                                                Trạng thái chứng từ:{" "}
+                                                Trạng thái hóa đơn đỏ:{" "}
                                                 <strong className="text-ink">
                                                     {formatProofStatus(round.proof_status)}
                                                 </strong>
@@ -896,30 +934,71 @@ export default async function AccountPage() {
                                         </span>
                                     </div>
 
+                                    {round.status === "requested" ? (
+                                        <form action={confirmManagerDisbursementRequest} className="mt-4 grid gap-3">
+                                            <input type="hidden" name="roundId" value={round.id} />
+                                            {round.owner_confirmation_note ? (
+                                                <div className="rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-800">
+                                                    <p className="font-bold">Xác thực từ chủ dự án</p>
+                                                    <p className="mt-1 whitespace-pre-wrap">{round.owner_confirmation_note}</p>
+                                                </div>
+                                            ) : null}
+                                            <textarea
+                                                name="managerConfirmationNote"
+                                                rows={3}
+                                                placeholder="Ghi chú xác nhận của đơn vị quản lý: tài khoản nhận, kế hoạch sử dụng tiền, đầu mối phụ trách..."
+                                                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                            />
+                                            <label className="flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
+                                                <input
+                                                    name="acceptedManagerConfirmation"
+                                                    type="checkbox"
+                                                    className="mt-1 rounded border-emerald-300 text-primary focus:ring-primary"
+                                                    required
+                                                />
+                                                <span>
+                                                    Tôi xác nhận đơn vị quản lý sẵn sàng nhận giải ngân và sẽ nộp hóa đơn đỏ sau khi nhận tiền.
+                                                </span>
+                                            </label>
+                                            <button
+                                                type="submit"
+                                                className="w-fit rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
+                                            >
+                                                Xác nhận yêu cầu giải ngân
+                                            </button>
+                                        </form>
+                                    ) : null}
+
+                                    {round.status === "manager_confirmed" ? (
+                                        <p className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm font-semibold text-emerald-700">
+                                            Bạn đã xác nhận yêu cầu giải ngân. Đang chờ admin duyệt.
+                                        </p>
+                                    ) : null}
+
                                     {(round.status === "disbursed" ||
                                         round.status === "needs_admin_review") &&
                                         round.proof_status !== "approved" ? (
                                         <form action={submitDisbursementProof} className="mt-4 grid gap-3">
                                             <input type="hidden" name="roundId" value={round.id} />
                                             <input
-                                                name="proofUrl"
+                                                name="redInvoiceUrl"
                                                 defaultValue={round.proof_url ?? ""}
-                                                placeholder="Link sao kê / hóa đơn / chứng từ"
-                                                className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                placeholder="Link hóa đơn đỏ sau giải ngân"
+                                                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                                 required
                                             />
                                             <textarea
-                                                name="proofNote"
+                                                name="redInvoiceNote"
                                                 defaultValue={round.proof_note ?? ""}
-                                                placeholder="Ghi chú chứng từ, nội dung chi, số hóa đơn..."
+                                                placeholder="Ghi chú hóa đơn đỏ: số hóa đơn, nội dung chi, đơn vị phát hành..."
                                                 rows={3}
-                                                className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
                                             />
                                             <button
                                                 type="submit"
                                                 className="w-fit rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
                                             >
-                                                Nộp chứng từ
+                                                Nộp hóa đơn đỏ
                                             </button>
                                         </form>
                                     ) : null}
@@ -1501,7 +1580,7 @@ async function getOwnerDisbursementRounds(
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note",
+            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, owner_confirmation_note, manager_confirmed_at, manager_confirmation_note",
         )
         .in("campaign_id", campaignIds)
         .order("round_number", { ascending: true });
@@ -1548,7 +1627,7 @@ async function getPartnerDisbursementRounds(
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note",
+            "id, campaign_id, round_number, percent, planned_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, owner_confirmation_note, manager_confirmed_at, manager_confirmation_note",
         )
         .in("id", roundIds)
         .order("round_number", { ascending: true });
@@ -1584,6 +1663,9 @@ async function enrichAccountDisbursementRounds(
         proof_submitted_at: string | null;
         proof_url: string | null;
         proof_note: string | null;
+        owner_confirmation_note: string | null;
+        manager_confirmed_at: string | null;
+        manager_confirmation_note: string | null;
     }>,
     campaigns: Array<{ id: string; title: string | null; slug: string | null }>,
 ): Promise<AccountDisbursementRoundRow[]> {
@@ -1650,8 +1732,10 @@ async function requestDisbursementRound(formData: FormData) {
     }
 
     const roundId = String(formData.get("roundId") ?? "");
+    const confirmationNote = String(formData.get("confirmationNote") ?? "").trim();
+    const accepted = String(formData.get("acceptedDisbursementRequest") ?? "") === "on";
 
-    if (!roundId) {
+    if (!roundId || !confirmationNote || !accepted) {
         return;
     }
 
@@ -1700,6 +1784,10 @@ async function requestDisbursementRound(formData: FormData) {
             status: "requested",
             requested_by: user.id,
             requested_at: new Date().toISOString(),
+            owner_confirmation_note: confirmationNote,
+            manager_confirmed_by: null,
+            manager_confirmed_at: null,
+            manager_confirmation_note: null,
         })
         .eq("id", round.id)
         .eq("status", "open");
@@ -1708,6 +1796,79 @@ async function requestDisbursementRound(formData: FormData) {
     revalidatePath("/quan-tri");
 
     if (campaign.slug) {
+        revalidatePath(`/chien-dich/${campaign.slug}`);
+    }
+
+    redirect("/tai-khoan");
+}
+
+async function confirmManagerDisbursementRequest(formData: FormData) {
+    "use server";
+
+    const user = await getCurrentUser();
+
+    if (!user) {
+        redirect("/dang-nhap?next=/tai-khoan");
+    }
+
+    const roundId = String(formData.get("roundId") ?? "");
+    const confirmationNote = String(formData.get("managerConfirmationNote") ?? "").trim();
+    const accepted = String(formData.get("acceptedManagerConfirmation") ?? "") === "on";
+
+    if (!roundId || !accepted) {
+        return;
+    }
+
+    const client = getSupabaseServiceClient();
+
+    if (!client) {
+        return;
+    }
+
+    const { data: approvedOffer } = await client
+        .from("support_offers")
+        .select("id")
+        .eq("disbursement_round_id", roundId)
+        .eq("partner_id", user.id)
+        .eq("status", "approved")
+        .maybeSingle();
+
+    if (!approvedOffer) {
+        return;
+    }
+
+    const { data: round } = await client
+        .from("disbursement_rounds")
+        .select("id, campaign_id, status")
+        .eq("id", roundId)
+        .eq("status", "requested")
+        .maybeSingle();
+
+    if (!round) {
+        return;
+    }
+
+    await client
+        .from("disbursement_rounds")
+        .update({
+            status: "manager_confirmed",
+            manager_confirmed_by: user.id,
+            manager_confirmed_at: new Date().toISOString(),
+            manager_confirmation_note: confirmationNote || null,
+        })
+        .eq("id", round.id)
+        .eq("status", "requested");
+
+    const { data: campaign } = await client
+        .from("campaigns")
+        .select("slug")
+        .eq("id", round.campaign_id)
+        .maybeSingle();
+
+    revalidatePath("/tai-khoan");
+    revalidatePath("/quan-tri");
+
+    if (campaign?.slug) {
         revalidatePath(`/chien-dich/${campaign.slug}`);
     }
 
@@ -1724,8 +1885,12 @@ async function submitDisbursementProof(formData: FormData) {
     }
 
     const roundId = String(formData.get("roundId") ?? "");
-    const proofUrl = String(formData.get("proofUrl") ?? "").trim();
-    const proofNote = String(formData.get("proofNote") ?? "").trim();
+    const proofUrl = String(
+        formData.get("redInvoiceUrl") ?? formData.get("proofUrl") ?? "",
+    ).trim();
+    const proofNote = String(
+        formData.get("redInvoiceNote") ?? formData.get("proofNote") ?? "",
+    ).trim();
 
     if (!roundId || !proofUrl) {
         return;
@@ -2154,6 +2319,8 @@ function formatDisbursementStatus(status: DisbursementRoundStatus) {
         case "open":
             return "Có thể yêu cầu";
         case "requested":
+            return "Chờ quản lý xác nhận";
+        case "manager_confirmed":
             return "Chờ admin duyệt";
         case "disbursed":
             return "Đã giải ngân";
@@ -2172,6 +2339,8 @@ function getDisbursementStatusBadgeClass(status: DisbursementRoundStatus) {
             return "bg-sky-50 text-sky-700";
         case "requested":
             return "bg-amber-50 text-amber-700";
+        case "manager_confirmed":
+            return "bg-emerald-50 text-emerald-700";
         case "disbursed":
             return "bg-indigo-50 text-indigo-700";
         case "completed":
