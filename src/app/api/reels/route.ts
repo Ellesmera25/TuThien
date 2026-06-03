@@ -2,11 +2,18 @@ import { NextResponse } from "next/server";
 
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
 import { isSameOriginMutation } from "@/lib/http-security";
+import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import type { ReelPayload } from "@/lib/types";
 
 const bucketName = "reel-videos";
 const maxVideoSizeBytes = 100 * 1024 * 1024;
 const coverTones = ["warm", "cool", "mint", "violet"] as const;
+const allowedVideoTypes = new Map([
+  ["mp4", "video/mp4"],
+  ["webm", "video/webm"],
+  ["mov", "video/quicktime"],
+  ["m4v", "video/x-m4v"],
+]);
 
 function sanitizeText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -74,8 +81,44 @@ function isValidPayload(payload: Partial<ReelPayload>): payload is ReelPayload {
 
 function buildStoragePath(userId: string, fileName: string) {
   const extension = sanitizeText(fileName).split(".").pop()?.toLowerCase() ?? "mp4";
-  const safeExtension = extension.replace(/[^a-z0-9]/g, "") || "mp4";
+  const safeExtension = allowedVideoTypes.has(extension) ? extension : "mp4";
   return `${userId}/${Date.now()}-${crypto.randomUUID()}.${safeExtension}`;
+}
+
+function getVideoExtension(fileName: string) {
+  return sanitizeText(fileName).split(".").pop()?.toLowerCase() ?? "";
+}
+
+function getUploadContentType(file: File) {
+  if (file.type && file.type.startsWith("video/")) {
+    return file.type;
+  }
+
+  return allowedVideoTypes.get(getVideoExtension(file.name)) ?? null;
+}
+
+async function ensureReelVideoBucket(
+  storage: NonNullable<ReturnType<typeof getSupabaseServiceClient>>["storage"],
+) {
+  const allowedMimeTypes = Array.from(new Set(allowedVideoTypes.values()));
+  const { error: getBucketError } = await storage.getBucket(bucketName);
+
+  if (!getBucketError) {
+    await storage.updateBucket(bucketName, {
+      public: true,
+      fileSizeLimit: maxVideoSizeBytes,
+      allowedMimeTypes,
+    });
+    return null;
+  }
+
+  const { error: createBucketError } = await storage.createBucket(bucketName, {
+    public: true,
+    fileSizeLimit: maxVideoSizeBytes,
+    allowedMimeTypes,
+  });
+
+  return createBucketError;
 }
 
 function parseMultipartBody(formData: FormData) {
@@ -142,6 +185,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const dbClient = getSupabaseServiceClient();
+
+  if (!dbClient) {
+    return NextResponse.json(
+      { error: "Chưa cấu hình Supabase service role key nên chưa thể tạo reel." },
+      { status: 503 },
+    );
+  }
+
   const contentType = request.headers.get("content-type") ?? "";
   let parsed:
     | ReturnType<typeof parseMultipartBody>
@@ -185,10 +237,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data: campaign, error: campaignError } = await authClient
+  const { data: campaign, error: campaignError } = await dbClient
     .from("campaigns")
     .select("slug")
     .eq("slug", body.campaignSlug.trim())
+    .eq("review_status", "published")
     .maybeSingle();
 
   if (campaignError || !campaign) {
@@ -201,7 +254,9 @@ export async function POST(request: Request) {
   let uploadedPath: string | null = null;
   let videoUrl = body.videoUrl;
   if (parsed.uploadedVideo) {
-    if (!parsed.uploadedVideo.type.startsWith("video/")) {
+    const contentType = getUploadContentType(parsed.uploadedVideo);
+
+    if (!contentType) {
       return NextResponse.json({ error: "File đã chọn phải là video." }, { status: 400 });
     }
 
@@ -209,12 +264,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Video phải nhỏ hơn hoặc bằng 100MB." }, { status: 400 });
     }
 
+    const bucketError = await ensureReelVideoBucket(dbClient.storage);
+
+    if (bucketError) {
+      console.error("Ensure reel bucket error:", bucketError);
+      return NextResponse.json(
+        { error: "Không thể chuẩn bị storage bucket để upload reel." },
+        { status: 500 },
+      );
+    }
+
     uploadedPath = buildStoragePath(user.id, parsed.uploadedVideo.name);
-    const { error: uploadError } = await authClient.storage
+    const { error: uploadError } = await dbClient.storage
       .from(bucketName)
       .upload(uploadedPath, parsed.uploadedVideo, {
         cacheControl: "3600",
-        contentType: parsed.uploadedVideo.type || "video/mp4",
+        contentType,
         upsert: false,
       });
 
@@ -230,7 +295,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { data: publicUrlData } = authClient.storage
+    const { data: publicUrlData } = dbClient.storage
       .from(bucketName)
       .getPublicUrl(uploadedPath);
     videoUrl = publicUrlData.publicUrl;
@@ -246,7 +311,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { data, error } = await authClient
+  const { data, error } = await dbClient
     .from("reels")
     .insert({
       user_id: user.id,
@@ -265,8 +330,10 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
+    console.error("Create reel error:", error);
+
     if (uploadedPath) {
-      await authClient.storage.from(bucketName).remove([uploadedPath]).catch(() => {});
+      await dbClient.storage.from(bucketName).remove([uploadedPath]).catch(() => {});
     }
 
     return NextResponse.json(

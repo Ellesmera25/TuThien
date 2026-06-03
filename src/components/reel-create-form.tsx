@@ -13,8 +13,18 @@ type ReelCreateFormProps = {
 type FormState = Omit<ReelPayload, "videoUrl">;
 
 const maxVideoSize = 100 * 1024 * 1024;
+const allowedVideoExtensions = new Set(["mp4", "webm", "mov", "m4v"]);
 const inputClass =
   "w-full rounded-lg border border-outline bg-white px-3 py-2.5 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20";
+
+function isAllowedVideoFile(file: File) {
+  if (file.type.startsWith("video/")) {
+    return true;
+  }
+
+  const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return allowedVideoExtensions.has(extension);
+}
 
 export function ReelCreateForm({
   campaigns,
@@ -89,7 +99,7 @@ export function ReelCreateForm({
       return;
     }
 
-    if (!selectedVideo.type.startsWith("video/")) {
+    if (!isAllowedVideoFile(selectedVideo)) {
       setError("Tệp đã chọn phải là video.");
       return;
     }
@@ -176,7 +186,7 @@ export function ReelCreateForm({
         <input
           required
           type="file"
-          accept="video/*"
+          accept="video/mp4,video/webm,video/quicktime,video/x-m4v,.mp4,.webm,.mov,.m4v"
           onChange={(event) => handleVideoChange(event.target.files?.[0] ?? null)}
           className="w-full rounded-lg border border-dashed border-outline bg-white px-3 py-3 text-sm text-on-surface-variant file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-bold file:text-white"
         />
