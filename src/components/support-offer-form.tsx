@@ -25,6 +25,18 @@ function isAllowedProof(file: File) {
     ].includes(file.type);
 }
 
+function formatRoundStatusLabel(status: string) {
+    if (status === "open") {
+        return "đang mở";
+    }
+
+    if (status === "locked") {
+        return "chưa mở giải ngân";
+    }
+
+    return status;
+}
+
 export function SupportOfferForm({
     campaigns,
 }: {
@@ -245,7 +257,7 @@ export function SupportOfferForm({
                                 value={round.id}
                                 disabled={round.hasApprovedPartner}
                             >
-                                Phạm vi {round.round_number}: ngân sách tối đa {formatVnd(round.planned_amount)}
+                                Phạm vi {round.round_number}: ngân sách tối đa {formatVnd(round.planned_amount)} - {formatRoundStatusLabel(round.status)}
                                 {round.hasApprovedPartner ? " (đã có đơn vị đồng hành)" : ""}
                             </option>
                         ))}
@@ -289,6 +301,9 @@ export function SupportOfferForm({
                                 </p>
                                 <p className="mt-1 text-sm leading-6 text-on-surface-variant">
                                     Ngân sách tối đa của phạm vi: {formatVnd(selectedRound.planned_amount)}
+                                </p>
+                                <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                                    Trạng thái: {formatRoundStatusLabel(selectedRound.status)}
                                 </p>
                             </div>
                         ) : null}

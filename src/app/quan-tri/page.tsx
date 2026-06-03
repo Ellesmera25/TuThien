@@ -1280,7 +1280,7 @@ async function markDisbursementProofOverdue(formData: FormData) {
 
     redirect("/quan-tri");
 }
-let bankBinMap = new Map<string, string>();
+const bankBinMap = new Map<string, string>();
 
 export default async function AdminPage() {
     await assertAdmin();
@@ -2273,20 +2273,6 @@ export async function initBankBinMap() {
         console.error("Failed to initialize Bank BIN Map:", error);
     }
 }
-function getBankBin(bankName: string): string {
-    if (bankBinMap.size === 0) {
-        throw new Error("Bank BIN map not initialized");
-    }
-
-    const bin = bankBinMap.get(bankName);
-
-    if (!bin) {
-        throw new Error(`Unsupported bank: ${bankName}`);
-    }
-
-    return bin;
-}
-
 function getManualTransferQrUrl(
     round: AdminDisbursementRoundRow,
 ): string | null {
