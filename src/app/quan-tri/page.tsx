@@ -1280,6 +1280,7 @@ async function markDisbursementProofOverdue(formData: FormData) {
 
     redirect("/quan-tri");
 }
+let bankBinMap = new Map<string, string>();
 
 export default async function AdminPage() {
     await assertAdmin();
@@ -2227,7 +2228,7 @@ interface VietQrBank {
     shortName: string;
 }
 
-let bankBinMap = new Map<string, string>();
+
 
 export async function initBankBinMap() {
     const res = await fetch("https://api.vietqr.io/v2/banks");
@@ -2270,7 +2271,22 @@ function getManualTransferQrUrl(
     ) {
         return null;
     }
+    console.log(
+    "bank name:",
+    offer?.payout_bank_name,
+);
 
+console.log(
+    "bank exists:",
+    bankBinMap.has(
+        offer?.payout_bank_name ?? "",
+    ),
+);
+
+console.log(
+    "bank map size:",
+    bankBinMap.size,
+);
     const bankBin = bankBinMap.get(
         offer.payout_bank_name,
     );
