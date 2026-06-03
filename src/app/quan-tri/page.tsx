@@ -20,6 +20,18 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
+const adminPageSize = 10;
+
+type AdminPageProps = {
+    searchParams: Promise<{
+        campaignPage?: string;
+        pendingPage?: string;
+        supportPage?: string;
+        supportCampaign?: string;
+        supportApproval?: string;
+    }>;
+};
+
 type RequestedRole = "project_owner" | "partner_org";
 type DisbursementRoundStatus =
     | "locked"
@@ -1282,9 +1294,10 @@ async function markDisbursementProofOverdue(formData: FormData) {
 }
 const bankBinMap = new Map<string, string>();
 
-export default async function AdminPage() {
+export default async function AdminPage({ searchParams }: AdminPageProps) {
     await assertAdmin();
     await initBankBinMap();
+    const params = await searchParams;
 
     const [
         summary,
@@ -1302,6 +1315,35 @@ export default async function AdminPage() {
         getSupportOffersForAdmin(),
         getDisbursementRoundsForAdmin(),
     ]);
+
+    const campaignPage = normalizePage(params.campaignPage);
+    const pendingPage = normalizePage(params.pendingPage);
+    const supportPage = normalizePage(params.supportPage);
+    const supportCampaignFilter = normalizeSupportCampaignFilter(
+        params.supportCampaign,
+        supportOffersForAdmin,
+    );
+    const supportApprovalFilter = normalizeSupportApprovalFilter(
+        params.supportApproval,
+    );
+    const filteredSupportOffersForAdmin = supportOffersForAdmin.filter((offer) => {
+        const matchesCampaign =
+            supportCampaignFilter === "all" ||
+            offer.campaign_id === supportCampaignFilter;
+        const matchesApproval =
+            supportApprovalFilter === "all" ||
+            getSupportOfferApprovalFilterValue(offer.status) ===
+            supportApprovalFilter;
+
+        return matchesCampaign && matchesApproval;
+    });
+    const campaignPageData = paginateItems(adminCampaigns, campaignPage);
+    const pendingCampaignPageData = paginateItems(pendingCampaigns, pendingPage);
+    const supportOfferPageData = paginateItems(
+        filteredSupportOffersForAdmin,
+        supportPage,
+    );
+    const supportCampaignOptions = getSupportCampaignOptions(supportOffersForAdmin);
 
     return (
         <div className="space-y-8 pb-8">
@@ -1356,7 +1398,7 @@ export default async function AdminPage() {
                     </p>
                 ) : (
                     <div className="mt-5 grid gap-3">
-                        {adminCampaigns.map((campaign) => (
+                        {campaignPageData.items.map((campaign) => (
                             <article
                                 key={campaign.id}
                                 className="rounded-xl border border-slate-100 bg-white p-4 shadow-soft"
@@ -1411,6 +1453,14 @@ export default async function AdminPage() {
                                 ) : null}
                             </article>
                         ))}
+                        <Pagination
+                            currentPage={campaignPageData.currentPage}
+                            totalPages={campaignPageData.totalPages}
+                            totalItems={adminCampaigns.length}
+                            pageSize={adminPageSize}
+                            pageParam="campaignPage"
+                            baseParams={params}
+                        />
                     </div>
                 )}
             </section>
@@ -1437,7 +1487,7 @@ export default async function AdminPage() {
                     </p>
                 ) : (
                     <div className="mt-5 grid gap-4">
-                        {pendingCampaigns.map((campaign) => (
+                        {pendingCampaignPageData.items.map((campaign) => (
                             <article
                                 key={campaign.id}
                                 className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
@@ -1613,6 +1663,14 @@ export default async function AdminPage() {
                                 </div>
                             </article>
                         ))}
+                        <Pagination
+                            currentPage={pendingCampaignPageData.currentPage}
+                            totalPages={pendingCampaignPageData.totalPages}
+                            totalItems={pendingCampaigns.length}
+                            pageSize={adminPageSize}
+                            pageParam="pendingPage"
+                            baseParams={params}
+                        />
                     </div>
                 )}
             </section>
@@ -1628,17 +1686,58 @@ export default async function AdminPage() {
                     </div>
 
                     <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
-                        {supportOffersForAdmin.length} yêu cầu
+                        {filteredSupportOffersForAdmin.length}/{supportOffersForAdmin.length} yêu cầu
                     </span>
                 </div>
+
+                <form
+                    action="/quan-tri"
+                    method="get"
+                    className="mt-5 grid gap-3 rounded-xl border border-slate-100 bg-white p-4 md:grid-cols-[1fr_220px_auto]"
+                >
+                    <input type="hidden" name="campaignPage" value={campaignPageData.currentPage} />
+                    <input type="hidden" name="pendingPage" value={pendingCampaignPageData.currentPage} />
+                    <select
+                        name="supportCampaign"
+                        defaultValue={supportCampaignFilter}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                        <option value="all">Tất cả dự án</option>
+                        {supportCampaignOptions.map((campaign) => (
+                            <option key={campaign.id} value={campaign.id}>
+                                {campaign.title}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        name="supportApproval"
+                        defaultValue={supportApprovalFilter}
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                    >
+                        <option value="all">Tất cả trạng thái</option>
+                        <option value="approved">Đã được duyệt</option>
+                        <option value="unapproved">Chưa được duyệt</option>
+                        <option value="rejected">Không được duyệt</option>
+                    </select>
+                    <button
+                        type="submit"
+                        className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
+                    >
+                        Lọc
+                    </button>
+                </form>
 
                 {supportOffersForAdmin.length === 0 ? (
                     <p className="mt-5 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
                         Hiện chưa có đăng ký đồng hành nào.
                     </p>
+                ) : filteredSupportOffersForAdmin.length === 0 ? (
+                    <p className="mt-5 rounded-xl border border-slate-100 bg-white p-4 text-sm text-slate-600">
+                        Không có đăng ký đồng hành nào khớp bộ lọc hiện tại.
+                    </p>
                 ) : (
                     <div className="mt-5 grid gap-4">
-                        {supportOffersForAdmin.map((offer) => (
+                        {supportOfferPageData.items.map((offer) => (
                             <article
                                 key={offer.id}
                                 className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
@@ -1768,6 +1867,14 @@ export default async function AdminPage() {
                                 ) : null}
                             </article>
                         ))}
+                        <Pagination
+                            currentPage={supportOfferPageData.currentPage}
+                            totalPages={supportOfferPageData.totalPages}
+                            totalItems={filteredSupportOffersForAdmin.length}
+                            pageSize={adminPageSize}
+                            pageParam="supportPage"
+                            baseParams={params}
+                        />
                     </div>
                 )}
             </section>
@@ -2213,6 +2320,148 @@ function Info({
             </p>
         </div>
     );
+}
+
+function Pagination({
+    baseParams,
+    currentPage,
+    pageParam,
+    pageSize,
+    totalItems,
+    totalPages,
+}: {
+    baseParams: Awaited<AdminPageProps["searchParams"]>;
+    currentPage: number;
+    pageParam: string;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+}) {
+    if (totalPages <= 1) {
+        return null;
+    }
+
+    const start = (currentPage - 1) * pageSize + 1;
+    const end = Math.min(currentPage * pageSize, totalItems);
+
+    return (
+        <nav className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3 text-sm">
+            <p className="font-semibold text-slate-600">
+                Hiển thị {start}-{end} / {totalItems}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+                <Link
+                    href={buildAdminPageHref(baseParams, pageParam, currentPage - 1)}
+                    aria-disabled={currentPage <= 1}
+                    className={`rounded-lg border px-3 py-2 font-bold transition ${
+                        currentPage <= 1
+                            ? "pointer-events-none border-slate-100 text-slate-300"
+                            : "border-slate-200 text-slate-700 hover:border-primary hover:text-primary"
+                    }`}
+                >
+                    Trước
+                </Link>
+                <span className="rounded-lg bg-primary-fixed px-3 py-2 font-bold text-primary">
+                    {currentPage}/{totalPages}
+                </span>
+                <Link
+                    href={buildAdminPageHref(baseParams, pageParam, currentPage + 1)}
+                    aria-disabled={currentPage >= totalPages}
+                    className={`rounded-lg border px-3 py-2 font-bold transition ${
+                        currentPage >= totalPages
+                            ? "pointer-events-none border-slate-100 text-slate-300"
+                            : "border-slate-200 text-slate-700 hover:border-primary hover:text-primary"
+                    }`}
+                >
+                    Sau
+                </Link>
+            </div>
+        </nav>
+    );
+}
+
+function normalizePage(value?: string) {
+    const page = Number(value ?? "1");
+
+    return Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+}
+
+function paginateItems<T>(items: T[], requestedPage: number) {
+    const totalPages = Math.max(Math.ceil(items.length / adminPageSize), 1);
+    const currentPage = Math.min(Math.max(requestedPage, 1), totalPages);
+    const start = (currentPage - 1) * adminPageSize;
+
+    return {
+        currentPage,
+        items: items.slice(start, start + adminPageSize),
+        totalPages,
+    };
+}
+
+function normalizeSupportCampaignFilter(
+    value: string | undefined,
+    offers: SupportOfferRow[],
+) {
+    if (!value || value === "all") {
+        return "all";
+    }
+
+    return offers.some((offer) => offer.campaign_id === value) ? value : "all";
+}
+
+function normalizeSupportApprovalFilter(value: string | undefined) {
+    if (value === "approved" || value === "unapproved" || value === "rejected") {
+        return value;
+    }
+
+    return "all";
+}
+
+function getSupportOfferApprovalFilterValue(status: SupportOfferRow["status"]) {
+    if (status === "pending") {
+        return "unapproved";
+    }
+
+    if (status === "rejected") {
+        return "rejected";
+    }
+
+    return "approved";
+}
+
+function getSupportCampaignOptions(offers: SupportOfferRow[]) {
+    const campaignById = new Map<string, string>();
+
+    for (const offer of offers) {
+        if (!campaignById.has(offer.campaign_id)) {
+            campaignById.set(
+                offer.campaign_id,
+                offer.campaign?.title ?? "Dự án không xác định",
+            );
+        }
+    }
+
+    return Array.from(campaignById.entries())
+        .map(([id, title]) => ({ id, title }))
+        .sort((left, right) => left.title.localeCompare(right.title, "vi"));
+}
+
+function buildAdminPageHref(
+    baseParams: Awaited<AdminPageProps["searchParams"]>,
+    pageParam: string,
+    page: number,
+) {
+    const params = new URLSearchParams();
+
+    for (const [key, value] of Object.entries(baseParams)) {
+        if (value) {
+            params.set(key, value);
+        }
+    }
+
+    params.set(pageParam, String(Math.max(page, 1)));
+
+    return `/quan-tri?${params.toString()}`;
 }
 
 function hasPayoutAccount(round: Pick<AdminDisbursementRoundRow, "approvedOffer">) {
