@@ -1914,7 +1914,7 @@ export default async function AdminPage() {
                                                         <img
                                                             src={qrUrl}
                                                             alt="QR chuyển khoản thủ công"
-                                                            className="h-48 w-48 rounded-lg border border-outline-variant/50 bg-white p-2 shadow-sm"
+                                                            className="h-48 w-32 rounded-lg border border-outline-variant/50 bg-white p-2 shadow-sm"
                                                         />
 
                                                         <div className="max-w-md">
