@@ -2231,12 +2231,12 @@ interface VietQrBank {
 
 
 export async function initBankBinMap() {
-    // Tránh fetch lại nhiều lần nếu map đã có dữ liệu trong cùng một instance
-    if (bankBinMap && bankBinMap.size > 0) {
+    if (bankBinMap.size > 0) {
         return;
     }
 
     try {
+        console.log("Đang khởi tạo danh sách BIN ngân hàng...");
         const res = await fetch("https://api.vietqr.io/v2/banks", {
             next: { revalidate: 3600 } // Cache kết quả trong 1 giờ
         });
@@ -2247,21 +2247,28 @@ export async function initBankBinMap() {
         }
 
         const json = await res.json();
-        const newMap = new Map<string, string>();
 
         if (Array.isArray(json.data)) {
+            console.log(`Đã tải ${json.data.length} ngân hàng từ VietQR`);
             for (const bank of json.data as VietQrBank[]) {
-                // Lưu nhiều biến thể để tăng khả năng khớp tên
-                if (bank.shortName) {
-                    newMap.set(bank.shortName.toUpperCase(), bank.bin);
-                    newMap.set(bank.shortName.toLowerCase(), bank.bin);
+                if (bank.bin) {
+                    // Lưu các biến thể để tăng khả năng tìm thấy
+                    if (bank.shortName) {
+                        bankBinMap.set(bank.shortName.toLowerCase(), bank.bin);
+                        bankBinMap.set(bank.shortName.toUpperCase(), bank.bin);
+                        bankBinMap.set(bank.shortName, bank.bin);
+                    }
+                    if (bank.code) {
+                        bankBinMap.set(bank.code.toLowerCase(), bank.bin);
+                        bankBinMap.set(bank.code.toUpperCase(), bank.bin);
+                        bankBinMap.set(bank.code, bank.bin);
+                    }
+                    if (bank.name) {
+                        bankBinMap.set(bank.name.toLowerCase(), bank.bin);
+                    }
                 }
-                if (bank.code) newMap.set(bank.code, bank.bin);
-                if (bank.name) newMap.set(bank.name.toLowerCase(), bank.bin);
             }
         }
-
-        bankBinMap = newMap;
     } catch (error) {
         console.error("Failed to initialize Bank BIN Map:", error);
     }
@@ -2295,11 +2302,37 @@ function getManualTransferQrUrl(
 
     // Chuẩn hóa tên ngân hàng để tìm kiếm
     const bankSearchKey = offer.payout_bank_name.trim();
-    const bankBin = bankBinMap?.get(bankSearchKey) || 
-                    bankBinMap?.get(bankSearchKey.toUpperCase()) || 
-                    bankBinMap?.get(bankSearchKey.toLowerCase());
+    let bankBin = bankBinMap.get(bankSearchKey) || 
+                 bankBinMap.get(bankSearchKey.toUpperCase()) || 
+                 bankBinMap.get(bankSearchKey.toLowerCase());
+
+    // Nếu vẫn không tìm thấy, thử tìm kiếm thông minh hơn (bỏ qua "Ngân hàng", "TMCP", v.v.)
+    if (!bankBin) {
+        const lowerSearch = bankSearchKey.toLowerCase()
+            .replace(/ngân hàng|tmcp|chi nhánh|cp|bank/gi, "")
+            .trim();
+            
+        for (const [key, bin] of bankBinMap.entries()) {
+            const lowerKey = key.toLowerCase();
+            // Bỏ qua các key quá ngắn (dưới 2 ký tự) để tránh khớp nhầm
+            if (lowerKey.length >= 2) {
+                if (lowerKey.includes(lowerSearch) || 
+                    lowerSearch.includes(lowerKey) ||
+                    bankSearchKey.toLowerCase().includes(lowerKey)) {
+                    bankBin = bin;
+                    break;
+                }
+            }
+        }
+    }
 
     if (!bankBin) {
+        console.error(
+            "Không tìm thấy mã BIN cho ngân hàng:", 
+            offer.payout_bank_name, 
+            "Kích thước Map:", 
+            bankBinMap.size
+        );
         return null;
     }
 
