@@ -37,6 +37,22 @@ function formatRoundStatusLabel(status: string) {
     return status;
 }
 
+function formatRoundApprovalLabel(hasApprovedPartner: boolean) {
+    return hasApprovedPartner ? "đã được duyệt" : "chưa được duyệt";
+}
+
+function getFirstSelectableRoundId(campaign?: SupportCampaignOption) {
+    if (!campaign) {
+        return "";
+    }
+
+    return (
+        campaign.rounds.find((round) => !round.hasApprovedPartner)?.id ??
+        campaign.rounds[0]?.id ??
+        ""
+    );
+}
+
 export function SupportOfferForm({
     campaigns,
 }: {
@@ -46,7 +62,7 @@ export function SupportOfferForm({
     const supabase = useMemo(() => createSupabaseBrowserAuthClient(), []);
 
     const [campaignId, setCampaignId] = useState(campaigns[0]?.id ?? "");
-    const [roundId, setRoundId] = useState(campaigns[0]?.rounds[0]?.id ?? "");
+    const [roundId, setRoundId] = useState(getFirstSelectableRoundId(campaigns[0]));
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [estimatedValue, setEstimatedValue] = useState("");
@@ -231,7 +247,7 @@ export function SupportOfferForm({
                             );
 
                             setCampaignId(nextCampaignId);
-                            setRoundId(nextCampaign?.rounds[0]?.id ?? "");
+                            setRoundId(getFirstSelectableRoundId(nextCampaign));
                         }}
                         className={inputClass}
                         required
@@ -257,8 +273,7 @@ export function SupportOfferForm({
                                 value={round.id}
                                 disabled={round.hasApprovedPartner}
                             >
-                                Phạm vi {round.round_number}: ngân sách tối đa {formatVnd(round.planned_amount)} - {formatRoundStatusLabel(round.status)}
-                                {round.hasApprovedPartner ? " (đã có đơn vị đồng hành)" : ""}
+                                Phạm vi {round.round_number}: ngân sách tối đa {formatVnd(round.planned_amount)} - {formatRoundStatusLabel(round.status)} - {formatRoundApprovalLabel(round.hasApprovedPartner)}
                             </option>
                         ))}
                     </select>
@@ -304,6 +319,9 @@ export function SupportOfferForm({
                                 </p>
                                 <p className="mt-1 text-sm leading-6 text-on-surface-variant">
                                     Trạng thái: {formatRoundStatusLabel(selectedRound.status)}
+                                </p>
+                                <p className="mt-1 text-sm leading-6 text-on-surface-variant">
+                                    Duyệt đồng hành: {formatRoundApprovalLabel(selectedRound.hasApprovedPartner)}
                                 </p>
                             </div>
                         ) : null}

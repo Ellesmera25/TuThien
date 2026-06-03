@@ -1688,7 +1688,7 @@ export default async function AdminPage() {
                                     {offer.description}
                                 </p>
 
-                                <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
+                                <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-5">
                                     <Info
                                         label="Ngân sách dự kiến"
                                         value={
@@ -1708,6 +1708,10 @@ export default async function AdminPage() {
                                     <Info label="Người phụ trách" value={offer.contact_name} />
                                     <Info label="Số điện thoại" value={offer.contact_phone} />
                                     <Info label="Email liên hệ" value={offer.contact_email} />
+                                    <Info
+                                        label="Duyệt đồng hành"
+                                        value={formatSupportOfferApprovalStatus(offer.status)}
+                                    />
                                 </div>
 
                                 <div className="mt-4">
@@ -1747,7 +1751,7 @@ export default async function AdminPage() {
 
                                 {offer.status === "approved" ? (
                                     <div className="mt-5 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
-                                        <p className="font-bold">Admin đã xác nhận đồng hành</p>
+                                        <p className="font-bold">Đăng ký đồng hành đã được duyệt</p>
                                         <p className="mt-1">
                                             Đơn vị này đang được gắn với yêu cầu giải ngân công khai của chiến dịch.
                                         </p>
@@ -2381,13 +2385,27 @@ function formatSupportTypeLabel(value?: string | null) {
 function formatSupportOfferStatus(status: string) {
     switch (status) {
         case "pending":
-            return "Chờ chủ dự án duyệt";
+            return "Chưa được duyệt";
         case "owner_pending":
-            return "Chờ admin xác nhận";
+            return "Đã được chủ dự án duyệt";
         case "approved":
-            return "Đã xác nhận đồng hành";
+            return "Đã được duyệt";
         case "rejected":
-            return "Bị từ chối";
+            return "Không được duyệt";
+        default:
+            return "Chưa xác định";
+    }
+}
+
+function formatSupportOfferApprovalStatus(status: string) {
+    switch (status) {
+        case "pending":
+            return "Chưa được duyệt";
+        case "owner_pending":
+        case "approved":
+            return "Đã được duyệt";
+        case "rejected":
+            return "Không được duyệt";
         default:
             return "Chưa xác định";
     }

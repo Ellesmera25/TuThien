@@ -419,7 +419,7 @@ export default async function CampaignDetailPage({
                                     </div>
 
                                     <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
-                                        Đã chấp nhận
+                                        Đã được duyệt
                                     </span>
                                 </div>
 
@@ -443,6 +443,10 @@ export default async function CampaignDetailPage({
                                                 ? formatVnd(offer.approved_budget)
                                                 : "Chưa phê duyệt"
                                         }
+                                    />
+                                    <PartnerInfo
+                                        label="Duyệt đồng hành"
+                                        value="Đã được duyệt"
                                     />
                                     <PartnerInfo
                                         label="Người phụ trách"

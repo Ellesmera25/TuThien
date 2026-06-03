@@ -408,7 +408,7 @@ export default async function AccountPage() {
                                         {offer.description}
                                     </p>
 
-                                    <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
+                                    <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-5">
                                         <CampaignInfo
                                             label="Ngân sách dự kiến"
                                             value={
@@ -433,6 +433,10 @@ export default async function AccountPage() {
                                             label="Trạng thái"
                                             value={formatSupportOfferStatus(offer.status)}
                                         />
+                                        <CampaignInfo
+                                            label="Duyệt đồng hành"
+                                            value={formatSupportOfferApprovalStatus(offer.status)}
+                                        />
                                     </div>
 
                                     {offer.status === "pending" ? (
@@ -448,7 +452,7 @@ export default async function AccountPage() {
                                         <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-700">
                                             <p className="font-bold">Chủ dự án đã chấp thuận</p>
                                             <p className="mt-1">
-                                                Đăng ký cũ đang ở trạng thái chờ xử lý.
+                                                Đăng ký đồng hành đã được duyệt và đang được đồng bộ theo luồng giải ngân.
                                             </p>
                                         </div>
                                     ) : null}
@@ -656,7 +660,7 @@ export default async function AccountPage() {
                                         {offer.description}
                                     </p>
 
-                                    <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-4">
+                                    <div className="mt-4 grid gap-3 text-sm text-slate-700 md:grid-cols-5">
                                         <CampaignInfo
                                             label="Ngân sách dự kiến"
                                             value={
@@ -684,6 +688,10 @@ export default async function AccountPage() {
                                         <CampaignInfo
                                             label="Email liên hệ"
                                             value={offer.contact_email ?? "Chưa cung cấp"}
+                                        />
+                                        <CampaignInfo
+                                            label="Duyệt đồng hành"
+                                            value={formatSupportOfferApprovalStatus(offer.status)}
                                         />
                                     </div>
 
@@ -729,7 +737,7 @@ export default async function AccountPage() {
 
                                     {offer.status === "owner_pending" ? (
                                         <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 p-3 text-sm text-sky-700">
-                                            <p className="font-bold">Đã chấp thuận đồng hành</p>
+                                            <p className="font-bold">Đã duyệt đồng hành</p>
                                             <p className="mt-1">
                                                 Chủ dự án đã chấp thuận đơn vị này cho đợt đồng hành đã chọn.
                                             </p>
@@ -738,7 +746,7 @@ export default async function AccountPage() {
 
                                     {offer.status === "approved" ? (
                                         <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-700">
-                                            <p className="font-bold">Admin đã xác nhận đồng hành</p>
+                                            <p className="font-bold">Đăng ký đồng hành đã được duyệt</p>
                                             <p className="mt-1">
                                                 Đơn vị này đang được hiển thị là đơn vị đồng hành trên trang dự án công khai.
                                             </p>
@@ -2333,13 +2341,27 @@ function formatSupportTypeLabel(value?: string | null) {
 function formatSupportOfferStatus(status: string) {
     switch (status) {
         case "pending":
-            return "Chờ chủ dự án duyệt";
+            return "Chưa được duyệt";
         case "owner_pending":
-            return "Chờ xử lý";
+            return "Đã được chủ dự án duyệt";
         case "approved":
-            return "Đã được chủ dự án chấp thuận";
+            return "Đã được duyệt";
         case "rejected":
-            return "Bị từ chối";
+            return "Không được duyệt";
+        default:
+            return "Chưa xác định";
+    }
+}
+
+function formatSupportOfferApprovalStatus(status: string) {
+    switch (status) {
+        case "pending":
+            return "Chưa được duyệt";
+        case "owner_pending":
+        case "approved":
+            return "Đã được duyệt";
+        case "rejected":
+            return "Không được duyệt";
         default:
             return "Chưa xác định";
     }

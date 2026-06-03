@@ -103,7 +103,6 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
             ...campaign,
             rounds: (roundsByCampaign.get(campaign.id) ?? []).filter(
                 (round) =>
-                    !round.hasApprovedPartner &&
                     ["open", "locked"].includes(round.status),
             ),
         }))
