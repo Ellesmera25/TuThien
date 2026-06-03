@@ -1283,6 +1283,7 @@ async function markDisbursementProofOverdue(formData: FormData) {
 
 export default async function AdminPage() {
     await assertAdmin();
+    await initBankBinMap();
 
     const [
         summary,
@@ -1292,6 +1293,7 @@ export default async function AdminPage() {
         supportOffersForAdmin,
         disbursementRoundsForAdmin,
     ] = await Promise.all([
+        
         getDashboardSummary(),
         getAdminCampaigns(),
         getPendingRoleRequests(),
@@ -1863,8 +1865,12 @@ export default async function AdminPage() {
                                 {round.status === "owner_approved" || round.status === "manager_confirmed" ? (
                                     <form action={approveDisbursementRound} className="mt-5">
                                         <input type="hidden" name="roundId" value={round.id} />
+
                                         <div className="mb-3 rounded-xl border border-primary-fixed bg-primary-fixed/20 p-3 text-sm text-ink">
-                                            <p className="font-bold">Tài khoản đơn vị đồng hành để admin chuyển tiền</p>
+                                            <p className="font-bold">
+                                                Tài khoản đơn vị đồng hành để admin chuyển tiền
+                                            </p>
+
                                             <div className="mt-2 grid gap-2 md:grid-cols-3">
                                                 <Info
                                                     label="Ngân hàng"
@@ -1879,39 +1885,72 @@ export default async function AdminPage() {
                                                     value={round.approvedOffer?.payout_account_holder}
                                                 />
                                             </div>
-                                            {hasPayoutAccount(round) ? (
-                                                <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-white/70 bg-white/70 p-3">
-                                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                    <img
-                                                        src={getManualTransferQrUrl(round)}
-                                                        alt="QR chuyển khoản thủ công"
-                                                        className="h-36 w-36 rounded-lg border border-outline-variant/50 bg-white p-2"
-                                                    />
-                                                    <div className="max-w-md">
-                                                        <p className="font-bold">QR chuyển khoản thủ công</p>
-                                                        <p className="mt-1 text-sm text-slate-700">
-                                                            QR này chứa thông tin tài khoản, số tiền và nội dung chuyển khoản để admin đối chiếu nhanh. 
+
+                                            {(() => {
+                                                const qrUrl = getManualTransferQrUrl(round);
+
+                                                if (!hasPayoutAccount(round)) {
+                                                    return (
+                                                        <p className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">
+                                                            Thiếu tài khoản nhận giải ngân của đơn vị đồng hành.
+                                                            Chưa thể xác nhận giải ngân.
                                                         </p>
+                                                    );
+                                                }
+
+                                                if (!qrUrl) {
+                                                    return (
+                                                        <p className="mt-4 rounded-lg border border-amber-100 bg-amber-50 p-3 text-sm font-semibold text-amber-700">
+                                                            Không tạo được QR chuyển khoản. Vui lòng kiểm tra lại
+                                                            tên ngân hàng hoặc cấu hình VietQR.
+                                                        </p>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-white/70 bg-white/70 p-3">
+                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                                        <img
+                                                            src={qrUrl}
+                                                            alt="QR chuyển khoản thủ công"
+                                                            className="h-36 w-36 rounded-lg border border-outline-variant/50 bg-white p-2"
+                                                        />
+
+                                                        <div className="max-w-md">
+                                                            <p className="font-bold">
+                                                                QR chuyển khoản thủ công
+                                                            </p>
+
+                                                            <p className="mt-1 text-sm text-slate-700">
+                                                                QR chứa sẵn tài khoản nhận, số tiền và nội dung
+                                                                chuyển khoản để admin thực hiện giải ngân nhanh.
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ) : (
-                                                <p className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">
-                                                    Thiếu tài khoản nhận giải ngân của đơn vị đồng hành. Chưa thể xác nhận giải ngân.
-                                                </p>
-                                            )}
+                                                );
+                                            })()}
                                         </div>
+
                                         {round.owner_approval_note ? (
                                             <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
                                                 <p className="font-bold">Chủ dự án đã duyệt</p>
-                                                <p className="mt-1 whitespace-pre-wrap">{round.owner_approval_note}</p>
+                                                <p className="mt-1 whitespace-pre-wrap">
+                                                    {round.owner_approval_note}
+                                                </p>
                                             </div>
                                         ) : null}
+
                                         {round.manager_confirmation_note ? (
                                             <div className="mb-3 rounded-xl border border-emerald-100 bg-emerald-50 p-3 text-sm text-emerald-800">
-                                                <p className="font-bold">Xác nhận cũ của đơn vị đồng hành</p>
-                                                <p className="mt-1 whitespace-pre-wrap">{round.manager_confirmation_note}</p>
+                                                <p className="font-bold">
+                                                    Xác nhận cũ của đơn vị đồng hành
+                                                </p>
+                                                <p className="mt-1 whitespace-pre-wrap">
+                                                    {round.manager_confirmation_note}
+                                                </p>
                                             </div>
                                         ) : null}
+
                                         <button
                                             type="submit"
                                             className="rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container disabled:cursor-not-allowed disabled:opacity-50"
@@ -2192,7 +2231,12 @@ let bankBinMap = new Map<string, string>();
 
 export async function initBankBinMap() {
     const res = await fetch("https://api.vietqr.io/v2/banks");
+
+    console.log("vietqr status", res.status);
+
     const json = await res.json();
+
+    console.log("banks", json.data?.length);
 
     for (const bank of json.data as VietQrBank[]) {
         bankBinMap.set(bank.shortName, bank.bin);
@@ -2214,15 +2258,32 @@ function getBankBin(bankName: string): string {
     return bin;
 }
 
-function getManualTransferQrUrl(round: AdminDisbursementRoundRow) {
+function getManualTransferQrUrl(
+    round: AdminDisbursementRoundRow,
+): string | null {
     const offer = round.approvedOffer;
-    const amount = getRequestedDisbursementAmount(round);
-    if (!offer?.payout_account_number) {
-        throw new Error("Missing payout account number");
+
+    if (
+        !offer?.payout_bank_name ||
+        !offer.payout_account_number ||
+        !offer.payout_account_holder
+    ) {
+        return null;
     }
-    const bankBin = getBankBin(
-        offer?.payout_bank_name ?? "",
+
+    const bankBin = bankBinMap.get(
+        offer.payout_bank_name,
     );
+
+    if (!bankBin) {
+        console.error(
+            "Unsupported bank:",
+            offer.payout_bank_name,
+        );
+        return null;
+    }
+
+    const amount = getRequestedDisbursementAmount(round);
 
     const content =
         `YCGN ${round.round_number} ` +
@@ -2230,11 +2291,11 @@ function getManualTransferQrUrl(round: AdminDisbursementRoundRow) {
 
     return (
         `https://img.vietqr.io/image/` +
-        `${bankBin}-${offer?.payout_account_number ?? ""}-compact2.png` +
+        `${bankBin}-${offer.payout_account_number}-compact2.png` +
         `?amount=${amount}` +
         `&addInfo=${encodeURIComponent(content)}` +
         `&accountName=${encodeURIComponent(
-            offer?.payout_account_holder ?? "",
+            offer.payout_account_holder,
         )}`
     );
 }
