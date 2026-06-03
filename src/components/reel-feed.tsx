@@ -18,6 +18,8 @@ type ReelIconName =
   | "pause"
   | "play"
   | "share"
+  | "volume"
+  | "volumeOff"
   | "verified";
 
 const fallbackCover: Record<ReelItem["coverTone"], string> = {
@@ -76,6 +78,7 @@ export function ReelFeed({ reels }: ReelFeedProps) {
   const [interactionError, setInteractionError] = useState("");
   const [pausedIds, setPausedIds] = useState<string[]>([]);
   const [failedVideoIds, setFailedVideoIds] = useState<string[]>([]);
+  const [soundEnabled, setSoundEnabled] = useState(false);
   const [sharedId, setSharedId] = useState("");
 
   useEffect(() => {
@@ -92,6 +95,7 @@ export function ReelFeed({ reels }: ReelFeedProps) {
 
           if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
             if (!pausedIds.includes(reelId)) {
+              video.muted = !soundEnabled;
               void video.play().catch(() => undefined);
             }
             return;
@@ -110,7 +114,15 @@ export function ReelFeed({ reels }: ReelFeedProps) {
     });
 
     return () => observer.disconnect();
-  }, [failedVideoIds, pausedIds, reels]);
+  }, [failedVideoIds, pausedIds, reels, soundEnabled]);
+
+  useEffect(() => {
+    Object.values(videoRefs.current).forEach((video) => {
+      if (video) {
+        video.muted = !soundEnabled;
+      }
+    });
+  }, [soundEnabled]);
 
   if (reels.length === 0) {
     return (
@@ -236,6 +248,23 @@ export function ReelFeed({ reels }: ReelFeedProps) {
     setPausedIds((current) =>
       current.includes(reelId) ? current : [...current, reelId],
     );
+  }
+
+  function toggleSound(reelId: string) {
+    const nextSoundEnabled = !soundEnabled;
+    setSoundEnabled(nextSoundEnabled);
+
+    Object.values(videoRefs.current).forEach((video) => {
+      if (video) {
+        video.muted = !nextSoundEnabled;
+      }
+    });
+
+    const video = videoRefs.current[reelId];
+    if (nextSoundEnabled && video && !pausedIds.includes(reelId)) {
+      video.muted = false;
+      void video.play().catch(() => undefined);
+    }
   }
 
   function restartVideo(reelId: string) {
@@ -432,13 +461,16 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                 <video
                   ref={(node) => {
                     videoRefs.current[reel.id] = node;
+                    if (node) {
+                      node.muted = !soundEnabled;
+                    }
                   }}
                   className="absolute inset-0 h-full w-full object-cover"
                   data-reel-id={reel.id}
                   src={videoUrl}
                   autoPlay={index === 0}
                   loop
-                  muted
+                  muted={!soundEnabled}
                   preload="auto"
                   playsInline
                   poster={cover}
@@ -554,6 +586,13 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                   value={sharedId === reel.id ? "Đã copy" : "Chia sẻ"}
                   icon="share"
                   onClick={() => shareReel(reel)}
+                />
+                <ReelAction
+                  active={soundEnabled}
+                  label={soundEnabled ? "Tắt tiếng" : "Bật tiếng"}
+                  value={soundEnabled ? "Có tiếng" : "Tắt tiếng"}
+                  icon={soundEnabled ? "volume" : "volumeOff"}
+                  onClick={() => toggleSound(reel.id)}
                 />
                 <ReelAction
                   active={paused}
@@ -758,6 +797,22 @@ function ReelIcon({
           <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
           <path d="m16 6-4-4-4 4" />
           <path d="M12 2v14" />
+        </svg>
+      );
+    case "volume":
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+          <path d="M15.5 8.5a5 5 0 0 1 0 7" />
+          <path d="M18.5 5.5a9 9 0 0 1 0 13" />
+        </svg>
+      );
+    case "volumeOff":
+      return (
+        <svg {...common} aria-hidden="true">
+          <path d="M11 5 6 9H3v6h3l5 4V5Z" />
+          <path d="m19 9-6 6" />
+          <path d="m13 9 6 6" />
         </svg>
       );
     case "verified":
