@@ -1909,12 +1909,12 @@ export default async function AdminPage() {
                                                 }
 
                                                 return (
-                                                    <div className="mt-4 flex flex-wrap items-center gap-4 rounded-xl border border-white/70 bg-white/70 p-3">
+                                                    <div className="mt-4 flex flex-wrap items-center gap-6 rounded-xl border border-white/70 bg-white/70 p-4">
                                                         {/* eslint-disable-next-line @next/next/no-img-element */}
                                                         <img
                                                             src={qrUrl}
                                                             alt="QR chuyển khoản thủ công"
-                                                            className="h-36 w-36 rounded-lg border border-outline-variant/50 bg-white p-2"
+                                                            className="h-48 w-48 rounded-lg border border-outline-variant/50 bg-white p-2 shadow-sm"
                                                         />
 
                                                         <div className="max-w-md">
@@ -2336,6 +2336,9 @@ function getManualTransferQrUrl(
         return null;
     }
 
+    // Làm sạch số tài khoản: loại bỏ khoảng trắng và các ký tự không phải số/chữ cái
+    const sanitizedAccountNumber = offer.payout_account_number.replace(/\s/g, "");
+
     const amount = getRequestedDisbursementAmount(round);
 
     const content =
@@ -2344,7 +2347,7 @@ function getManualTransferQrUrl(
 
     return (
         `https://img.vietqr.io/image/` +
-        `${bankBin}-${offer.payout_account_number}-compact2.png` +
+        `${bankBin}-${sanitizedAccountNumber}-compact2.png` +
         `?amount=${amount}` +
         `&addInfo=${encodeURIComponent(content)}` +
         `&accountName=${encodeURIComponent(
