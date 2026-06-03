@@ -2302,29 +2302,9 @@ function getManualTransferQrUrl(
 
     // Chuẩn hóa tên ngân hàng để tìm kiếm
     const bankSearchKey = offer.payout_bank_name.trim();
-    let bankBin = bankBinMap.get(bankSearchKey) || 
-                 bankBinMap.get(bankSearchKey.toUpperCase()) || 
-                 bankBinMap.get(bankSearchKey.toLowerCase());
-
-    // Nếu vẫn không tìm thấy, thử tìm kiếm thông minh hơn (bỏ qua "Ngân hàng", "TMCP", v.v.)
-    if (!bankBin) {
-        const lowerSearch = bankSearchKey.toLowerCase()
-            .replace(/ngân hàng|tmcp|chi nhánh|cp|bank/gi, "")
-            .trim();
-            
-        for (const [key, bin] of bankBinMap.entries()) {
-            const lowerKey = key.toLowerCase();
-            // Bỏ qua các key quá ngắn (dưới 2 ký tự) để tránh khớp nhầm
-            if (lowerKey.length >= 2) {
-                if (lowerKey.includes(lowerSearch) || 
-                    lowerSearch.includes(lowerKey) ||
-                    bankSearchKey.toLowerCase().includes(lowerKey)) {
-                    bankBin = bin;
-                    break;
-                }
-            }
-        }
-    }
+    const bankBin = bankBinMap.get(bankSearchKey) || 
+                   bankBinMap.get(bankSearchKey.toUpperCase()) || 
+                   bankBinMap.get(bankSearchKey.toLowerCase());
 
     if (!bankBin) {
         console.error(
