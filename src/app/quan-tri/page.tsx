@@ -2231,18 +2231,39 @@ interface VietQrBank {
 
 
 export async function initBankBinMap() {
-    const res = await fetch("https://api.vietqr.io/v2/banks");
+    // Tránh fetch lại nhiều lần nếu map đã có dữ liệu trong cùng một instance
+    if (bankBinMap && bankBinMap.size > 0) {
+        return;
+    }
 
-    console.log("vietqr status", res.status);
+    try {
+        const res = await fetch("https://api.vietqr.io/v2/banks", {
+            next: { revalidate: 3600 } // Cache kết quả trong 1 giờ
+        });
 
-    const json = await res.json();
+        if (!res.ok) {
+            console.error("VietQR API error:", res.status);
+            return;
+        }
 
-    console.log("banks", json.data?.length);
+        const json = await res.json();
+        const newMap = new Map<string, string>();
 
-    for (const bank of json.data as VietQrBank[]) {
-        bankBinMap.set(bank.shortName, bank.bin);
-        bankBinMap.set(bank.code, bank.bin);
-        bankBinMap.set(bank.name, bank.bin);
+        if (Array.isArray(json.data)) {
+            for (const bank of json.data as VietQrBank[]) {
+                // Lưu nhiều biến thể để tăng khả năng khớp tên
+                if (bank.shortName) {
+                    newMap.set(bank.shortName.toUpperCase(), bank.bin);
+                    newMap.set(bank.shortName.toLowerCase(), bank.bin);
+                }
+                if (bank.code) newMap.set(bank.code, bank.bin);
+                if (bank.name) newMap.set(bank.name.toLowerCase(), bank.bin);
+            }
+        }
+
+        bankBinMap = newMap;
+    } catch (error) {
+        console.error("Failed to initialize Bank BIN Map:", error);
     }
 }
 function getBankBin(bankName: string): string {
@@ -2271,31 +2292,14 @@ function getManualTransferQrUrl(
     ) {
         return null;
     }
-    console.log(
-    "bank name:",
-    offer?.payout_bank_name,
-);
 
-console.log(
-    "bank exists:",
-    bankBinMap.has(
-        offer?.payout_bank_name ?? "",
-    ),
-);
-
-console.log(
-    "bank map size:",
-    bankBinMap.size,
-);
-    const bankBin = bankBinMap.get(
-        offer.payout_bank_name,
-    );
+    // Chuẩn hóa tên ngân hàng để tìm kiếm
+    const bankSearchKey = offer.payout_bank_name.trim();
+    const bankBin = bankBinMap?.get(bankSearchKey) || 
+                    bankBinMap?.get(bankSearchKey.toUpperCase()) || 
+                    bankBinMap?.get(bankSearchKey.toLowerCase());
 
     if (!bankBin) {
-        console.error(
-            "Unsupported bank:",
-            offer.payout_bank_name,
-        );
         return null;
     }
 
