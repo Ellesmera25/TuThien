@@ -1890,7 +1890,7 @@ export default async function AdminPage() {
                                                     <div className="max-w-md">
                                                         <p className="font-bold">QR chuyển khoản thủ công</p>
                                                         <p className="mt-1 text-sm text-slate-700">
-                                                            QR này chứa thông tin tài khoản, số tiền và nội dung chuyển khoản để admin đối chiếu nhanh. Admin vẫn chuyển tiền thủ công ngoài hệ thống, sau đó bấm xác nhận đã giải ngân.
+                                                            QR này chứa thông tin tài khoản, số tiền và nội dung chuyển khoản để admin đối chiếu nhanh. 
                                                         </p>
                                                     </div>
                                                 </div>
@@ -2181,26 +2181,62 @@ function hasPayoutAccount(round: Pick<AdminDisbursementRoundRow, "approvedOffer"
     );
 }
 
-function getManualTransferQrData(round: AdminDisbursementRoundRow) {
-    const offer = round.approvedOffer;
-    const amount = getRequestedDisbursementAmount(round);
+interface VietQrBank {
+    name: string;
+    code: string;
+    bin: string;
+    shortName: string;
+}
 
-    return [
-        "TuThien.vn - chuyen khoan giai ngan thu cong",
-        `Du an: ${round.campaign?.title ?? round.campaign?.slug ?? round.campaign_id}`,
-        `Yeu cau: ${round.round_number}`,
-        `So tien: ${amount} VND`,
-        `Ngan hang: ${offer?.payout_bank_name ?? ""}`,
-        `So tai khoan: ${offer?.payout_account_number ?? ""}`,
-        `Chu tai khoan: ${offer?.payout_account_holder ?? ""}`,
-        `Noi dung: GIAI NGAN YC ${round.round_number} ${round.campaign?.slug ?? round.campaign_id}`,
-    ].join("\n");
+let bankBinMap = new Map<string, string>();
+
+export async function initBankBinMap() {
+    const res = await fetch("https://api.vietqr.io/v2/banks");
+    const json = await res.json();
+
+    for (const bank of json.data as VietQrBank[]) {
+        bankBinMap.set(bank.shortName, bank.bin);
+        bankBinMap.set(bank.code, bank.bin);
+        bankBinMap.set(bank.name, bank.bin);
+    }
+}
+function getBankBin(bankName: string): string {
+    if (bankBinMap.size === 0) {
+        throw new Error("Bank BIN map not initialized");
+    }
+
+    const bin = bankBinMap.get(bankName);
+
+    if (!bin) {
+        throw new Error(`Unsupported bank: ${bankName}`);
+    }
+
+    return bin;
 }
 
 function getManualTransferQrUrl(round: AdminDisbursementRoundRow) {
-    return `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=8&data=${encodeURIComponent(
-        getManualTransferQrData(round),
-    )}`;
+    const offer = round.approvedOffer;
+    const amount = getRequestedDisbursementAmount(round);
+    if (!offer?.payout_account_number) {
+        throw new Error("Missing payout account number");
+    }
+    const bankBin = getBankBin(
+        offer?.payout_bank_name ?? "",
+    );
+
+    const content =
+        `YCGN ${round.round_number} ` +
+        `${round.campaign?.slug ?? round.campaign_id}`;
+
+    return (
+        `https://img.vietqr.io/image/` +
+        `${bankBin}-${offer?.payout_account_number ?? ""}-compact2.png` +
+        `?amount=${amount}` +
+        `&addInfo=${encodeURIComponent(content)}` +
+        `&accountName=${encodeURIComponent(
+            offer?.payout_account_holder ?? "",
+        )}`
+    );
 }
 
 function getRequestedDisbursementAmount(
