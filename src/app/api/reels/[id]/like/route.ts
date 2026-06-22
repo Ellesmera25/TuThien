@@ -24,7 +24,7 @@ function isMissingInteractionTable(error: { code?: string; message?: string } | 
 
 export async function POST(
   request: Request,
-  context: { params: Promise<{ reelId: string }> },
+  context: { params: Promise<{ id: string }> },
 ) {
   if (!isSameOriginMutation(request)) {
     return NextResponse.json(
@@ -33,7 +33,7 @@ export async function POST(
     );
   }
 
-  const { reelId } = await context.params;
+  const { id: reelId } = await context.params;
 
   if (!reelId || !isValidUuid(reelId)) {
     return NextResponse.json(

@@ -27,7 +27,7 @@ function isMissingInteractionTable(error: { code?: string; message?: string } | 
 
 export async function POST(
   request: Request,
-  context: { params: Promise<{ campaignSlug: string }> },
+  context: { params: Promise<{ id: string }> },
 ) {
   if (!isSameOriginMutation(request)) {
     return NextResponse.json(
@@ -40,7 +40,7 @@ export async function POST(
     );
   }
 
-  const { campaignSlug } = await context.params;
+  const { id: campaignSlug } = await context.params;
   const normalizedSlug = campaignSlug?.trim();
 
   if (!normalizedSlug || !isValidCampaignSlug(normalizedSlug)) {

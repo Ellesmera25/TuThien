@@ -129,10 +129,10 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 | `/api/invoice-signatures/extract` | `POST` | Doc file PDF hoa don do, trich xuat thong tin chu ky so nhung trong PDF de hien thi truoc khi upload | Same-origin, login, file PDF <= 20MB |
 | `/api/role-requests` | `POST` | Gui yeu cau nang role | Same-origin, login, proof path hop le, cam ket minh bach |
 | `/api/reels` | `POST` | Upload video vao bucket `reel-videos` va tao row `reels` | Same-origin, login, Supabase service role, campaign published |
-| `/api/reels/[reelId]/like` | `POST` | Toggle like reel | Same-origin, login, reel id UUID |
-| `/api/reels/[reelId]/comments` | `GET` | Lay 20 comment moi nhat | Public neu Supabase configured |
-| `/api/reels/[reelId]/comments` | `POST` | Tao comment 2-180 ky tu | Same-origin, login |
-| `/api/reels/[campaignSlug]/follow` | `POST` | Toggle follow campaign | Same-origin, login |
+| `/api/reels/[id]/like` | `POST` | Toggle like reel, `id` la reel UUID | Same-origin, login |
+| `/api/reels/[id]/comments` | `GET` | Lay 20 comment moi nhat, `id` la reel UUID | Public neu Supabase configured |
+| `/api/reels/[id]/comments` | `POST` | Tao comment 2-180 ky tu, `id` la reel UUID | Same-origin, login |
+| `/api/reels/[id]/follow` | `POST` | Toggle follow campaign, `id` la campaign slug; dung chung segment `[id]` de Next dev khong xung dot dynamic route | Same-origin, login |
 | `/api/check-db` | `GET` | Health check env va bang Supabase | Chi tra ket qua khi `NODE_ENV !== "production"` |
 
 Tat ca mutation web quan trong dung `isSameOriginMutation()` de chan origin/referer khac origin.
