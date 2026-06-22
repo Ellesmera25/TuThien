@@ -198,7 +198,7 @@ export function AuthCard({ mode, nextPath = "/" }: AuthCardProps) {
           {isSignUp ? "Đã có tài khoản?" : "Chưa có tài khoản?"}{" "}
           <Link
             href={isSignUp ? "/dang-nhap" : "/dang-ky"}
-            className="font-semibold text-primary hover:text-orange-700"
+            className="font-semibold text-primary hover:text-primary-container"
           >
             {isSignUp ? "Đăng nhập" : "Đăng ký ngay"}
           </Link>

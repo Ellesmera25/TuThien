@@ -46,6 +46,14 @@ export type DonationChainItem = {
   previousHash: string;
 };
 
+export type DonationChainPage = {
+  items: DonationChainItem[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+};
+
 export type ReelItem = {
   id: string;
   campaignSlug: string;

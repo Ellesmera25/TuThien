@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Metadata } from "next";
 
 import { getDonationChain, getTransparencyItems } from "@/lib/data";
@@ -8,14 +9,27 @@ export const metadata: Metadata = {
   description: "Theo dõi sao kê đóng góp và nhật ký giải ngân.",
 };
 
-export default async function TransparencyPage() {
-  const [logs, donationChain] = await Promise.all([
+type TransparencyPageProps = {
+  searchParams: Promise<{
+    chainPage?: string;
+  }>;
+};
+
+const chainPageSize = 20;
+
+export default async function TransparencyPage({
+  searchParams,
+}: TransparencyPageProps) {
+  const params = await searchParams;
+  const currentChainPage = Math.max(Number(params.chainPage ?? "1") || 1, 1);
+  const [logs, donationChainPage] = await Promise.all([
     getTransparencyItems(),
-    getDonationChain(),
+    getDonationChain({ page: currentChainPage, pageSize: chainPageSize }),
   ]);
+  const donationChain = donationChainPage.items;
 
   const totalDisbursement = logs.reduce((sum, item) => sum + item.amount, 0);
-  const totalChainDonation = donationChain.reduce(
+  const currentPageDonation = donationChain.reduce(
     (sum, item) => sum + item.amount,
     0,
   );
@@ -30,7 +44,7 @@ export default async function TransparencyPage() {
           Bảng minh bạch tài chính
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-slate-100 sm:text-base">
-          Mọi khoản đóng góp và khoản chi đều được cập nhật để cộng đồng theo
+          Mỗi khoản đóng góp và khoản chi đều được cập nhật để cộng đồng theo
           dõi đầy đủ, rõ ràng và dễ đối soát.
         </p>
       </header>
@@ -41,12 +55,12 @@ export default async function TransparencyPage() {
           value={formatVnd(totalDisbursement)}
         />
         <SmallMetric
-          label="Donate chain"
-          value={formatVnd(totalChainDonation)}
+          label="Donate chain trang này"
+          value={formatVnd(currentPageDonation)}
         />
         <SmallMetric
-          label="Số block đối soát"
-          value={`${donationChain.length}`}
+          label="Tổng block đối soát"
+          value={`${donationChainPage.totalItems}`}
         />
       </section>
 
@@ -61,7 +75,7 @@ export default async function TransparencyPage() {
             </h2>
           </div>
           <span className="rounded-full bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-700">
-            {donationChain.length} block đã xác minh
+            {donationChainPage.totalItems} block đã xác minh
           </span>
         </div>
 
@@ -138,6 +152,11 @@ export default async function TransparencyPage() {
             </tbody>
           </table>
         </div>
+
+        <Pagination
+          currentPage={donationChainPage.page}
+          totalPages={donationChainPage.totalPages}
+        />
       </section>
 
       <section className="neo-panel overflow-hidden p-0">
@@ -197,6 +216,54 @@ export default async function TransparencyPage() {
       </section>
     </div>
   );
+}
+
+function Pagination({
+  currentPage,
+  totalPages,
+}: {
+  currentPage: number;
+  totalPages: number;
+}) {
+  if (totalPages <= 1) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-[#0f172a] px-6 py-4 text-sm text-slate-200">
+      <p className="font-semibold">
+        Trang {currentPage}/{totalPages}
+      </p>
+      <div className="flex items-center gap-2">
+        <Link
+          href={buildTransparencyHref(Math.max(currentPage - 1, 1))}
+          aria-disabled={currentPage <= 1}
+          className={`rounded-lg border px-3 py-2 font-bold transition ${
+            currentPage <= 1
+              ? "pointer-events-none border-slate-700 text-slate-600"
+              : "border-slate-600 text-slate-200 hover:border-primary-fixed hover:text-primary-fixed"
+          }`}
+        >
+          Trước
+        </Link>
+        <Link
+          href={buildTransparencyHref(Math.min(currentPage + 1, totalPages))}
+          aria-disabled={currentPage >= totalPages}
+          className={`rounded-lg border px-3 py-2 font-bold transition ${
+            currentPage >= totalPages
+              ? "pointer-events-none border-slate-700 text-slate-600"
+              : "border-slate-600 text-slate-200 hover:border-primary-fixed hover:text-primary-fixed"
+          }`}
+        >
+          Sau
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function buildTransparencyHref(chainPage: number) {
+  return chainPage <= 1 ? "/minh-bach" : `/minh-bach?chainPage=${chainPage}`;
 }
 
 function shortHash(value?: string | null) {

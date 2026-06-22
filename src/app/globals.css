@@ -3,19 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --surface: #f9f9f8;
+  --surface: #f8fafc;
   --surface-lowest: #ffffff;
-  --surface-low: #f3f4f3;
-  --surface-container: #eeeeed;
-  --surface-high: #e8e8e7;
-  --surface-highest: #e2e2e2;
-  --ink: #1a1c1c;
-  --muted: #5a4138;
-  --primary: #a33900;
-  --primary-strong: #cc4900;
-  --primary-soft: #ffdbce;
-  --outline: rgba(142, 113, 102, 0.28);
-  --ambient-shadow: 0 4px 20px rgba(30, 27, 75, 0.05);
+  --surface-low: #f1f5f9;
+  --surface-container: #e2e8f0;
+  --surface-high: #cbd5e1;
+  --surface-highest: #94a3b8;
+  --ink: #0f172a;
+  --muted: #475569;
+  --primary: #0b1f3a;
+  --primary-strong: #123b66;
+  --primary-soft: #dbeafe;
+  --outline: rgba(100, 116, 139, 0.32);
+  --ambient-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
 }
 
 * {
@@ -35,7 +35,7 @@ body {
 }
 
 ::selection {
-  background: rgba(163, 57, 0, 0.18);
+  background: rgba(11, 31, 58, 0.18);
   color: var(--ink);
 }
 
@@ -54,20 +54,20 @@ main {
 }
 
 .soft-band {
-  border-block: 1px solid rgba(226, 191, 178, 0.35);
+  border-block: 1px solid rgba(203, 213, 225, 0.7);
   background: var(--surface-low);
 }
 
 .neo-panel {
-  border-radius: 0.75rem;
+  border-radius: 0;
   border: 1px solid var(--outline);
   background: var(--surface-lowest);
   box-shadow: var(--ambient-shadow);
 }
 
 .neo-panel-strong {
-  border-radius: 0.75rem;
-  border: 1px solid rgba(226, 191, 178, 0.45);
+  border-radius: 0;
+  border: 1px solid rgba(100, 116, 139, 0.45);
   background: var(--surface-lowest);
   box-shadow: var(--ambient-shadow);
 }
@@ -76,9 +76,9 @@ main {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
-  border-radius: 999px;
-  border: 1px solid rgba(226, 191, 178, 0.58);
-  background: var(--surface-high);
+  border-radius: 0;
+  border: 1px solid rgba(100, 116, 139, 0.45);
+  background: var(--surface-low);
   color: var(--muted);
   padding: 0.45rem 0.9rem;
   font-size: 0.72rem;
@@ -92,7 +92,7 @@ main {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  border-radius: 0.5rem;
+  border-radius: 0;
   padding: 0.78rem 1.25rem;
   font-size: 0.78rem;
   font-weight: 800;
@@ -111,7 +111,7 @@ main {
 .neo-btn-primary {
   color: #fff;
   background: var(--primary);
-  box-shadow: 0 8px 24px rgba(163, 57, 0, 0.16);
+  box-shadow: 0 8px 24px rgba(11, 31, 58, 0.16);
 }
 
 .neo-btn-primary:hover {
@@ -119,13 +119,21 @@ main {
 }
 
 .neo-btn-ghost {
-  color: #181445;
-  border: 1px solid #181445;
+  color: var(--primary);
+  border: 1px solid var(--primary);
   background: transparent;
 }
 
 .neo-btn-ghost:hover {
   background: var(--surface-container);
+}
+
+:where([class*="rounded"]) {
+  border-radius: 0 !important;
+}
+
+:where([class*="file:rounded"])::file-selector-button {
+  border-radius: 0 !important;
 }
 
 .fade-up {

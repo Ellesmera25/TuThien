@@ -41,6 +41,35 @@ const invoiceSignatureColumns = `
     invoice_signature_error
 `;
 
+const campaignStatusFilterOptions = [
+    { label: "Chờ duyệt", value: "pending" },
+    { label: "Đang chạy", value: "active" },
+    { label: "Tạm dừng", value: "paused" },
+    { label: "Hoàn tất", value: "completed" },
+    { label: "Bị từ chối", value: "rejected" },
+];
+
+const supportOfferStatusFilterOptions = [
+    { label: "Chưa duyệt", value: "pending" },
+    { label: "Owner đã duyệt", value: "owner_pending" },
+    { label: "Đã duyệt", value: "approved" },
+    { label: "Bị từ chối", value: "rejected" },
+];
+
+const disbursementStatusFilterOptions = [
+    { label: "Chờ chủ dự án duyệt", value: "requested" },
+    { label: "Chờ admin duyệt", value: "owner_approved" },
+    { label: "Chờ admin xác nhận", value: "manager_confirmed" },
+    { label: "Đã giải ngân", value: "disbursed" },
+    { label: "Cần xử lý", value: "needs_admin_review" },
+    { label: "Hoàn tất", value: "completed" },
+];
+
+const roleRequestFilterOptions = [
+    { label: "Người tạo dự án", value: "project_owner" },
+    { label: "Đơn vị đồng hành", value: "partner_org" },
+];
+
 type RequestedRole = "project_owner" | "partner_org";
 type DisbursementRoundStatus =
     | "locked"
@@ -317,6 +346,16 @@ function formatAdminCampaignStatus(
     }
 
     return "Chưa xác định";
+}
+
+function getAdminCampaignStatusFilterValue(
+    campaign: Pick<AdminCampaignRow, "review_status" | "status">,
+) {
+    if (campaign.review_status !== "published") {
+        return campaign.review_status;
+    }
+
+    return campaign.status;
 }
 
 function getAdminCampaignStatusBadgeClass(
@@ -1403,12 +1442,22 @@ export default async function AdminPage() {
                         <AdminListController
                             listId="admin-campaigns"
                             pageSize={adminPageSize}
+                            searchPlaceholder="Tìm chiến dịch, người tạo, mô tả..."
+                            statusOptions={campaignStatusFilterOptions}
                             totalItems={adminCampaigns.length}
                         />
                         {adminCampaigns.map((campaign, index) => (
                             <article
                                 key={campaign.id}
                                 data-admin-list="admin-campaigns"
+                                data-list-search={makeListSearchText(
+                                    campaign.title,
+                                    campaign.summary,
+                                    campaign.cover_tag,
+                                    campaign.owner?.full_name,
+                                    campaign.slug,
+                                )}
+                                data-list-status={getAdminCampaignStatusFilterValue(campaign)}
                                 hidden={index >= adminPageSize}
                                 className="rounded-xl border border-slate-100 bg-white p-4 shadow-soft"
                             >
@@ -1491,12 +1540,21 @@ export default async function AdminPage() {
                         <AdminListController
                             listId="pending-campaigns"
                             pageSize={adminPageSize}
+                            searchPlaceholder="Tìm dự án chờ duyệt, người tạo, mô tả..."
                             totalItems={pendingCampaigns.length}
                         />
                         {pendingCampaigns.map((campaign, index) => (
                             <article
                                 key={campaign.id}
                                 data-admin-list="pending-campaigns"
+                                data-list-search={makeListSearchText(
+                                    campaign.title,
+                                    campaign.summary,
+                                    campaign.cover_tag,
+                                    campaign.owner?.full_name,
+                                    campaign.slug,
+                                )}
+                                data-list-status={campaign.review_status}
                                 hidden={index >= adminPageSize}
                                 className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
                             >
@@ -1701,6 +1759,8 @@ export default async function AdminPage() {
                             campaignOptions={supportCampaignOptions}
                             listId="support-offers"
                             pageSize={adminPageSize}
+                            searchPlaceholder="Tìm đơn vị, chiến dịch, tiêu đề hoặc liên hệ..."
+                            statusOptions={supportOfferStatusFilterOptions}
                             totalItems={supportOffersForAdmin.length}
                         />
                         {supportOffersForAdmin.map((offer, index) => (
@@ -1711,6 +1771,16 @@ export default async function AdminPage() {
                                     offer.status,
                                 )}
                                 data-support-campaign={offer.campaign_id}
+                                data-list-search={makeListSearchText(
+                                    offer.title,
+                                    offer.description,
+                                    offer.campaign?.title,
+                                    offer.partner?.full_name,
+                                    offer.contact_name,
+                                    offer.contact_email,
+                                    offer.contact_phone,
+                                )}
+                                data-list-status={offer.status}
                                 hidden={index >= adminPageSize}
                                 className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
                             >
@@ -1864,9 +1934,28 @@ export default async function AdminPage() {
                     </p>
                 ) : (
                     <div className="mt-5 grid gap-4">
-                        {disbursementRoundsForAdmin.map((round) => (
+                        <AdminListController
+                            listId="admin-disbursement-rounds"
+                            pageSize={adminPageSize}
+                            searchPlaceholder="Tìm dự án, owner, đơn vị đồng hành, hóa đơn..."
+                            statusOptions={disbursementStatusFilterOptions}
+                            totalItems={disbursementRoundsForAdmin.length}
+                        />
+                        {disbursementRoundsForAdmin.map((round, index) => (
                             <article
                                 key={round.id}
+                                data-admin-list="admin-disbursement-rounds"
+                                data-list-search={makeListSearchText(
+                                    round.campaign?.title,
+                                    round.owner?.full_name,
+                                    round.approvedOffer?.partnerName,
+                                    round.approvedOffer?.contact_email,
+                                    round.approvedOffer?.contact_phone,
+                                    round.proof_url,
+                                    round.proof_note,
+                                )}
+                                data-list-status={round.status}
+                                hidden={index >= adminPageSize}
                                 className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2102,9 +2191,30 @@ export default async function AdminPage() {
                     </p>
                 ) : (
                     <div className="mt-5 grid gap-4">
-                        {pendingRoleRequests.map((request) => (
+                        <AdminListController
+                            listId="pending-role-requests"
+                            pageSize={adminPageSize}
+                            searchPlaceholder="Tìm người gửi, email, số điện thoại, mục đích..."
+                            statusOptions={roleRequestFilterOptions}
+                            totalItems={pendingRoleRequests.length}
+                        />
+                        {pendingRoleRequests.map((request, index) => (
                             <article
                                 key={request.id}
+                                data-admin-list="pending-role-requests"
+                                data-list-search={makeListSearchText(
+                                    request.display_name,
+                                    request.representative_name,
+                                    request.phone,
+                                    request.contact_email,
+                                    request.address,
+                                    request.purpose,
+                                    request.tax_code,
+                                    request.payout_bank_name,
+                                    request.payout_account_holder,
+                                )}
+                                data-list-status={request.requested_role}
+                                hidden={index >= adminPageSize}
                                 className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2301,6 +2411,13 @@ function getSupportOfferApprovalFilterValue(status: SupportOfferRow["status"]) {
     }
 
     return "approved";
+}
+
+function makeListSearchText(...values: Array<null | number | string | undefined>) {
+    return values
+        .filter((value) => value !== null && value !== undefined)
+        .map(String)
+        .join(" ");
 }
 
 function getSupportCampaignOptions(offers: SupportOfferRow[]) {

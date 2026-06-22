@@ -7,6 +7,7 @@ import type {
   Campaign,
   DashboardSummary,
   DonationChainItem,
+  DonationChainPage,
   DonationItem,
   ReelItem,
   TransparencyItem,
@@ -212,25 +213,58 @@ export async function getRecentDonations(): Promise<DonationItem[]> {
   return (data ?? []).map(mapDonation);
 }
 
-export async function getDonationChain(limit = 40): Promise<DonationChainItem[]> {
+export async function getDonationChain({
+  page = 1,
+  pageSize = 20,
+}: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<DonationChainPage> {
   const supabase = getSupabaseServiceClient();
+  const safePage = Math.max(Number.isFinite(page) ? Math.floor(page) : 1, 1);
+  const safePageSize = Math.min(
+    Math.max(Number.isFinite(pageSize) ? Math.floor(pageSize) : 20, 1),
+    50,
+  );
+  const from = (safePage - 1) * safePageSize;
+  const to = from + safePageSize - 1;
+
   if (!supabase) {
-    return [];
+    return {
+      items: [],
+      page: safePage,
+      pageSize: safePageSize,
+      totalItems: 0,
+      totalPages: 1,
+    };
   }
 
-  const { data: chainRows, error: chainError } = await supabase
+  const { count, data: chainRows, error: chainError } = await supabase
     .from("donation_blockchain")
     .select(
       "id, donation_id, donor_name, amount, created_at, payment_reference, hash, previous_hash",
+      { count: "exact" },
     )
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .range(from, to);
+
+  const totalItems = count ?? 0;
+  const totalPages = Math.max(Math.ceil(totalItems / safePageSize), 1);
 
   if (chainError || !chainRows || chainRows.length === 0) {
     if (chainError) {
       console.error(chainError);
     }
-    return [];
+    if (!chainError && totalItems > 0 && safePage > totalPages) {
+      return getDonationChain({ page: totalPages, pageSize: safePageSize });
+    }
+    return {
+      items: [],
+      page: Math.min(safePage, totalPages),
+      pageSize: safePageSize,
+      totalItems,
+      totalPages,
+    };
   }
 
   const donationIds = chainRows.map((row) => row.donation_id).filter(Boolean);
@@ -257,9 +291,19 @@ export async function getDonationChain(limit = 40): Promise<DonationChainItem[]>
     ]),
   );
 
-  return chainRows.map((row, index) =>
-    mapDonationChain(row, index + 1, donationById.get(row.donation_id)),
-  );
+  return {
+    items: chainRows.map((row, index) =>
+      mapDonationChain(
+        row,
+        Math.max(totalItems - from - index, 1),
+        donationById.get(row.donation_id),
+      ),
+    ),
+    page: Math.min(safePage, totalPages),
+    pageSize: safePageSize,
+    totalItems,
+    totalPages,
+  };
 }
 
 export async function getReels(): Promise<ReelItem[]> {

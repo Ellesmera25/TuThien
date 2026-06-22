@@ -605,7 +605,7 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                   href={`/quyen-gop?campaign=${reel.campaignSlug}`}
                   className="group mt-2 flex flex-col items-center gap-1"
                 >
-                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-[0_0_15px_rgba(234,88,12,0.45)] transition group-active:scale-95">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary shadow-[0_0_15px_rgba(11,31,58,0.45)] transition group-active:scale-95">
                     <ReelIcon name="donate" className="h-8 w-8 text-white" />
                   </span>
                   <span className="text-xs font-bold text-primary-fixed drop-shadow">
@@ -617,7 +617,7 @@ export function ReelFeed({ reels }: ReelFeedProps) {
               {commentOpen ? (
                 <div
                   className="absolute inset-x-4 bottom-4 z-30 rounded-xl border border-stone-200 bg-white/95 p-4 shadow-2xl backdrop-blur sm:bottom-5 sm:left-5 sm:right-20"
-                  style={{ color: "#1a1c1c" }}
+                  style={{ color: "#0f172a" }}
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-bold">Bình luận</h3>
@@ -672,8 +672,8 @@ export function ReelFeed({ reels }: ReelFeedProps) {
                       className="min-w-0 flex-1 rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm outline-none placeholder:text-stone-500 focus:border-primary disabled:cursor-not-allowed disabled:opacity-70"
                       style={{
                         backgroundColor: "#ffffff",
-                        caretColor: "#a33900",
-                        color: "#1a1c1c",
+                        caretColor: "#0b1f3a",
+                        color: "#0f172a",
                       }}
                       placeholder="Viết bình luận..."
                     />

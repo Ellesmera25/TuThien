@@ -3,6 +3,7 @@ import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { AdminListController } from "@/components/admin-list-controller";
 import { AuthSignOutButton } from "@/components/auth-sign-out-button";
 import { InvoiceProofUploadForm } from "@/components/invoice-proof-upload-form";
 import {
@@ -43,6 +44,33 @@ const invoiceSignatureColumns = `
     invoice_signature_extracted_at,
     invoice_signature_error
 `;
+
+const accountPageSize = 6;
+const roleRequestStatusFilterOptions = [
+    { label: "Chờ duyệt", value: "pending" },
+    { label: "Đã duyệt", value: "approved" },
+    { label: "Bị từ chối", value: "rejected" },
+];
+const campaignReviewFilterOptions = [
+    { label: "Chờ duyệt", value: "pending" },
+    { label: "Đã công khai", value: "published" },
+    { label: "Bị từ chối", value: "rejected" },
+];
+const supportOfferStatusFilterOptions = [
+    { label: "Chưa duyệt", value: "pending" },
+    { label: "Owner đã duyệt", value: "owner_pending" },
+    { label: "Đã duyệt", value: "approved" },
+    { label: "Bị từ chối", value: "rejected" },
+];
+const disbursementStatusFilterOptions = [
+    { label: "Đang mở", value: "open" },
+    { label: "Chờ chủ dự án", value: "requested" },
+    { label: "Chờ admin", value: "owner_approved" },
+    { label: "Chờ admin xác nhận", value: "manager_confirmed" },
+    { label: "Đã giải ngân", value: "disbursed" },
+    { label: "Cần xử lý", value: "needs_admin_review" },
+    { label: "Hoàn tất", value: "completed" },
+];
 
 type MyCampaignRow = {
     id: string;
@@ -223,22 +251,6 @@ export default async function AccountPage() {
                 </div>
 
                 <div className="flex w-full flex-col gap-2 md:w-auto">
-                    {canCreateCampaign ? (
-                        <Link
-                            href="/chien-dich/tao"
-                            className="neo-btn neo-btn-primary w-full whitespace-nowrap md:w-auto"
-                        >
-                            Tạo dự án
-                        </Link>
-                    ) : null}
-                    {canSupportCampaign ? (
-                        <Link
-                            href="/chien-dich/ho-tro"
-                            className="neo-btn neo-btn-primary w-full whitespace-nowrap md:w-auto"
-                        >
-                            Đồng hành dự án
-                        </Link>
-                    ) : null}
                     <Link
                         href="/reels/tao"
                         className="neo-btn neo-btn-primary w-full whitespace-nowrap md:w-auto"
@@ -290,9 +302,24 @@ export default async function AccountPage() {
                     </div>
 
                     <div className="mt-5 grid gap-3">
-                        {myRoleRequests.map((request) => (
+                        <AdminListController
+                            listId="account-role-requests"
+                            pageSize={accountPageSize}
+                            searchPlaceholder="Tìm vai trò, tên hồ sơ hoặc mục đích..."
+                            statusOptions={roleRequestStatusFilterOptions}
+                            totalItems={myRoleRequests.length}
+                        />
+                        {myRoleRequests.map((request, index) => (
                             <article
                                 key={request.id}
+                                data-admin-list="account-role-requests"
+                                data-list-search={makeListSearchText(
+                                    request.display_name,
+                                    request.purpose,
+                                    formatRequestedRoleLabel(request.requested_role),
+                                )}
+                                data-list-status={request.status}
+                                hidden={index >= accountPageSize}
                                 className="rounded-xl border border-outline-variant/40 bg-white p-4 shadow-soft"
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -390,9 +417,25 @@ export default async function AccountPage() {
                         </p>
                     ) : (
                         <div className="mt-5 grid gap-3">
-                            {mySupportOffers.map((offer) => (
+                            <AdminListController
+                                listId="account-my-support-offers"
+                                pageSize={accountPageSize}
+                                searchPlaceholder="Tìm đăng ký, dự án, mô tả..."
+                                statusOptions={supportOfferStatusFilterOptions}
+                                totalItems={mySupportOffers.length}
+                            />
+                            {mySupportOffers.map((offer, index) => (
                                 <article
                                     key={offer.id}
+                                    data-admin-list="account-my-support-offers"
+                                    data-list-search={makeListSearchText(
+                                        offer.title,
+                                        offer.description,
+                                        offer.campaign?.title,
+                                        formatOfferRoundLabel(offer),
+                                    )}
+                                    data-list-status={offer.status}
+                                    hidden={index >= accountPageSize}
                                     className="rounded-xl border border-outline-variant/40 bg-white p-4 shadow-soft"
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -525,9 +568,24 @@ export default async function AccountPage() {
                     </div>
 
                     <div className="mt-5 grid gap-3">
-                        {myCampaigns.map((campaign) => (
+                        <AdminListController
+                            listId="account-my-campaigns"
+                            pageSize={accountPageSize}
+                            searchPlaceholder="Tìm dự án, mô tả, trạng thái..."
+                            statusOptions={campaignReviewFilterOptions}
+                            totalItems={myCampaigns.length}
+                        />
+                        {myCampaigns.map((campaign, index) => (
                             <article
                                 key={campaign.id}
+                                data-admin-list="account-my-campaigns"
+                                data-list-search={makeListSearchText(
+                                    campaign.title,
+                                    campaign.summary,
+                                    campaign.slug,
+                                )}
+                                data-list-status={campaign.review_status}
+                                hidden={index >= accountPageSize}
                                 className="rounded-xl border border-outline-variant/40 bg-white p-4 shadow-soft"
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -635,9 +693,28 @@ export default async function AccountPage() {
                         </p>
                     ) : (
                         <div className="mt-5 grid gap-3">
-                            {ownerSupportOffers.map((offer) => (
+                            <AdminListController
+                                listId="account-owner-support-offers"
+                                pageSize={accountPageSize}
+                                searchPlaceholder="Tìm đơn vị, dự án, tiêu đề, liên hệ..."
+                                statusOptions={supportOfferStatusFilterOptions}
+                                totalItems={ownerSupportOffers.length}
+                            />
+                            {ownerSupportOffers.map((offer, index) => (
                                 <article
                                     key={offer.id}
+                                    data-admin-list="account-owner-support-offers"
+                                    data-list-search={makeListSearchText(
+                                        offer.title,
+                                        offer.description,
+                                        offer.campaign?.title,
+                                        offer.partner?.full_name,
+                                        offer.contact_name,
+                                        offer.contact_email,
+                                        offer.contact_phone,
+                                    )}
+                                    data-list-status={offer.status}
+                                    hidden={index >= accountPageSize}
                                     className="rounded-xl border border-outline-variant/40 bg-white p-4 shadow-soft"
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -815,9 +892,26 @@ export default async function AccountPage() {
                         </p>
                     ) : (
                         <div className="mt-5 grid gap-3">
-                            {ownerDisbursementRounds.map((round) => (
+                            <AdminListController
+                                listId="account-owner-disbursements"
+                                pageSize={accountPageSize}
+                                searchPlaceholder="Tìm dự án, đơn vị đồng hành, ghi chú..."
+                                statusOptions={disbursementStatusFilterOptions}
+                                totalItems={ownerDisbursementRounds.length}
+                            />
+                            {ownerDisbursementRounds.map((round, index) => (
                                 <article
                                     key={round.id}
+                                    data-admin-list="account-owner-disbursements"
+                                    data-list-search={makeListSearchText(
+                                        round.campaign?.title,
+                                        round.approvedOffer?.partnerName,
+                                        round.partner_request_note,
+                                        round.owner_approval_note,
+                                        round.proof_note,
+                                    )}
+                                    data-list-status={round.status}
+                                    hidden={index >= accountPageSize}
                                     className="rounded-xl border border-outline-variant/40 bg-white p-4 shadow-soft"
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -935,9 +1029,25 @@ export default async function AccountPage() {
                         </p>
                     ) : (
                         <div className="mt-5 grid gap-3">
-                            {partnerDisbursementRounds.map((round) => (
+                            <AdminListController
+                                listId="account-partner-disbursements"
+                                pageSize={accountPageSize}
+                                searchPlaceholder="Tìm dự án, hóa đơn, ghi chú..."
+                                statusOptions={disbursementStatusFilterOptions}
+                                totalItems={partnerDisbursementRounds.length}
+                            />
+                            {partnerDisbursementRounds.map((round, index) => (
                                 <article
                                     key={round.id}
+                                    data-admin-list="account-partner-disbursements"
+                                    data-list-search={makeListSearchText(
+                                        round.campaign?.title,
+                                        round.partner_request_note,
+                                        round.proof_url,
+                                        round.proof_note,
+                                    )}
+                                    data-list-status={round.status}
+                                    hidden={index >= accountPageSize}
                                     className="rounded-xl border border-outline-variant/40 bg-white p-4 shadow-soft"
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1094,7 +1204,7 @@ export default async function AccountPage() {
                         href="/reels"
                         className="group relative aspect-[9/16] overflow-hidden rounded-xl bg-surface-highest shadow-ambient transition hover:-translate-y-1 hover:shadow-card"
                     >
-                        <div className="absolute inset-0 bg-[linear-gradient(135deg,#a33900_0%,#545c72_55%,#131b2e_100%)] transition duration-500 group-hover:scale-105" />
+                        <div className="absolute inset-0 bg-[linear-gradient(135deg,#0b1f3a_0%,#123b66_55%,#020617_100%)] transition duration-500 group-hover:scale-105" />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/84 via-transparent to-transparent" />
                         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
                             <div className="mb-1 flex items-center gap-1">
@@ -1141,10 +1251,25 @@ export default async function AccountPage() {
                         góp.
                     </p>
                 ) : (
+                    <>
+                        <AdminListController
+                            listId="account-donations"
+                            pageSize={accountPageSize}
+                            searchPlaceholder="Tìm chiến dịch, người đóng góp hoặc lời nhắn..."
+                            totalItems={recentDonations.length}
+                        />
                     <ul className="mt-4 space-y-3">
-                        {recentDonations.map((donation) => (
+                        {recentDonations.map((donation, index) => (
                             <li
                                 key={donation.id}
+                                data-admin-list="account-donations"
+                                data-list-search={makeListSearchText(
+                                    donation.donor_name,
+                                    donation.campaign_title,
+                                    donation.payment_reference,
+                                    donation.amount,
+                                )}
+                                hidden={index >= accountPageSize}
                                 className="rounded-lg border border-outline-variant/30 bg-surface-low p-4"
                             >
                                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1170,6 +1295,7 @@ export default async function AccountPage() {
                             </li>
                         ))}
                     </ul>
+                    </>
                 )}
             </section>
         </div>
@@ -1198,6 +1324,13 @@ function CampaignInfo({ label, value }: { label: string; value: string }) {
             <p className="mt-1 font-semibold text-ink">{value}</p>
         </div>
     );
+}
+
+function makeListSearchText(...values: Array<null | number | string | undefined>) {
+    return values
+        .filter((value) => value !== null && value !== undefined)
+        .map(String)
+        .join(" ");
 }
 
 type AccountIconName = "play" | "plus" | "verified";

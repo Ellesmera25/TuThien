@@ -113,8 +113,8 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 | `/reels/tao` | Upload video va tao reel | Can login |
 | `/dang-nhap` | Dang nhap Supabase email/password | Public |
 | `/dang-ky` | Dang ky Supabase va tao profile donor | Public |
-| `/tai-khoan` | Profile, lich su donation, reels, campaign, role request, support offer, giai ngan | Can login |
-| `/quan-tri` | Admin dashboard | Can role `admin` |
+| `/tai-khoan` | Profile, lich su donation, reels, campaign, role request, support offer, giai ngan; cac list chinh co search/filter/pagination client-side | Can login |
+| `/quan-tri` | Admin dashboard, co search/filter/pagination cho campaign, support offer, giai ngan va role request | Can role `admin` |
 | `/ung-dung` | Trang tai APK Android | Public |
 
 ## 7. API routes
@@ -163,7 +163,7 @@ Tat ca mutation web quan trong dung `isSameOriginMutation()` de chan origin/refe
 SHA256(paymentReference | amount | email | donorName | timestamp | previousHash)
 ```
 
-Trang `/minh-bach` doc `donation_blockchain` va ghep `donations` de hien block number, Sepay ref, transaction id, hash va previous hash.
+Trang `/minh-bach` doc `donation_blockchain` theo server-side pagination bang query `chainPage`, moi trang toi da 20 block, va ghep `donations` de hien block number, Sepay ref, transaction id, hash va previous hash. Cach nay tranh render/tai toan bo chain khi du lieu tang lon.
 
 ### Campaign creation va approval
 
@@ -244,13 +244,16 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 ### UI
 
 - Font: Plus Jakarta Sans, Space Grotesk, IBM Plex Mono.
-- Mau chinh: `#a33900`, surface sang, accent cam nhat, cool slate.
+- Mau chinh: navy `#0b1f3a` tren nen trang/slate sang; accent xanh `#2563eb` chi dung cho diem nhan can nhan biet.
+- Quy uoc hinh khoi: panel, card, badge, nut bam va cac utility `rounded-*` duoc chuan hoa ve goc vuong trong `src/app/globals.css` de tao cam giac nghiem tuc, minh bach.
 - Tailwind theme duoc mo rong trong `tailwind.config.ts`.
 - Global utility classes: `neo-panel`, `neo-panel-strong`, `neo-badge`, `neo-btn`, `surface-card`, `soft-band`.
+- Header hien cac nut chuc nang theo role ben canh nav chinh: admin thay `Quan tri`, project owner thay `Tao du an`, partner_org thay `Dong hanh du an`.
+- `AdminListController` la client component dung chung cho search, status filter, campaign/approval filter va pagination client-side tren cac list van hanh.
 
 ### PWA
 
-- `public/manifest.webmanifest` khai bao app standalone, portrait, icon SVG.
+- `public/manifest.webmanifest` khai bao app standalone, portrait, icon SVG va `theme_color` navy.
 - `src/components/pwa-register.tsx` dang ky `/sw.js`.
 - Service worker cache cac route: `/`, `/chien-dich`, `/minh-bach`, `/quyen-gop`, `/reels`, manifest va icon.
 

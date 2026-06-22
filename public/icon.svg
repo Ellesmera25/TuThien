@@ -1,16 +1,16 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bg" x1="72" y1="64" x2="448" y2="456" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFB27A" />
-      <stop offset="0.52" stop-color="#F97316" />
-      <stop offset="1" stop-color="#A33900" />
+      <stop stop-color="#123B66" />
+      <stop offset="0.52" stop-color="#0B1F3A" />
+      <stop offset="1" stop-color="#020617" />
     </linearGradient>
     <radialGradient id="glow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(160 148) rotate(45) scale(180 180)">
-      <stop stop-color="#FFF4ED" stop-opacity="0.9" />
-      <stop offset="1" stop-color="#FFF4ED" stop-opacity="0" />
+      <stop stop-color="#DBEAFE" stop-opacity="0.9" />
+      <stop offset="1" stop-color="#DBEAFE" stop-opacity="0" />
     </radialGradient>
   </defs>
-  <rect width="512" height="512" rx="120" fill="url(#bg)" />
+  <rect width="512" height="512" rx="0" fill="url(#bg)" />
   <circle cx="190" cy="156" r="120" fill="url(#glow)" />
   <path d="M153 194C153 137.666 198.666 92 255 92C311.334 92 357 137.666 357 194C357 274.5 255 385 255 385C255 385 153 274.5 153 194Z" fill="white" fill-opacity="0.95" />
   <path d="M255 129C221.309 129 194 156.309 194 190C194 223.691 221.309 251 255 251C288.691 251 316 223.691 316 190C316 156.309 288.691 129 255 129Z" fill="url(#bg)" />

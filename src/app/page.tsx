@@ -58,7 +58,7 @@ export default async function HomePage() {
 
         <div className="relative lg:col-span-6">
           <div className="surface-card aspect-square overflow-hidden rounded-xl md:aspect-[4/3]">
-            <div className="relative h-full w-full bg-[radial-gradient(circle_at_24%_22%,rgba(255,181,153,0.9),transparent_30%),radial-gradient(circle_at_74%_30%,rgba(218,226,253,0.95),transparent_32%),linear-gradient(135deg,#ffffff_0%,#f3f4f3_52%,#ffdbce_100%)]">
+            <div className="relative h-full w-full bg-[radial-gradient(circle_at_24%_22%,rgba(219,234,254,0.9),transparent_30%),radial-gradient(circle_at_74%_30%,rgba(148,163,184,0.42),transparent_32%),linear-gradient(135deg,#ffffff_0%,#f1f5f9_52%,#dbeafe_100%)]">
               <div className="absolute left-1/2 top-1/2 grid h-52 w-52 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/80 bg-white/60 shadow-ambient backdrop-blur">
                 <Icon name="heartHands" className="h-20 w-20 text-primary" />
               </div>
@@ -135,7 +135,7 @@ export default async function HomePage() {
                 href="/reels"
                 className="group relative aspect-[9/16] overflow-hidden rounded-xl bg-surface-highest shadow-ambient transition hover:-translate-y-1 hover:shadow-card"
               >
-                <div className="absolute inset-0 bg-[linear-gradient(135deg,#a33900_0%,#545c72_54%,#131b2e_100%)] transition group-hover:scale-105" />
+                <div className="absolute inset-0 bg-[linear-gradient(135deg,#0b1f3a_0%,#123b66_54%,#020617_100%)] transition group-hover:scale-105" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/84 via-black/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4 text-white">
                   <div className="mb-2 flex items-center gap-1">
