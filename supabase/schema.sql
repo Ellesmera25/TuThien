@@ -296,8 +296,6 @@ begin
       invoice_signature_certificate_serial text,
       invoice_signature_certificate_valid_from timestamp with time zone,
       invoice_signature_certificate_valid_to timestamp with time zone,
-      invoice_signature_subject text,
-      invoice_signature_issuer text,
       invoice_signature_raw jsonb,
       invoice_signature_extracted_at timestamp with time zone,
       invoice_signature_error text,

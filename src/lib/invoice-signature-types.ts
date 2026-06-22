@@ -13,8 +13,6 @@ export type PdfSignatureInfo = {
   certificateSerial: string | null;
   certificateValidFrom: string | null;
   certificateValidTo: string | null;
-  subject: string | null;
-  issuer: string | null;
   extractedAt: string;
   error: string | null;
 };
@@ -29,8 +27,6 @@ export type StoredInvoiceSignatureFields = {
   invoice_signature_certificate_serial?: string | null;
   invoice_signature_certificate_valid_from?: string | null;
   invoice_signature_certificate_valid_to?: string | null;
-  invoice_signature_subject?: string | null;
-  invoice_signature_issuer?: string | null;
   invoice_signature_extracted_at?: string | null;
   invoice_signature_error?: string | null;
 };

@@ -31,8 +31,6 @@ export function storedInvoiceSignatureInfoFromRow(
     certificateSerial: row.invoice_signature_certificate_serial ?? null,
     certificateValidFrom: row.invoice_signature_certificate_valid_from ?? null,
     certificateValidTo: row.invoice_signature_certificate_valid_to ?? null,
-    subject: row.invoice_signature_subject ?? null,
-    issuer: row.invoice_signature_issuer ?? null,
     extractedAt: row.invoice_signature_extracted_at ?? "",
     error: row.invoice_signature_error ?? null,
   };
@@ -81,12 +79,6 @@ export function InvoiceSignatureSummary({
         />
       </div>
 
-      {info.subject ? (
-        <SignatureInfo className="mt-3" label="Subject" value={info.subject} />
-      ) : null}
-      {info.issuer ? (
-        <SignatureInfo className="mt-3" label="Issuer" value={info.issuer} />
-      ) : null}
       {info.error ? (
         <p className="mt-3 rounded-lg border border-amber-200 bg-white/70 p-3 text-xs font-semibold text-amber-800">
           {info.error}

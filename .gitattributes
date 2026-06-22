@@ -1,0 +1,14 @@
+* text eol=crlf
+
+*.apk binary
+*.dm binary
+*.gif binary
+*.ico binary
+*.jar binary
+*.jpeg binary
+*.jpg binary
+*.jks binary
+*.keystore binary
+*.pdf binary
+*.png binary
+*.webp binary

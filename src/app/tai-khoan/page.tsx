@@ -40,8 +40,6 @@ const invoiceSignatureColumns = `
     invoice_signature_certificate_serial,
     invoice_signature_certificate_valid_from,
     invoice_signature_certificate_valid_to,
-    invoice_signature_subject,
-    invoice_signature_issuer,
     invoice_signature_extracted_at,
     invoice_signature_error
 `;
@@ -2090,8 +2088,6 @@ async function getInvoiceSignatureUpdateFromProof(
             certificateSerial: null,
             certificateValidFrom: null,
             certificateValidTo: null,
-            subject: null,
-            issuer: null,
             extractedAt: new Date().toISOString(),
             error:
                 "Khong the trich xuat chu ky so tu URL ngoai. Vui long upload PDF len he thong.",
@@ -2113,8 +2109,6 @@ async function getInvoiceSignatureUpdateFromProof(
             certificateSerial: null,
             certificateValidFrom: null,
             certificateValidTo: null,
-            subject: null,
-            issuer: null,
             extractedAt: new Date().toISOString(),
             error: error?.message ?? "Khong the tai PDF hoa don tu Storage.",
         });

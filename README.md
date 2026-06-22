@@ -42,6 +42,10 @@ npm run apk:debug
 
 `apk:debug` sync Capacitor roi goi `android/gradlew.bat assembleDebug`.
 
+### Git line endings
+
+Repo co `.gitattributes` ep file text checkout bang CRLF. Binary asset nhu anh, PDF, APK, JAR va file ky khoa duoc danh dau `binary` de Git khong doi line ending.
+
 ## 3. Bien moi truong
 
 ### Supabase
@@ -181,7 +185,7 @@ Trang `/minh-bach` doc `donation_blockchain` va ghep `donations` de hien block n
 7. Project owner duyet round `requested` sang `owner_approved`.
 8. Admin duyet/giai ngan trong `/quan-tri`, co QR chuyen khoan VietQR neu tim duoc bank BIN tu `https://api.vietqr.io/v2/banks`.
 9. Sau khi disbursed, partner upload hoa don do PDF vao bucket `campaign-assets`; client goi `/api/invoice-signatures/extract` de doc chu ky so trong PDF, hien nguoi ky/ngay ky/chung thu truoc khi nop.
-10. Server action tai `/tai-khoan` chi chap nhan storage path noi bo nam duoi folder user hien tai, tai PDF tu bucket, trich xuat lai chu ky so tren server, luu `proof_url`, `proof_note` va cac cot `invoice_signature_*` vao `disbursement_rounds`.
+10. Server action tai `/tai-khoan` chi chap nhan storage path noi bo nam duoi folder user hien tai, tai PDF tu bucket, trich xuat lai chu ky so tren server, luu `proof_url`, `proof_note` va cac cot `invoice_signature_*` vao `disbursement_rounds`. Metadata chi luu nguoi ky, to chuc, ma so/ dinh danh, ngay ky, serial va thoi han chung thu; khong luu subject/issuer tho.
 11. Admin xem hoa don do bang signed URL rieng va thay thong tin nguoi ky/ngay ky/chung thu trong `/quan-tri`; admin duyet chung tu thanh `proof_status = approved` hoac danh dau qua han.
 
 ### Reels

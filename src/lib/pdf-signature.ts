@@ -84,8 +84,6 @@ export function extractPdfSignatureInfoFromBuffer(
           signerCertificate.validity.notBefore?.toISOString() ?? null,
         certificateValidTo:
           signerCertificate.validity.notAfter?.toISOString() ?? null,
-        subject: formatAttributes(signerCertificate.subject.attributes),
-        issuer: formatAttributes(signerCertificate.issuer.attributes),
       });
     } catch (error) {
       errors.push(error instanceof Error ? error.message : String(error));
@@ -112,8 +110,6 @@ export function toInvoiceSignatureDatabaseFields(info: PdfSignatureInfo) {
     invoice_signature_certificate_serial: info.certificateSerial,
     invoice_signature_certificate_valid_from: info.certificateValidFrom,
     invoice_signature_certificate_valid_to: info.certificateValidTo,
-    invoice_signature_subject: info.subject,
-    invoice_signature_issuer: info.issuer,
     invoice_signature_raw: info,
     invoice_signature_extracted_at: info.extractedAt,
     invoice_signature_error: info.error,
@@ -136,8 +132,6 @@ function createResult(
     certificateSerial: overrides.certificateSerial ?? null,
     certificateValidFrom: overrides.certificateValidFrom ?? null,
     certificateValidTo: overrides.certificateValidTo ?? null,
-    subject: overrides.subject ?? null,
-    issuer: overrides.issuer ?? null,
     extractedAt: overrides.extractedAt,
     error: overrides.error ? trimError(overrides.error) : null,
   };

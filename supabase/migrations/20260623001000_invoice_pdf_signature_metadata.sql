@@ -12,8 +12,6 @@ alter table public.disbursement_rounds
   add column if not exists invoice_signature_certificate_serial text,
   add column if not exists invoice_signature_certificate_valid_from timestamp with time zone,
   add column if not exists invoice_signature_certificate_valid_to timestamp with time zone,
-  add column if not exists invoice_signature_subject text,
-  add column if not exists invoice_signature_issuer text,
   add column if not exists invoice_signature_raw jsonb,
   add column if not exists invoice_signature_extracted_at timestamp with time zone,
   add column if not exists invoice_signature_error text;

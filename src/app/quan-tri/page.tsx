@@ -37,8 +37,6 @@ const invoiceSignatureColumns = `
     invoice_signature_certificate_serial,
     invoice_signature_certificate_valid_from,
     invoice_signature_certificate_valid_to,
-    invoice_signature_subject,
-    invoice_signature_issuer,
     invoice_signature_extracted_at,
     invoice_signature_error
 `;
