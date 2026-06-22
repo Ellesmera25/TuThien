@@ -223,6 +223,13 @@ Code hien dang doc/ghi cac bang sau, nhung repo hien tai khong co migration tao 
 
 Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang. `role_requests`, `campaign_images`, `campaign_phases`, `support_offers` duoc app dung nhieu nhung trong `supabase/` hien chi thay migration `alter`/tham chieu, chua thay file `create table` tu dau. Khi setup moi Supabase project, can bo sung migration tao cac bang nay truoc khi dung flow role/campaign/partner.
 
+### Index hieu nang
+
+- Migration `20260623002000_query_performance_indexes.sql` bo sung index co muc tieu cho cac query load cham tren `/tai-khoan`, `/quan-tri`, `/minh-bach` va donation/reels.
+- Cac bang nen duoc index them theo filter/order thuc te: `campaigns(created_at/status)`, `donations(status, created_at)`, `donation_blockchain(email, created_at)`, `disbursements(campaign_slug, spent_at)` va `reels(user_id, created_at)`.
+- Cac bang nghiep vu co the chua ton tai trong schema local duoc index bang guard table/column: `role_requests`, `campaign_images`, `campaign_phases`, `support_offers`, `disbursement_rounds`. Cac index nay tap trung vao `owner_id`, `partner_id`, `campaign_id`, `status`, `review_status`, `round_number`, `created_at`, `proof_due_at`.
+- Khong nen danh index tran lan moi cot: index tang toc doc/loc/sap xep nhung lam insert/update cham hon va ton dung luong. Neu `/minh-bach` van cham khi blockchain rat lon, diem tiep theo can toi uu la `count: "exact"` bang cached counter hoac estimated count.
+
 ### Storage buckets
 
 - `reel-videos`: bucket public cho video reels, toi da 100MB, MIME mp4/webm/quicktime/x-m4v.
