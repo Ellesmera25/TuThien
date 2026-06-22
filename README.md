@@ -257,7 +257,7 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 - Global utility classes: `neo-panel`, `neo-panel-strong`, `neo-badge`, `neo-btn`, `surface-card`, `soft-band`.
 - Header hien cac nut chuc nang theo role ben canh nav chinh: admin thay `Quan tri`, project owner thay `Tao du an`, partner_org thay `Dong hanh du an`.
 - Trang `/tai-khoan` co luoi navi nghiep vu bang query `view`. Donor thay tong quan, yeu cau vai tro, lich su dong gop, reels; `project_owner` co them tao/xem du an, don vi dong hanh can duyet, dot giai ngan; `partner_org` co them dang ky dong hanh va hoa don/chung tu. Moi module chi fetch/render du lieu cua view dang mo de tranh trang tai khoan qua dai.
-- Trang `/quan-tri` co luoi navi module bang query `view` cho tong quan, tat ca du an, du an cho duyet, dang ky dong hanh, giai ngan/chung tu va yeu cau vai tro; admin chi tai dataset cua module dang xem de giam lag khi du lieu tang.
+- Trang `/quan-tri` co luoi navi module bang query `view` cho tong quan, tat ca du an, du an cho duyet, dang ky dong hanh, giai ngan/chung tu va yeu cau vai tro; admin chi tai dataset cua module dang xem de giam lag khi du lieu tang. Summary tong quan chi fetch o view tong quan, cac view nghiep vu khong keo theo query tong hop; signed URL cho minh chung/hoa don/anh duoc batch theo bucket de giam round-trip toi Supabase Storage.
 - `AdminListController` la client component dung chung cho search, status filter va campaign/approval filter tren cac list van hanh; co `showPagination=false` khi list da duoc phan trang bang query/server.
 
 ### PWA

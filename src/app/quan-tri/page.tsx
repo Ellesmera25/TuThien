@@ -455,26 +455,18 @@ async function getPendingRoleRequests(): Promise<RoleRequestWithProof[]> {
     }
 
     const requests = data as RoleRequestRow[];
-
-    return Promise.all(
-        requests.map(async (request) => {
-            if (!request.proof_url) {
-                return {
-                    ...request,
-                    proofSignedUrl: null,
-                };
-            }
-
-            const { data: signedData } = await supabase.storage
-                .from("role-proofs")
-                .createSignedUrl(request.proof_url, 60 * 10);
-
-            return {
-                ...request,
-                proofSignedUrl: signedData?.signedUrl ?? null,
-            };
-        }),
+    const proofSignedUrlByPath = await getStorageSignedUrlMap(
+        supabase,
+        "role-proofs",
+        requests.map((request) => request.proof_url),
     );
+
+    return requests.map((request) => ({
+        ...request,
+        proofSignedUrl: request.proof_url
+            ? proofSignedUrlByPath.get(request.proof_url) ?? null
+            : null,
+    }));
 }
 async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
     const supabase = getSupabaseServiceClient();
@@ -536,11 +528,17 @@ async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
             role: owner.role,
         });
     }
-    for (const image of imageRows ?? []) {
-        const { data: signedData } = await supabase.storage
-            .from("campaign-assets")
-            .createSignedUrl(image.image_url, 60 * 10);
 
+    const campaignAssetSignedUrlByPath = await getStorageSignedUrlMap(
+        supabase,
+        "campaign-assets",
+        [
+            ...(imageRows ?? []).map((image) => image.image_url),
+            ...(phaseRows ?? []).map((phase) => phase.proof_url),
+        ],
+    );
+
+    for (const image of imageRows ?? []) {
         const list = imagesByCampaign.get(image.campaign_id) ?? [];
 
         list.push({
@@ -549,23 +547,13 @@ async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
             caption: image.caption,
             sort_order: image.sort_order,
             is_cover: image.is_cover,
-            signedUrl: signedData?.signedUrl ?? null,
+            signedUrl: campaignAssetSignedUrlByPath.get(image.image_url) ?? null,
         });
 
         imagesByCampaign.set(image.campaign_id, list);
     }
 
     for (const phase of phaseRows ?? []) {
-        let signedProofUrl: string | null = null;
-
-        if (phase.proof_url) {
-            const { data: signedData } = await supabase.storage
-                .from("campaign-assets")
-                .createSignedUrl(phase.proof_url, 60 * 10);
-
-            signedProofUrl = signedData?.signedUrl ?? null;
-        }
-
         const list = phasesByCampaign.get(phase.campaign_id) ?? [];
 
         list.push({
@@ -576,7 +564,9 @@ async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
             end_date: phase.end_date,
             status: phase.status,
             proof_url: phase.proof_url,
-            signedProofUrl,
+            signedProofUrl: phase.proof_url
+                ? campaignAssetSignedUrlByPath.get(phase.proof_url) ?? null
+                : null,
         });
 
         phasesByCampaign.set(phase.campaign_id, list);
@@ -807,47 +797,40 @@ async function getSupportOffersForAdmin(): Promise<SupportOfferRow[]> {
         });
     }
 
-    return Promise.all(
-        offers.map(async (offer) => {
-            let proofSignedUrl: string | null = null;
-
-            if (offer.proof_url) {
-                const { data: signedData } = await supabase.storage
-                    .from("campaign-assets")
-                    .createSignedUrl(offer.proof_url, 60 * 10);
-
-                proofSignedUrl = signedData?.signedUrl ?? null;
-            }
-
-            return {
-                id: offer.id,
-                campaign_id: offer.campaign_id,
-                phase_id: offer.phase_id,
-                disbursement_round_id: offer.disbursement_round_id,
-                partner_id: offer.partner_id,
-                title: offer.title,
-                support_type: offer.support_type,
-                description: offer.description,
-                estimated_value: offer.estimated_value,
-                approved_budget: offer.approved_budget,
-                contact_name: offer.contact_name,
-                contact_phone: offer.contact_phone,
-                contact_email: offer.contact_email,
-                proof_url: offer.proof_url,
-                status: offer.status,
-                rejection_reason: offer.rejection_reason,
-                created_at: offer.created_at,
-                campaign: campaignById.get(offer.campaign_id) ?? null,
-                phase: offer.phase_id ? phaseById.get(offer.phase_id) ?? null : null,
-                round: offer.disbursement_round_id
-                    ? roundById.get(offer.disbursement_round_id) ?? null
-                    : null,
-                partner: partnerById.get(offer.partner_id) ?? null,
-                proofSignedUrl,
-            };
-        }),
+    const proofSignedUrlByPath = await getStorageSignedUrlMap(
+        supabase,
+        "campaign-assets",
+        offers.map((offer) => offer.proof_url),
     );
 
+    return offers.map((offer) => ({
+        id: offer.id,
+        campaign_id: offer.campaign_id,
+        phase_id: offer.phase_id,
+        disbursement_round_id: offer.disbursement_round_id,
+        partner_id: offer.partner_id,
+        title: offer.title,
+        support_type: offer.support_type,
+        description: offer.description,
+        estimated_value: offer.estimated_value,
+        approved_budget: offer.approved_budget,
+        contact_name: offer.contact_name,
+        contact_phone: offer.contact_phone,
+        contact_email: offer.contact_email,
+        proof_url: offer.proof_url,
+        status: offer.status,
+        rejection_reason: offer.rejection_reason,
+        created_at: offer.created_at,
+        campaign: campaignById.get(offer.campaign_id) ?? null,
+        phase: offer.phase_id ? phaseById.get(offer.phase_id) ?? null : null,
+        round: offer.disbursement_round_id
+            ? roundById.get(offer.disbursement_round_id) ?? null
+            : null,
+        partner: partnerById.get(offer.partner_id) ?? null,
+        proofSignedUrl: offer.proof_url
+            ? proofSignedUrlByPath.get(offer.proof_url) ?? null
+            : null,
+    }));
 }
 
 async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRow[]> {
@@ -954,39 +937,64 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
             },
         ]),
     );
+    const proofSignedUrlByPath = await getStorageSignedUrlMap(
+        supabase,
+        "campaign-assets",
+        rounds.map((round) => round.proof_url),
+    );
 
-    return Promise.all(rounds.map(async (round) => {
+    return rounds.map((round) => {
         const campaign = campaignById.get(round.campaign_id) ?? null;
 
         return {
             ...round,
-            proofSignedUrl: await getCampaignAssetSignedUrl(supabase, round.proof_url),
+            proofSignedUrl: round.proof_url
+                ? proofSignedUrlByPath.get(round.proof_url) ?? null
+                : null,
             campaign,
             owner: campaign?.owner_id
                 ? profileById.get(campaign.owner_id) ?? null
                 : null,
             approvedOffer: offerByRoundId.get(round.id) ?? null,
         };
-    }));
+    });
 }
 
-async function getCampaignAssetSignedUrl(
+async function getStorageSignedUrlMap(
     client: NonNullable<ReturnType<typeof getSupabaseServiceClient>>,
-    value?: string | null,
+    bucketName: string,
+    values: Array<null | string | undefined>,
 ) {
-    if (!value) {
-        return null;
+    const signedUrlByPath = new Map<string, string | null>();
+    const storagePaths = Array.from(
+        new Set(
+            values.filter(
+                (value): value is string =>
+                    typeof value === "string" &&
+                    value.length > 0 &&
+                    !/^https?:\/\//i.test(value),
+            ),
+        ),
+    );
+
+    for (const value of values) {
+        if (typeof value === "string" && /^https?:\/\//i.test(value)) {
+            signedUrlByPath.set(value, value);
+        }
     }
 
-    if (/^https?:\/\//i.test(value)) {
-        return value;
+    for (let start = 0; start < storagePaths.length; start += 100) {
+        const chunk = storagePaths.slice(start, start + 100);
+        const { data } = await client.storage
+            .from(bucketName)
+            .createSignedUrls(chunk, 60 * 10);
+
+        for (const [index, item] of (data ?? []).entries()) {
+            signedUrlByPath.set(chunk[index], item.signedUrl ?? null);
+        }
     }
 
-    const { data } = await client.storage
-        .from("campaign-assets")
-        .createSignedUrl(value, 60 * 10);
-
-    return data?.signedUrl ?? null;
+    return signedUrlByPath;
 }
 async function approveRoleRequest(formData: FormData) {
     "use server";
@@ -1426,14 +1434,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         await initBankBinMap();
     }
 
-    const summary = await getDashboardSummary();
     const [
+        summary,
         adminCampaigns,
         pendingRoleRequests,
         pendingCampaigns,
         supportOffersForAdmin,
         disbursementRoundsForAdmin,
     ] = await Promise.all([
+        activeView === "overview" ? getDashboardSummary() : Promise.resolve(null),
         activeView === "campaigns" ? getAdminCampaigns() : Promise.resolve([]),
         activeView === "role-requests"
             ? getPendingRoleRequests()
@@ -1464,23 +1473,25 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                 </p>
             </header>
 
-            <section className="grid gap-4 md:grid-cols-3">
-                <Metric
-                    label="Tổng tiền tiếp nhận"
-                    value={formatVnd(summary.totalRaised)}
-                    tone="warm"
-                />
-                <Metric
-                    label="Số chiến dịch"
-                    value={`${summary.campaignCount}`}
-                    tone="cool"
-                />
-                <Metric
-                    label="Nhà hảo tâm"
-                    value={`${summary.donorCount}`}
-                    tone="mint"
-                />
-            </section>
+            {summary ? (
+                <section className="grid gap-4 md:grid-cols-3">
+                    <Metric
+                        label="Tổng tiền tiếp nhận"
+                        value={formatVnd(summary.totalRaised)}
+                        tone="warm"
+                    />
+                    <Metric
+                        label="Số chiến dịch"
+                        value={`${summary.campaignCount}`}
+                        tone="cool"
+                    />
+                    <Metric
+                        label="Nhà hảo tâm"
+                        value={`${summary.donorCount}`}
+                        tone="mint"
+                    />
+                </section>
+            ) : null}
 
             <AdminModuleNav activeView={activeView} />
 
