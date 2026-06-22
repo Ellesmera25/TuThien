@@ -18,6 +18,7 @@ type AdminListControllerProps = {
     listId: string;
     pageSize: number;
     searchPlaceholder?: string;
+    showPagination?: boolean;
     statusOptions?: FilterOption[];
     totalItems: number;
 };
@@ -35,6 +36,7 @@ export function AdminListController({
     listId,
     pageSize,
     searchPlaceholder = "Tìm theo tên, mô tả, mã hoặc chiến dịch...",
+    showPagination = true,
     statusOptions = [],
     totalItems,
 }: AdminListControllerProps) {
@@ -45,10 +47,15 @@ export function AdminListController({
     const [status, setStatus] = useState("all");
     const [visibleCount, setVisibleCount] = useState(totalItems);
 
-    const totalPages = Math.max(Math.ceil(visibleCount / pageSize), 1);
+    const totalPages = showPagination
+        ? Math.max(Math.ceil(visibleCount / pageSize), 1)
+        : 1;
     const clampedPage = Math.min(page, totalPages);
-    const start = visibleCount === 0 ? 0 : (clampedPage - 1) * pageSize + 1;
-    const end = Math.min(clampedPage * pageSize, visibleCount);
+    const start =
+        visibleCount === 0 ? 0 : showPagination ? (clampedPage - 1) * pageSize + 1 : 1;
+    const end = showPagination
+        ? Math.min(clampedPage * pageSize, visibleCount)
+        : visibleCount;
 
     const itemsSelector = useMemo(
         () => `[data-admin-list="${listId}"]`,
@@ -62,8 +69,8 @@ export function AdminListController({
             searchTerm,
             status,
         });
-        const firstIndex = (clampedPage - 1) * pageSize;
-        const lastIndex = firstIndex + pageSize;
+        const firstIndex = showPagination ? (clampedPage - 1) * pageSize : 0;
+        const lastIndex = showPagination ? firstIndex + pageSize : matchedItems.length;
         const allItems = Array.from(
             document.querySelectorAll<HTMLElement>(itemsSelector),
         );
@@ -82,6 +89,7 @@ export function AdminListController({
         itemsSelector,
         pageSize,
         searchTerm,
+        showPagination,
         status,
     ]);
 
@@ -181,27 +189,31 @@ export function AdminListController({
                         : `Hiển thị ${start}-${end} / ${visibleCount}`}
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
-                    <button
-                        type="button"
-                        disabled={clampedPage <= 1}
-                        onClick={() => setPage((current) => Math.max(current - 1, 1))}
-                        className="rounded-lg border border-slate-200 px-3 py-2 font-bold text-slate-700 transition hover:border-primary hover:text-primary disabled:border-slate-100 disabled:text-slate-300"
-                    >
-                        Trước
-                    </button>
-                    <span className="rounded-lg bg-primary-fixed px-3 py-2 font-bold text-primary">
-                        {clampedPage}/{totalPages}
-                    </span>
-                    <button
-                        type="button"
-                        disabled={clampedPage >= totalPages}
-                        onClick={() =>
-                            setPage((current) => Math.min(current + 1, totalPages))
-                        }
-                        className="rounded-lg border border-slate-200 px-3 py-2 font-bold text-slate-700 transition hover:border-primary hover:text-primary disabled:border-slate-100 disabled:text-slate-300"
-                    >
-                        Sau
-                    </button>
+                    {showPagination ? (
+                        <>
+                            <button
+                                type="button"
+                                disabled={clampedPage <= 1}
+                                onClick={() => setPage((current) => Math.max(current - 1, 1))}
+                                className="rounded-lg border border-slate-200 px-3 py-2 font-bold text-slate-700 transition hover:border-primary hover:text-primary disabled:border-slate-100 disabled:text-slate-300"
+                            >
+                                Trước
+                            </button>
+                            <span className="rounded-lg bg-primary-fixed px-3 py-2 font-bold text-primary">
+                                {clampedPage}/{totalPages}
+                            </span>
+                            <button
+                                type="button"
+                                disabled={clampedPage >= totalPages}
+                                onClick={() =>
+                                    setPage((current) => Math.min(current + 1, totalPages))
+                                }
+                                className="rounded-lg border border-slate-200 px-3 py-2 font-bold text-slate-700 transition hover:border-primary hover:text-primary disabled:border-slate-100 disabled:text-slate-300"
+                            >
+                                Sau
+                            </button>
+                        </>
+                    ) : null}
                 </div>
             </div>
         </div>

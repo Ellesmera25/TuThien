@@ -65,11 +65,6 @@ const disbursementStatusFilterOptions = [
     { label: "Hoàn tất", value: "completed" },
 ];
 
-const roleRequestFilterOptions = [
-    { label: "Người tạo dự án", value: "project_owner" },
-    { label: "Đơn vị đồng hành", value: "partner_org" },
-];
-
 type RequestedRole = "project_owner" | "partner_org";
 type DisbursementRoundStatus =
     | "locked"
@@ -2191,30 +2186,9 @@ export default async function AdminPage() {
                     </p>
                 ) : (
                     <div className="mt-5 grid gap-4">
-                        <AdminListController
-                            listId="pending-role-requests"
-                            pageSize={adminPageSize}
-                            searchPlaceholder="Tìm người gửi, email, số điện thoại, mục đích..."
-                            statusOptions={roleRequestFilterOptions}
-                            totalItems={pendingRoleRequests.length}
-                        />
-                        {pendingRoleRequests.map((request, index) => (
+                        {pendingRoleRequests.map((request) => (
                             <article
                                 key={request.id}
-                                data-admin-list="pending-role-requests"
-                                data-list-search={makeListSearchText(
-                                    request.display_name,
-                                    request.representative_name,
-                                    request.phone,
-                                    request.contact_email,
-                                    request.address,
-                                    request.purpose,
-                                    request.tax_code,
-                                    request.payout_bank_name,
-                                    request.payout_account_holder,
-                                )}
-                                data-list-status={request.requested_role}
-                                hidden={index >= adminPageSize}
                                 className="rounded-xl border border-slate-100 bg-white p-5 shadow-soft"
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-3">

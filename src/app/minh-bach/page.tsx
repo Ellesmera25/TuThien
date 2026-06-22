@@ -36,14 +36,14 @@ export default async function TransparencyPage({
 
   return (
     <div className="space-y-8 pb-8">
-      <header className="neo-panel-strong p-7 sm:p-9">
-        <p className="neo-badge border-white/30 bg-white/20 text-white">
+      <header className="neo-panel-strong bg-white p-7 sm:p-9">
+        <p className="neo-badge border-outline-variant bg-primary-fixed text-primary">
           Transparency Board
         </p>
-        <h1 className="mt-3 font-display text-4xl font-bold text-white sm:text-5xl">
+        <h1 className="mt-3 font-display text-4xl font-bold text-primary sm:text-5xl">
           Bảng minh bạch tài chính
         </h1>
-        <p className="mt-3 max-w-2xl text-sm text-slate-100 sm:text-base">
+        <p className="mt-3 max-w-2xl text-sm leading-7 text-on-surface-variant sm:text-base">
           Mỗi khoản đóng góp và khoản chi đều được cập nhật để cộng đồng theo
           dõi đầy đủ, rõ ràng và dễ đối soát.
         </p>
@@ -79,9 +79,60 @@ export default async function TransparencyPage({
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="min-w-[1040px] text-left text-sm">
-            <thead className="bg-[#111827] text-[11px] uppercase tracking-[0.08em] text-slate-300">
+        <div className="grid gap-3 bg-surface-low p-4 md:hidden">
+          {donationChain.length === 0 ? (
+            <p className="border border-outline-variant bg-white px-4 py-6 text-center text-sm font-semibold text-slate-500">
+              Chưa có donate chain được xác minh.
+            </p>
+          ) : (
+            donationChain.map((item) => (
+              <article
+                key={item.id}
+                className="border border-outline-variant bg-white p-4 shadow-soft"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-mono text-xs font-bold uppercase tracking-[0.08em] text-primary">
+                      Block #{item.blockNumber.toString().padStart(3, "0")}
+                    </p>
+                    <h3 className="mt-1 font-display text-lg font-bold text-ink">
+                      {item.donorName}
+                    </h3>
+                    <p className="mt-1 text-xs font-semibold text-on-surface-variant">
+                      {formatDate(item.createdAt)}
+                    </p>
+                  </div>
+                  <p className="text-right font-display text-lg font-bold text-emerald-700">
+                    +{formatVnd(item.amount)}
+                  </p>
+                </div>
+
+                <div className="mt-4 grid gap-2 text-sm">
+                  <LedgerInfo label="Chiến dịch" value={item.campaignSlug || "quy-chung"} />
+                  <LedgerInfo label="Sepay ref" value={item.paymentReference || "N/A"} />
+                  <LedgerInfo label="TX" value={shortHash(item.providerTransactionId)} />
+                </div>
+
+                <div className="mt-4 grid gap-2 border border-slate-200 bg-slate-50 p-3 font-mono text-xs">
+                  <p className="break-all text-emerald-700">
+                    H {shortHash(item.hash)}
+                  </p>
+                  <p className="break-all text-slate-500">
+                    P {shortHash(item.previousHash)}
+                  </p>
+                </div>
+
+                <span className="mt-3 inline-flex bg-emerald-50 px-2 py-1 text-[11px] font-bold uppercase text-emerald-700">
+                  {item.status}
+                </span>
+              </article>
+            ))
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
+          <table className="min-w-[1080px] text-left text-sm">
+            <thead className="bg-primary text-[11px] uppercase tracking-[0.08em] text-white">
               <tr>
                 <th className="px-4 py-3">Block</th>
                 <th className="px-4 py-3">Thời gian</th>
@@ -94,12 +145,12 @@ export default async function TransparencyPage({
                 <th className="px-4 py-3">Trạng thái</th>
               </tr>
             </thead>
-            <tbody className="bg-[#0f172a] font-mono text-xs text-slate-200">
+            <tbody className="bg-white font-mono text-xs text-slate-700">
               {donationChain.length === 0 ? (
                 <tr>
                   <td
                     colSpan={9}
-                    className="px-4 py-6 text-center text-slate-400"
+                    className="px-4 py-6 text-center text-slate-500"
                   >
                     Chưa có donate chain được xác minh.
                   </td>
@@ -108,41 +159,41 @@ export default async function TransparencyPage({
                 donationChain.map((item) => (
                   <tr
                     key={item.id}
-                    className="border-t border-white/10 transition hover:bg-white/[0.06]"
+                    className="border-t border-slate-200 transition hover:bg-surface-low"
                   >
-                    <td className="px-4 py-3 font-bold text-primary-fixed">
+                    <td className="px-4 py-3 font-bold text-primary">
                       #{item.blockNumber.toString().padStart(3, "0")}
                     </td>
-                    <td className="px-4 py-3 text-slate-300">
+                    <td className="px-4 py-3 text-slate-600">
                       {formatDate(item.createdAt)}
                     </td>
-                    <td className="px-4 py-3 font-sans text-sm font-bold text-white">
+                    <td className="px-4 py-3 font-sans text-sm font-bold text-ink">
                       {item.donorName}
                     </td>
-                    <td className="px-4 py-3 text-slate-300">
+                    <td className="px-4 py-3 text-slate-600">
                       {item.campaignSlug || "quy-chung"}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-emerald-300">
+                    <td className="px-4 py-3 text-right font-bold text-emerald-700">
                       +{formatVnd(item.amount)}
                     </td>
-                    <td className="px-4 py-3 text-sky-300">
+                    <td className="px-4 py-3 text-primary">
                       {item.paymentReference || "N/A"}
                     </td>
-                    <td className="px-4 py-3 text-slate-300">
+                    <td className="px-4 py-3 text-slate-600">
                       {shortHash(item.providerTransactionId)}
                     </td>
                     <td className="px-4 py-3">
-                      <div className="grid gap-1">
-                        <span className="text-emerald-300">
+                      <div className="grid gap-1 border border-slate-200 bg-slate-50 p-2">
+                        <span className="break-all text-emerald-700">
                           H {shortHash(item.hash)}
                         </span>
-                        <span className="text-slate-500">
+                        <span className="break-all text-slate-500">
                           P {shortHash(item.previousHash)}
                         </span>
                       </div>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-emerald-400/15 px-2 py-1 font-sans text-[11px] font-bold uppercase text-emerald-300">
+                      <span className="bg-emerald-50 px-2 py-1 font-sans text-[11px] font-bold uppercase text-emerald-700">
                         {item.status}
                       </span>
                     </td>
@@ -230,7 +281,7 @@ function Pagination({
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/10 bg-[#0f172a] px-6 py-4 text-sm text-slate-200">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 bg-white px-6 py-4 text-sm text-slate-700">
       <p className="font-semibold">
         Trang {currentPage}/{totalPages}
       </p>
@@ -240,8 +291,8 @@ function Pagination({
           aria-disabled={currentPage <= 1}
           className={`rounded-lg border px-3 py-2 font-bold transition ${
             currentPage <= 1
-              ? "pointer-events-none border-slate-700 text-slate-600"
-              : "border-slate-600 text-slate-200 hover:border-primary-fixed hover:text-primary-fixed"
+              ? "pointer-events-none border-slate-100 text-slate-300"
+              : "border-slate-200 text-slate-700 hover:border-primary hover:text-primary"
           }`}
         >
           Trước
@@ -251,13 +302,24 @@ function Pagination({
           aria-disabled={currentPage >= totalPages}
           className={`rounded-lg border px-3 py-2 font-bold transition ${
             currentPage >= totalPages
-              ? "pointer-events-none border-slate-700 text-slate-600"
-              : "border-slate-600 text-slate-200 hover:border-primary-fixed hover:text-primary-fixed"
+              ? "pointer-events-none border-slate-100 text-slate-300"
+              : "border-slate-200 text-slate-700 hover:border-primary hover:text-primary"
           }`}
         >
           Sau
         </Link>
       </div>
+    </div>
+  );
+}
+
+function LedgerInfo({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2 last:border-b-0 last:pb-0">
+      <span className="text-xs font-bold uppercase tracking-[0.08em] text-slate-500">
+        {label}
+      </span>
+      <span className="text-right font-semibold text-ink">{value}</span>
     </div>
   );
 }

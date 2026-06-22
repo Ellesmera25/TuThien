@@ -174,15 +174,14 @@ export async function POST(request: Request) {
 
     const { data: existingRequest } = await supabase
         .from("role_requests")
-        .select("id")
+        .select("id, status")
         .eq("user_id", user.id)
-        .eq("requested_role", body.requestedRole)
-        .eq("status", "pending")
+        .limit(1)
         .maybeSingle();
 
     if (existingRequest) {
         return NextResponse.json(
-            { error: "Bạn đã gửi yêu cầu này và đang chờ duyệt." },
+            { error: "Mỗi tài khoản chỉ được gửi yêu cầu vai trò một lần." },
             { status: 400 },
         );
     }

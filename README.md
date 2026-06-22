@@ -91,7 +91,7 @@ Thu muc `node_modules`, `.next`, `.git`, build outputs va binary asset Android k
 
 Role duoc luu trong bang `profiles.role`:
 
-- `donor`: mac dinh sau dang ky, co the donate, tao reel, gui yeu cau nang vai tro.
+- `donor`: mac dinh sau dang ky, co the donate, tao reel, gui yeu cau nang vai tro mot lan duy nhat.
 - `project_owner`: tao chien dich moi, xem chien dich cua minh, duyet/tuchoi don vi dong hanh, duyet yeu cau giai ngan cua doi tac.
 - `partner_org`: dang ky dong hanh chien dich, gui yeu cau giai ngan, nop chung tu sau giai ngan.
 - `admin`: truy cap `/quan-tri`, duyet role request, duyet chien dich, duyet giai ngan/chung tu.
@@ -113,8 +113,8 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 | `/reels/tao` | Upload video va tao reel | Can login |
 | `/dang-nhap` | Dang nhap Supabase email/password | Public |
 | `/dang-ky` | Dang ky Supabase va tao profile donor | Public |
-| `/tai-khoan` | Profile, lich su donation, reels, campaign, role request, support offer, giai ngan; cac list chinh co search/filter/pagination client-side | Can login |
-| `/quan-tri` | Admin dashboard, co search/filter/pagination cho campaign, support offer, giai ngan va role request | Can role `admin` |
+| `/tai-khoan` | Profile, lich su donation, reels, campaign, role request, support offer, giai ngan; co the navi nghiep vu va server-side pagination cho cac list nang | Can login |
+| `/quan-tri` | Admin dashboard, co search/filter/pagination cho campaign, support offer, giai ngan; role request hien truc tiep khong filter | Can role `admin` |
 | `/ung-dung` | Trang tai APK Android | Public |
 
 ## 7. API routes
@@ -127,7 +127,7 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 | `/api/campaigns` | `POST` | Tao campaign pending va luu image metadata | Same-origin, login, role `project_owner`, 1-8 image path hop le |
 | `/api/support-offers` | `POST` | Partner gui de xuat dong hanh cho disbursement round | Same-origin, login, role `partner_org`, campaign published active/paused, khong phai owner |
 | `/api/invoice-signatures/extract` | `POST` | Doc file PDF hoa don do, trich xuat thong tin chu ky so nhung trong PDF de hien thi truoc khi upload | Same-origin, login, file PDF <= 20MB |
-| `/api/role-requests` | `POST` | Gui yeu cau nang role | Same-origin, login, proof path hop le, cam ket minh bach |
+| `/api/role-requests` | `POST` | Gui yeu cau nang role mot lan duy nhat moi tai khoan | Same-origin, login, proof path hop le, cam ket minh bach |
 | `/api/reels` | `POST` | Upload video vao bucket `reel-videos` va tao row `reels` | Same-origin, login, Supabase service role, campaign published |
 | `/api/reels/[id]/like` | `POST` | Toggle like reel, `id` la reel UUID | Same-origin, login |
 | `/api/reels/[id]/comments` | `GET` | Lay 20 comment moi nhat, `id` la reel UUID | Public neu Supabase configured |
@@ -163,11 +163,11 @@ Tat ca mutation web quan trong dung `isSameOriginMutation()` de chan origin/refe
 SHA256(paymentReference | amount | email | donorName | timestamp | previousHash)
 ```
 
-Trang `/minh-bach` doc `donation_blockchain` theo server-side pagination bang query `chainPage`, moi trang toi da 20 block, va ghep `donations` de hien block number, Sepay ref, transaction id, hash va previous hash. Cach nay tranh render/tai toan bo chain khi du lieu tang lon.
+Trang `/minh-bach` doc `donation_blockchain` theo server-side pagination bang query `chainPage`, moi trang toi da 20 block, va ghep `donations` de hien block number, Sepay ref, transaction id, hash va previous hash. Donate chain dung card ledger tren mobile va bang navy-trang tren desktop de de doi soat, tranh render/tai toan bo chain khi du lieu tang lon.
 
 ### Campaign creation va approval
 
-1. Donor gui role request len `project_owner`.
+1. Donor gui role request len `project_owner`; moi tai khoan chi duoc gui role request mot lan, API tu choi moi request tiep theo neu da co ho so.
 2. Admin duyet role request, profile chuyen sang `project_owner`.
 3. Project owner upload 1-8 anh len bucket `campaign-assets` bang client Supabase.
 4. `/api/campaigns` tao row `campaigns` voi `review_status = pending`, `status = paused`, va tao `campaign_images`.
@@ -249,7 +249,8 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 - Tailwind theme duoc mo rong trong `tailwind.config.ts`.
 - Global utility classes: `neo-panel`, `neo-panel-strong`, `neo-badge`, `neo-btn`, `surface-card`, `soft-band`.
 - Header hien cac nut chuc nang theo role ben canh nav chinh: admin thay `Quan tri`, project owner thay `Tao du an`, partner_org thay `Dong hanh du an`.
-- `AdminListController` la client component dung chung cho search, status filter, campaign/approval filter va pagination client-side tren cac list van hanh.
+- Trang `/tai-khoan` co the navi nghiep vu rieng cho `project_owner` va `partner_org`, dua cac muc nhu dang ky dong hanh, dot giai ngan, hoa don/chung tu len thanh loi tat rieng thay vi de lan trong thong tin tai khoan.
+- `AdminListController` la client component dung chung cho search, status filter va campaign/approval filter tren cac list van hanh; co `showPagination=false` khi list da duoc phan trang bang query/server.
 
 ### PWA
 

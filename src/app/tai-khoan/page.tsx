@@ -11,6 +11,10 @@ import {
     storedInvoiceSignatureInfoFromRow,
 } from "@/components/invoice-signature-summary";
 import { RoleRequestForm } from "@/components/role-request-form";
+import {
+    ServerPagination,
+    type PageSearchParams,
+} from "@/components/server-pagination";
 import { getDashboardSummary, getReelsByUser } from "@/lib/data";
 import { formatCompactNumber, formatDate, formatVnd } from "@/lib/format";
 import type { StoredInvoiceSignatureFields } from "@/lib/invoice-signature-types";
@@ -46,11 +50,13 @@ const invoiceSignatureColumns = `
 `;
 
 const accountPageSize = 6;
-const roleRequestStatusFilterOptions = [
-    { label: "Chờ duyệt", value: "pending" },
-    { label: "Đã duyệt", value: "approved" },
-    { label: "Bị từ chối", value: "rejected" },
-];
+const accountPageParams = {
+    myCampaigns: "campaignPage",
+    mySupportOffers: "supportPage",
+    ownerSupportOffers: "ownerSupportPage",
+    ownerDisbursements: "ownerDisbursementPage",
+    partnerDisbursements: "partnerDisbursementPage",
+} as const;
 const campaignReviewFilterOptions = [
     { label: "Chờ duyệt", value: "pending" },
     { label: "Đã công khai", value: "published" },
@@ -71,6 +77,12 @@ const disbursementStatusFilterOptions = [
     { label: "Cần xử lý", value: "needs_admin_review" },
     { label: "Hoàn tất", value: "completed" },
 ];
+
+type PageResult<T> = {
+    hasNext: boolean;
+    items: T[];
+    page: number;
+};
 
 type MyCampaignRow = {
     id: string;
@@ -179,34 +191,53 @@ type AccountDisbursementRoundRow = StoredInvoiceSignatureFields & {
         partnerName: string | null;
     } | null;
 };
-export default async function AccountPage() {
+type AccountPageProps = {
+    searchParams: Promise<PageSearchParams>;
+};
+
+export default async function AccountPage({ searchParams }: AccountPageProps) {
     const user = await getCurrentUser();
 
     if (!user) {
         redirect("/dang-nhap?next=/tai-khoan");
     }
 
+    const params = await searchParams;
+    const pageNumbers = {
+        myCampaigns: getPageNumber(params[accountPageParams.myCampaigns]),
+        mySupportOffers: getPageNumber(params[accountPageParams.mySupportOffers]),
+        ownerSupportOffers: getPageNumber(params[accountPageParams.ownerSupportOffers]),
+        ownerDisbursements: getPageNumber(params[accountPageParams.ownerDisbursements]),
+        partnerDisbursements: getPageNumber(params[accountPageParams.partnerDisbursements]),
+    };
+
     const [
         summary,
         reels,
         recentDonations,
-        myCampaigns,
+        myCampaignsPage,
         myRoleRequests,
-        mySupportOffers,
-        ownerSupportOffers,
-        ownerDisbursementRounds,
-        partnerDisbursementRounds,
+        mySupportOffersPage,
+        ownerSupportOffersPage,
+        ownerDisbursementRoundsPage,
+        partnerDisbursementRoundsPage,
     ] = await Promise.all([
         getDashboardSummary(),
         getReelsByUser(user.id),
         getMyRecentDonations(user.email ?? ""),
-        getMyCampaigns(user.id),
+        getMyCampaigns(user.id, pageNumbers.myCampaigns),
         getMyRoleRequests(user.id),
-        getMySupportOffers(user.id),
-        getOwnerSupportOffers(user.id),
-        getOwnerDisbursementRounds(user.id),
-        getPartnerDisbursementRounds(user.id),
+        getMySupportOffers(user.id, pageNumbers.mySupportOffers),
+        getOwnerSupportOffers(user.id, pageNumbers.ownerSupportOffers),
+        getOwnerDisbursementRounds(user.id, pageNumbers.ownerDisbursements),
+        getPartnerDisbursementRounds(user.id, pageNumbers.partnerDisbursements),
     ]);
+
+    const myCampaigns = myCampaignsPage.items;
+    const mySupportOffers = mySupportOffersPage.items;
+    const ownerSupportOffers = ownerSupportOffersPage.items;
+    const ownerDisbursementRounds = ownerDisbursementRoundsPage.items;
+    const partnerDisbursementRounds = partnerDisbursementRoundsPage.items;
 
     const fullName =
         (user.user_metadata.full_name as string | undefined) ?? "Thành viên";
@@ -215,6 +246,10 @@ export default async function AccountPage() {
     const isDonor = role === "donor";
     const canCreateCampaign = role === "project_owner";
     const canSupportCampaign = role === "partner_org";
+    const accountNavItems = getAccountNavItems({
+        canCreateCampaign,
+        canSupportCampaign,
+    });
 
     return (
         <div className="flex flex-col gap-12 pb-8">
@@ -269,10 +304,12 @@ export default async function AccountPage() {
                 </div>
             </section>
 
-            {isDonor ? (
+            {isDonor && myRoleRequests.length === 0 ? (
                 <RoleRequestForm />
-            ) : (
-                <section className="surface-card rounded-xl p-6">
+            ) : null}
+
+            {!isDonor ? (
+                <section id="dot-giai-ngan-cua-du-an" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <h2 className="font-display text-2xl font-semibold text-ink">
                             Vai trò hiện tại
@@ -283,9 +320,9 @@ export default async function AccountPage() {
                         </p>
                     </div>
                 </section>
-            )}
+            ) : null}
             {myRoleRequests.length > 0 ? (
-                <section className="surface-card rounded-xl p-6">
+                <section id="yeu-cau-vai-tro" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-display text-2xl font-semibold text-ink">
@@ -297,29 +334,14 @@ export default async function AccountPage() {
                         </div>
 
                         <span className="rounded-full bg-primary-fixed px-4 py-2 text-sm font-bold text-primary">
-                            {myRoleRequests.length} yêu cầu
+                            Đã gửi yêu cầu
                         </span>
                     </div>
 
                     <div className="mt-5 grid gap-3">
-                        <AdminListController
-                            listId="account-role-requests"
-                            pageSize={accountPageSize}
-                            searchPlaceholder="Tìm vai trò, tên hồ sơ hoặc mục đích..."
-                            statusOptions={roleRequestStatusFilterOptions}
-                            totalItems={myRoleRequests.length}
-                        />
-                        {myRoleRequests.map((request, index) => (
+                        {myRoleRequests.map((request) => (
                             <article
                                 key={request.id}
-                                data-admin-list="account-role-requests"
-                                data-list-search={makeListSearchText(
-                                    request.display_name,
-                                    request.purpose,
-                                    formatRequestedRoleLabel(request.requested_role),
-                                )}
-                                data-list-status={request.status}
-                                hidden={index >= accountPageSize}
                                 className="rounded-xl border border-outline-variant/40 bg-white p-4 shadow-soft"
                             >
                                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -394,8 +416,26 @@ export default async function AccountPage() {
                     </div>
                 </section>
             ) : null}
+
+            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {accountNavItems.map((item) => (
+                    <Link
+                        key={item.href}
+                        href={item.href}
+                        className="surface-card p-4 transition hover:border-primary hover:shadow-card"
+                    >
+                        <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+                            {item.group}
+                        </p>
+                        <p className="mt-2 font-display text-lg font-bold text-ink">
+                            {item.label}
+                        </p>
+                    </Link>
+                ))}
+            </section>
+
             {canSupportCampaign ? (
-                <section className="surface-card rounded-xl p-6">
+                <section id="dang-ky-dong-hanh-cua-toi" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-display text-2xl font-semibold text-ink">
@@ -421,6 +461,7 @@ export default async function AccountPage() {
                                 listId="account-my-support-offers"
                                 pageSize={accountPageSize}
                                 searchPlaceholder="Tìm đăng ký, dự án, mô tả..."
+                                showPagination={false}
                                 statusOptions={supportOfferStatusFilterOptions}
                                 totalItems={mySupportOffers.length}
                             />
@@ -546,12 +587,20 @@ export default async function AccountPage() {
                                     ) : null}
                                 </article>
                             ))}
+                            <ServerPagination
+                                anchor="dang-ky-dong-hanh-cua-toi"
+                                basePath="/tai-khoan"
+                                currentPage={mySupportOffersPage.page}
+                                hasNext={mySupportOffersPage.hasNext}
+                                pageParam={accountPageParams.mySupportOffers}
+                                searchParams={params}
+                            />
                         </div>
                     )}
                 </section>
             ) : null}
             {myCampaigns.length > 0 ? (
-                <section className="surface-card rounded-xl p-6">
+                <section id="du-an-cua-toi" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-display text-2xl font-semibold text-ink">
@@ -572,6 +621,7 @@ export default async function AccountPage() {
                             listId="account-my-campaigns"
                             pageSize={accountPageSize}
                             searchPlaceholder="Tìm dự án, mô tả, trạng thái..."
+                            showPagination={false}
                             statusOptions={campaignReviewFilterOptions}
                             totalItems={myCampaigns.length}
                         />
@@ -667,11 +717,19 @@ export default async function AccountPage() {
                                 ) : null}
                             </article>
                         ))}
+                        <ServerPagination
+                            anchor="du-an-cua-toi"
+                            basePath="/tai-khoan"
+                            currentPage={myCampaignsPage.page}
+                            hasNext={myCampaignsPage.hasNext}
+                            pageParam={accountPageParams.myCampaigns}
+                            searchParams={params}
+                        />
                     </div>
                 </section>
             ) : null}
             {canCreateCampaign ? (
-                <section className="surface-card rounded-xl p-6">
+                <section id="don-vi-dong-hanh-can-duyet" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-display text-2xl font-semibold text-ink">
@@ -697,6 +755,7 @@ export default async function AccountPage() {
                                 listId="account-owner-support-offers"
                                 pageSize={accountPageSize}
                                 searchPlaceholder="Tìm đơn vị, dự án, tiêu đề, liên hệ..."
+                                showPagination={false}
                                 statusOptions={supportOfferStatusFilterOptions}
                                 totalItems={ownerSupportOffers.length}
                             />
@@ -865,12 +924,20 @@ export default async function AccountPage() {
                                     ) : null}
                                 </article>
                             ))}
+                            <ServerPagination
+                                anchor="don-vi-dong-hanh-can-duyet"
+                                basePath="/tai-khoan"
+                                currentPage={ownerSupportOffersPage.page}
+                                hasNext={ownerSupportOffersPage.hasNext}
+                                pageParam={accountPageParams.ownerSupportOffers}
+                                searchParams={params}
+                            />
                         </div>
                     )}
                 </section>
             ) : null}
             {canCreateCampaign ? (
-                <section className="surface-card rounded-xl p-6">
+                <section id="yeu-cau-giai-ngan-hoa-don" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                             <h2 className="font-display text-2xl font-semibold text-ink">
@@ -896,6 +963,7 @@ export default async function AccountPage() {
                                 listId="account-owner-disbursements"
                                 pageSize={accountPageSize}
                                 searchPlaceholder="Tìm dự án, đơn vị đồng hành, ghi chú..."
+                                showPagination={false}
                                 statusOptions={disbursementStatusFilterOptions}
                                 totalItems={ownerDisbursementRounds.length}
                             />
@@ -1002,6 +1070,14 @@ export default async function AccountPage() {
                                     ) : null}
                                 </article>
                             ))}
+                            <ServerPagination
+                                anchor="dot-giai-ngan-cua-du-an"
+                                basePath="/tai-khoan"
+                                currentPage={ownerDisbursementRoundsPage.page}
+                                hasNext={ownerDisbursementRoundsPage.hasNext}
+                                pageParam={accountPageParams.ownerDisbursements}
+                                searchParams={params}
+                            />
                         </div>
                     )}
                 </section>
@@ -1033,6 +1109,7 @@ export default async function AccountPage() {
                                 listId="account-partner-disbursements"
                                 pageSize={accountPageSize}
                                 searchPlaceholder="Tìm dự án, hóa đơn, ghi chú..."
+                                showPagination={false}
                                 statusOptions={disbursementStatusFilterOptions}
                                 totalItems={partnerDisbursementRounds.length}
                             />
@@ -1170,6 +1247,14 @@ export default async function AccountPage() {
                                     ) : null}
                                 </article>
                             ))}
+                            <ServerPagination
+                                anchor="yeu-cau-giai-ngan-hoa-don"
+                                basePath="/tai-khoan"
+                                currentPage={partnerDisbursementRoundsPage.page}
+                                hasNext={partnerDisbursementRoundsPage.hasNext}
+                                pageParam={accountPageParams.partnerDisbursements}
+                                searchParams={params}
+                            />
                         </div>
                     )}
                 </section>
@@ -1315,6 +1400,58 @@ function ProfileMetric({ label, value }: { label: string; value: string }) {
     );
 }
 
+function getAccountNavItems({
+    canCreateCampaign,
+    canSupportCampaign,
+}: {
+    canCreateCampaign: boolean;
+    canSupportCampaign: boolean;
+}) {
+    const items = [
+        { group: "Cá nhân", href: "#lich-su-dong-gop", label: "Lịch sử đóng góp" },
+        { group: "Reels", href: "/reels/tao", label: "Tạo reel tác động" },
+    ];
+
+    if (canCreateCampaign) {
+        items.push(
+            { group: "Dự án", href: "/chien-dich/tao", label: "Tạo dự án" },
+            { group: "Dự án", href: "#du-an-cua-toi", label: "Dự án của tôi" },
+            {
+                group: "Đồng hành",
+                href: "#don-vi-dong-hanh-can-duyet",
+                label: "Đơn vị đồng hành",
+            },
+            {
+                group: "Giải ngân",
+                href: "#dot-giai-ngan-cua-du-an",
+                label: "Đợt giải ngân",
+            },
+        );
+    }
+
+    if (canSupportCampaign) {
+        items.push(
+            {
+                group: "Đồng hành",
+                href: "/chien-dich/ho-tro",
+                label: "Đăng ký đồng hành",
+            },
+            {
+                group: "Đồng hành",
+                href: "#dang-ky-dong-hanh-cua-toi",
+                label: "Đăng ký của tôi",
+            },
+            {
+                group: "Chứng từ",
+                href: "#yeu-cau-giai-ngan-hoa-don",
+                label: "Hóa đơn/chứng từ",
+            },
+        );
+    }
+
+    return items;
+}
+
 function CampaignInfo({ label, value }: { label: string; value: string }) {
     return (
         <div>
@@ -1396,6 +1533,28 @@ type DonationRow = {
     campaign_title: string;
 };
 
+function getPageNumber(value: string | string[] | undefined) {
+    const rawValue = Array.isArray(value) ? value[0] : value;
+    const page = Number(rawValue ?? "1");
+
+    return Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+}
+
+function getPageRange(page: number) {
+    const from = (page - 1) * accountPageSize;
+    const to = from + accountPageSize;
+
+    return { from, to };
+}
+
+function toPageResult<T>(items: T[], page: number): PageResult<T> {
+    return {
+        hasNext: items.length > accountPageSize,
+        items: items.slice(0, accountPageSize),
+        page,
+    };
+}
+
 async function getMyRecentDonations(email: string): Promise<DonationRow[]> {
     if (!email) {
         return [];
@@ -1470,42 +1629,51 @@ async function getMyRecentDonations(email: string): Promise<DonationRow[]> {
     });
 }
 
-async function getMyCampaigns(userId: string): Promise<MyCampaignRow[]> {
+async function getMyCampaigns(
+    userId: string,
+    page: number,
+): Promise<PageResult<MyCampaignRow>> {
     if (!userId) {
-        return [];
+        return toPageResult([], page);
     }
 
     const client = getSupabaseServiceClient();
 
     if (!client) {
-        return [];
+        return toPageResult([], page);
     }
 
+    const { from, to } = getPageRange(page);
     const { data, error } = await client
         .from("campaigns")
         .select(
             "id, slug, title, summary, target_amount, raised_amount, status, review_status, rejection_reason, created_at",
         )
         .eq("owner_id", userId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
     if (error || !data) {
-        return [];
+        return toPageResult([], page);
     }
 
-    return data as MyCampaignRow[];
+    return toPageResult(data as MyCampaignRow[], page);
 }
-async function getMySupportOffers(userId: string): Promise<MySupportOfferRow[]> {
+async function getMySupportOffers(
+    userId: string,
+    page: number,
+): Promise<PageResult<MySupportOfferRow>> {
     if (!userId) {
-        return [];
+        return toPageResult([], page);
     }
 
     const client = getSupabaseServiceClient();
 
     if (!client) {
-        return [];
+        return toPageResult([], page);
     }
 
+    const { from, to } = getPageRange(page);
     const { data: offers, error } = await client
         .from("support_offers")
         .select(
@@ -1531,25 +1699,33 @@ async function getMySupportOffers(userId: string): Promise<MySupportOfferRow[]> 
             `,
         )
         .eq("partner_id", userId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
     if (error || !offers) {
-        return [];
+        return toPageResult([], page);
     }
 
-    return enrichSupportOffers(offers);
+    const enrichedOffers = await enrichSupportOffers(offers.slice(0, accountPageSize));
+
+    return {
+        hasNext: offers.length > accountPageSize,
+        items: enrichedOffers,
+        page,
+    };
 }
 async function getOwnerSupportOffers(
     userId: string,
-): Promise<MySupportOfferRow[]> {
+    page: number,
+): Promise<PageResult<MySupportOfferRow>> {
     if (!userId) {
-        return [];
+        return toPageResult([], page);
     }
 
     const client = getSupabaseServiceClient();
 
     if (!client) {
-        return [];
+        return toPageResult([], page);
     }
 
     const { data: campaigns, error: campaignError } = await client
@@ -1558,10 +1734,11 @@ async function getOwnerSupportOffers(
         .eq("owner_id", userId);
 
     if (campaignError || !campaigns || campaigns.length === 0) {
-        return [];
+        return toPageResult([], page);
     }
 
     const campaignIds = campaigns.map((campaign) => campaign.id);
+    const { from, to } = getPageRange(page);
 
     const { data: offers, error } = await client
         .from("support_offers")
@@ -1589,13 +1766,20 @@ async function getOwnerSupportOffers(
         )
         .in("campaign_id", campaignIds)
         .in("status", ["pending", "owner_pending", "approved", "rejected"])
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(from, to);
 
     if (error || !offers) {
-        return [];
+        return toPageResult([], page);
     }
 
-    return enrichSupportOffers(offers);
+    const enrichedOffers = await enrichSupportOffers(offers.slice(0, accountPageSize));
+
+    return {
+        hasNext: offers.length > accountPageSize,
+        items: enrichedOffers,
+        page,
+    };
 }
 
 async function enrichSupportOffers(
@@ -1744,15 +1928,16 @@ async function enrichSupportOffers(
 
 async function getOwnerDisbursementRounds(
     userId: string,
-): Promise<AccountDisbursementRoundRow[]> {
+    page: number,
+): Promise<PageResult<AccountDisbursementRoundRow>> {
     if (!userId) {
-        return [];
+        return toPageResult([], page);
     }
 
     const client = getSupabaseServiceClient();
 
     if (!client) {
-        return [];
+        return toPageResult([], page);
     }
 
     const { data: campaigns, error: campaignError } = await client
@@ -1761,10 +1946,11 @@ async function getOwnerDisbursementRounds(
         .eq("owner_id", userId);
 
     if (campaignError || !campaigns || campaigns.length === 0) {
-        return [];
+        return toPageResult([], page);
     }
 
     const campaignIds = campaigns.map((campaign) => campaign.id);
+    const { from, to } = getPageRange(page);
 
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
@@ -1772,26 +1958,37 @@ async function getOwnerDisbursementRounds(
             `id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note, ${invoiceSignatureColumns}`,
         )
         .in("campaign_id", campaignIds)
-        .order("round_number", { ascending: true });
+        .order("round_number", { ascending: true })
+        .range(from, to);
 
     if (roundError || !rounds || rounds.length === 0) {
-        return [];
+        return toPageResult([], page);
     }
 
-    return enrichAccountDisbursementRounds(rounds, campaigns);
+    const enrichedRounds = await enrichAccountDisbursementRounds(
+        rounds.slice(0, accountPageSize),
+        campaigns,
+    );
+
+    return {
+        hasNext: rounds.length > accountPageSize,
+        items: enrichedRounds,
+        page,
+    };
 }
 
 async function getPartnerDisbursementRounds(
     userId: string,
-): Promise<AccountDisbursementRoundRow[]> {
+    page: number,
+): Promise<PageResult<AccountDisbursementRoundRow>> {
     if (!userId) {
-        return [];
+        return toPageResult([], page);
     }
 
     const client = getSupabaseServiceClient();
 
     if (!client) {
-        return [];
+        return toPageResult([], page);
     }
 
     const { data: offers, error: offerError } = await client
@@ -1802,7 +1999,7 @@ async function getPartnerDisbursementRounds(
         .not("disbursement_round_id", "is", null);
 
     if (offerError || !offers || offers.length === 0) {
-        return [];
+        return toPageResult([], page);
     }
 
     const roundIds = Array.from(
@@ -1810,19 +2007,21 @@ async function getPartnerDisbursementRounds(
     ) as string[];
 
     if (roundIds.length === 0) {
-        return [];
+        return toPageResult([], page);
     }
 
+    const { from, to } = getPageRange(page);
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
         .select(
             `id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note, ${invoiceSignatureColumns}`,
         )
         .in("id", roundIds)
-        .order("round_number", { ascending: true });
+        .order("round_number", { ascending: true })
+        .range(from, to);
 
     if (roundError || !rounds || rounds.length === 0) {
-        return [];
+        return toPageResult([], page);
     }
 
     const campaignIds = Array.from(
@@ -1836,7 +2035,16 @@ async function getPartnerDisbursementRounds(
                 .in("id", campaignIds)
             : { data: [] };
 
-    return enrichAccountDisbursementRounds(rounds, campaigns ?? []);
+    const enrichedRounds = await enrichAccountDisbursementRounds(
+        rounds.slice(0, accountPageSize),
+        campaigns ?? [],
+    );
+
+    return {
+        hasNext: rounds.length > accountPageSize,
+        items: enrichedRounds,
+        page,
+    };
 }
 
 async function enrichAccountDisbursementRounds(
@@ -2426,7 +2634,9 @@ async function rejectOwnerSupportOffer(formData: FormData) {
     }
 
     redirect("/tai-khoan");
-} async function getMyRoleRequests(userId: string): Promise<MyRoleRequestRow[]> {
+}
+
+async function getMyRoleRequests(userId: string): Promise<MyRoleRequestRow[]> {
     if (!userId) {
         return [];
     }
@@ -2443,7 +2653,8 @@ async function rejectOwnerSupportOffer(formData: FormData) {
             "id, requested_role, status, display_name, purpose, rejection_reason, created_at, reviewed_at",
         )
         .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(1);
 
     if (error || !data) {
         return [];
