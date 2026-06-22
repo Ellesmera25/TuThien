@@ -4,9 +4,19 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { AuthSignOutButton } from "@/components/auth-sign-out-button";
+import { InvoiceProofUploadForm } from "@/components/invoice-proof-upload-form";
+import {
+    InvoiceSignatureSummary,
+    storedInvoiceSignatureInfoFromRow,
+} from "@/components/invoice-signature-summary";
 import { RoleRequestForm } from "@/components/role-request-form";
 import { getDashboardSummary, getReelsByUser } from "@/lib/data";
 import { formatCompactNumber, formatDate, formatVnd } from "@/lib/format";
+import type { StoredInvoiceSignatureFields } from "@/lib/invoice-signature-types";
+import {
+    extractPdfSignatureInfoFromBuffer,
+    toInvoiceSignatureDatabaseFields,
+} from "@/lib/pdf-signature";
 import {
     getCurrentUser,
     getCurrentUserRole,
@@ -19,6 +29,22 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+const invoiceSignatureColumns = `
+    invoice_signature_status,
+    invoice_signature_signature_count,
+    invoice_signature_signer_name,
+    invoice_signature_signer_organization,
+    invoice_signature_signer_tax_code,
+    invoice_signature_signed_at,
+    invoice_signature_certificate_serial,
+    invoice_signature_certificate_valid_from,
+    invoice_signature_certificate_valid_to,
+    invoice_signature_subject,
+    invoice_signature_issuer,
+    invoice_signature_extracted_at,
+    invoice_signature_error
+`;
 
 type MyCampaignRow = {
     id: string;
@@ -93,7 +119,7 @@ type MySupportOfferRow = {
     proofSignedUrl: string | null;
 };
 
-type AccountDisbursementRoundRow = {
+type AccountDisbursementRoundRow = StoredInvoiceSignatureFields & {
     id: string;
     campaign_id: string;
     campaign: {
@@ -109,6 +135,7 @@ type AccountDisbursementRoundRow = {
     proof_due_at: string | null;
     proof_submitted_at: string | null;
     proof_url: string | null;
+    proofSignedUrl: string | null;
     proof_note: string | null;
     partner_request_note: string | null;
     owner_confirmation_note: string | null;
@@ -1012,29 +1039,26 @@ export default async function AccountPage() {
                                     {(round.status === "disbursed" ||
                                         round.status === "needs_admin_review") &&
                                         round.proof_status !== "approved" ? (
-                                        <form action={submitDisbursementProof} className="mt-4 grid gap-3">
-                                            <input type="hidden" name="roundId" value={round.id} />
-                                            <input
-                                                name="invoiceDocumentUrl"
-                                                defaultValue={round.proof_url ?? ""}
-                                                placeholder="Link hóa đơn/chứng từ sau giải ngân"
-                                                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
-                                                required
+                                        <>
+                                            <InvoiceProofUploadForm
+                                                action={submitDisbursementProof}
+                                                existingProofNote={round.proof_note}
+                                                existingProofSignedUrl={round.proofSignedUrl}
+                                                existingProofUrl={round.proof_url}
+                                                roundId={round.id}
                                             />
-                                            <textarea
-                                                name="invoiceDocumentNote"
-                                                defaultValue={round.proof_note ?? ""}
-                                                placeholder="Ghi chú hóa đơn/chứng từ: số hóa đơn, nội dung chi, đơn vị phát hành..."
-                                                rows={3}
-                                                className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                                            <InvoiceSignatureSummary
+                                                info={storedInvoiceSignatureInfoFromRow(round)}
                                             />
-                                            <button
-                                                type="submit"
-                                                className="w-fit rounded-lg bg-primary px-5 py-2 text-sm font-bold text-white transition hover:bg-primary-container"
-                                            >
-                                                Nộp hóa đơn/chứng từ
-                                            </button>
-                                        </form>
+                                        </>
+                                    ) : null}
+
+                                    {round.proof_status === "approved" ? (
+                                        <div className="mt-4">
+                                            <InvoiceSignatureSummary
+                                                info={storedInvoiceSignatureInfoFromRow(round)}
+                                            />
+                                        </div>
                                     ) : null}
                                 </article>
                             ))}
@@ -1614,7 +1638,7 @@ async function getOwnerDisbursementRounds(
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note",
+            `id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note, ${invoiceSignatureColumns}`,
         )
         .in("campaign_id", campaignIds)
         .order("round_number", { ascending: true });
@@ -1661,7 +1685,7 @@ async function getPartnerDisbursementRounds(
     const { data: rounds, error: roundError } = await client
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note",
+            `id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, manager_confirmed_at, manager_confirmation_note, ${invoiceSignatureColumns}`,
         )
         .in("id", roundIds)
         .order("round_number", { ascending: true });
@@ -1685,7 +1709,7 @@ async function getPartnerDisbursementRounds(
 }
 
 async function enrichAccountDisbursementRounds(
-    rounds: Array<{
+    rounds: Array<StoredInvoiceSignatureFields & {
         id: string;
         campaign_id: string;
         round_number: number;
@@ -1772,11 +1796,33 @@ async function enrichAccountDisbursementRounds(
         ]),
     );
 
-    return rounds.map((round) => ({
-        ...round,
-        campaign: campaignById.get(round.campaign_id) ?? null,
-        approvedOffer: offerByRoundId.get(round.id) ?? null,
-    }));
+    return Promise.all(
+        rounds.map(async (round) => ({
+            ...round,
+            proofSignedUrl: await getCampaignAssetSignedUrl(client, round.proof_url),
+            campaign: campaignById.get(round.campaign_id) ?? null,
+            approvedOffer: offerByRoundId.get(round.id) ?? null,
+        })),
+    );
+}
+
+async function getCampaignAssetSignedUrl(
+    client: NonNullable<ReturnType<typeof getSupabaseServiceClient>>,
+    value?: string | null,
+) {
+    if (!value) {
+        return null;
+    }
+
+    if (/^https?:\/\//i.test(value)) {
+        return value;
+    }
+
+    const { data } = await client.storage
+        .from("campaign-assets")
+        .createSignedUrl(value, 60 * 10);
+
+    return data?.signedUrl ?? null;
 }
 
 async function requestDisbursementRound(formData: FormData) {
@@ -1968,6 +2014,10 @@ async function submitDisbursementProof(formData: FormData) {
         return;
     }
 
+    if (!/^https?:\/\//i.test(proofUrl) && !proofUrl.startsWith(`${user.id}/`)) {
+        return;
+    }
+
     const client = getSupabaseServiceClient();
 
     if (!client) {
@@ -2005,6 +2055,7 @@ async function submitDisbursementProof(formData: FormData) {
             proof_submitted_at: new Date().toISOString(),
             proof_status: "pending",
             status: "disbursed",
+            ...(await getInvoiceSignatureUpdateFromProof(client, proofUrl)),
         })
         .eq("id", round.id);
 
@@ -2022,6 +2073,57 @@ async function submitDisbursementProof(formData: FormData) {
     }
 
     redirect("/tai-khoan");
+}
+
+async function getInvoiceSignatureUpdateFromProof(
+    client: NonNullable<ReturnType<typeof getSupabaseServiceClient>>,
+    proofUrl: string,
+) {
+    if (/^https?:\/\//i.test(proofUrl)) {
+        return toInvoiceSignatureDatabaseFields({
+            status: "parse_failed",
+            signatureCount: 0,
+            signerName: null,
+            signerOrganization: null,
+            signerTaxCode: null,
+            signedAt: null,
+            certificateSerial: null,
+            certificateValidFrom: null,
+            certificateValidTo: null,
+            subject: null,
+            issuer: null,
+            extractedAt: new Date().toISOString(),
+            error:
+                "Khong the trich xuat chu ky so tu URL ngoai. Vui long upload PDF len he thong.",
+        });
+    }
+
+    const { data, error } = await client.storage
+        .from("campaign-assets")
+        .download(proofUrl);
+
+    if (error || !data) {
+        return toInvoiceSignatureDatabaseFields({
+            status: "parse_failed",
+            signatureCount: 0,
+            signerName: null,
+            signerOrganization: null,
+            signerTaxCode: null,
+            signedAt: null,
+            certificateSerial: null,
+            certificateValidFrom: null,
+            certificateValidTo: null,
+            subject: null,
+            issuer: null,
+            extractedAt: new Date().toISOString(),
+            error: error?.message ?? "Khong the tai PDF hoa don tu Storage.",
+        });
+    }
+
+    const buffer = Buffer.from(await data.arrayBuffer());
+    const signatureInfo = extractPdfSignatureInfoFromBuffer(buffer);
+
+    return toInvoiceSignatureDatabaseFields(signatureInfo);
 }
 
 async function approveOwnerSupportOffer(formData: FormData) {

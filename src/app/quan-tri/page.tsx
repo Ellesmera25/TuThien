@@ -5,8 +5,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { AdminListController } from "@/components/admin-list-controller";
+import {
+    InvoiceSignatureSummary,
+    storedInvoiceSignatureInfoFromRow,
+} from "@/components/invoice-signature-summary";
 import { getDashboardSummary } from "@/lib/data";
 import { formatVnd } from "@/lib/format";
+import type { StoredInvoiceSignatureFields } from "@/lib/invoice-signature-types";
 import {
     canAccessAdmin,
     getCurrentUser,
@@ -22,6 +27,21 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const adminPageSize = 10;
+const invoiceSignatureColumns = `
+    invoice_signature_status,
+    invoice_signature_signature_count,
+    invoice_signature_signer_name,
+    invoice_signature_signer_organization,
+    invoice_signature_signer_tax_code,
+    invoice_signature_signed_at,
+    invoice_signature_certificate_serial,
+    invoice_signature_certificate_valid_from,
+    invoice_signature_certificate_valid_to,
+    invoice_signature_subject,
+    invoice_signature_issuer,
+    invoice_signature_extracted_at,
+    invoice_signature_error
+`;
 
 type RequestedRole = "project_owner" | "partner_org";
 type DisbursementRoundStatus =
@@ -162,7 +182,7 @@ type SupportOfferRow = {
     proofSignedUrl: string | null;
 };
 
-type AdminDisbursementRoundRow = {
+type AdminDisbursementRoundRow = StoredInvoiceSignatureFields & {
     id: string;
     campaign_id: string;
     round_number: number;
@@ -174,6 +194,7 @@ type AdminDisbursementRoundRow = {
     proof_due_at: string | null;
     proof_submitted_at: string | null;
     proof_url: string | null;
+    proofSignedUrl: string | null;
     proof_note: string | null;
     partner_request_note: string | null;
     owner_confirmation_note: string | null;
@@ -755,7 +776,7 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
     const { data: rounds, error } = await supabase
         .from("disbursement_rounds")
         .select(
-            "id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, owner_approved_at, manager_confirmed_at, manager_confirmation_note",
+            `id, campaign_id, round_number, percent, planned_amount, requested_amount, status, proof_status, proof_due_at, proof_submitted_at, proof_url, proof_note, partner_request_note, owner_confirmation_note, owner_approval_note, owner_approved_at, manager_confirmed_at, manager_confirmation_note, ${invoiceSignatureColumns}`,
         )
         .in("status", ["requested", "owner_approved", "manager_confirmed", "disbursed", "needs_admin_review", "completed"])
         .order("created_at", { ascending: false })
@@ -850,18 +871,38 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
         ]),
     );
 
-    return rounds.map((round) => {
+    return Promise.all(rounds.map(async (round) => {
         const campaign = campaignById.get(round.campaign_id) ?? null;
 
         return {
             ...round,
+            proofSignedUrl: await getCampaignAssetSignedUrl(supabase, round.proof_url),
             campaign,
             owner: campaign?.owner_id
                 ? profileById.get(campaign.owner_id) ?? null
                 : null,
             approvedOffer: offerByRoundId.get(round.id) ?? null,
         };
-    });
+    }));
+}
+
+async function getCampaignAssetSignedUrl(
+    client: NonNullable<ReturnType<typeof getSupabaseServiceClient>>,
+    value?: string | null,
+) {
+    if (!value) {
+        return null;
+    }
+
+    if (/^https?:\/\//i.test(value)) {
+        return value;
+    }
+
+    const { data } = await client.storage
+        .from("campaign-assets")
+        .createSignedUrl(value, 60 * 10);
+
+    return data?.signedUrl ?? null;
 }
 async function approveRoleRequest(formData: FormData) {
     "use server";
@@ -1872,7 +1913,7 @@ export default async function AdminPage() {
                                     <div className="mt-4 rounded-xl border border-slate-100 bg-surface-low p-3 text-sm text-slate-700">
                                         <p className="font-bold text-ink">Hóa đơn/chứng từ đã nộp</p>
                                         <a
-                                            href={round.proof_url}
+                                            href={round.proofSignedUrl ?? round.proof_url}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="mt-1 inline-flex break-all font-semibold text-primary hover:underline"
@@ -1882,6 +1923,11 @@ export default async function AdminPage() {
                                         {round.proof_note ? (
                                             <p className="mt-2 whitespace-pre-wrap">{round.proof_note}</p>
                                         ) : null}
+                                        <div className="mt-3">
+                                            <InvoiceSignatureSummary
+                                                info={storedInvoiceSignatureInfoFromRow(round)}
+                                            />
+                                        </div>
                                     </div>
                                 ) : null}
 

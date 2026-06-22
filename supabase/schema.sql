@@ -122,6 +122,28 @@ set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'campaign-assets',
+  'campaign-assets',
+  false,
+  20971520,
+  array['image/png', 'image/jpeg', 'image/webp', 'application/pdf']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = greatest(
+    coalesce(storage.buckets.file_size_limit, 0),
+    excluded.file_size_limit
+  ),
+  allowed_mime_types = array(
+    select distinct unnest(
+      coalesce(storage.buckets.allowed_mime_types, array[]::text[]) ||
+      excluded.allowed_mime_types
+    )
+  );
+
 drop policy if exists "campaigns are readable" on campaigns;
 create policy "campaigns are readable"
   on campaigns for select
@@ -174,6 +196,37 @@ create policy "members can delete own reel videos"
   to authenticated
   using (
     bucket_id = 'reel-videos'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "campaign assets owner upload" on storage.objects;
+create policy "campaign assets owner upload"
+  on storage.objects for insert
+  to authenticated
+  with check (
+    bucket_id = 'campaign-assets'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "campaign assets owner update" on storage.objects;
+create policy "campaign assets owner update"
+  on storage.objects for update
+  to authenticated
+  using (
+    bucket_id = 'campaign-assets'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  )
+  with check (
+    bucket_id = 'campaign-assets'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+drop policy if exists "campaign assets owner delete" on storage.objects;
+create policy "campaign assets owner delete"
+  on storage.objects for delete
+  to authenticated
+  using (
+    bucket_id = 'campaign-assets'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
 
@@ -234,6 +287,20 @@ begin
       proof_note text,
       proof_reviewed_by uuid references auth.users(id),
       proof_reviewed_at timestamp with time zone,
+      invoice_signature_status text not null default 'not_checked',
+      invoice_signature_signature_count integer not null default 0,
+      invoice_signature_signer_name text,
+      invoice_signature_signer_organization text,
+      invoice_signature_signer_tax_code text,
+      invoice_signature_signed_at timestamp with time zone,
+      invoice_signature_certificate_serial text,
+      invoice_signature_certificate_valid_from timestamp with time zone,
+      invoice_signature_certificate_valid_to timestamp with time zone,
+      invoice_signature_subject text,
+      invoice_signature_issuer text,
+      invoice_signature_raw jsonb,
+      invoice_signature_extracted_at timestamp with time zone,
+      invoice_signature_error text,
       created_at timestamp with time zone not null default now(),
       unique (campaign_id, round_number)
     );
