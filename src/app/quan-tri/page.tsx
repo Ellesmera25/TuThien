@@ -27,6 +27,58 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 const adminPageSize = 10;
+type AdminView =
+    | "overview"
+    | "campaigns"
+    | "pending-campaigns"
+    | "support-offers"
+    | "disbursements"
+    | "role-requests";
+
+const adminViewItems: Array<{
+    description: string;
+    href: string;
+    label: string;
+    value: AdminView;
+}> = [
+    {
+        description: "KPI tổng quan và lối tắt vận hành.",
+        href: "/quan-tri",
+        label: "Tổng quan",
+        value: "overview",
+    },
+    {
+        description: "Theo dõi toàn bộ chiến dịch đang có trong hệ thống.",
+        href: "/quan-tri?view=campaigns",
+        label: "Tất cả dự án",
+        value: "campaigns",
+    },
+    {
+        description: "Duyệt dự án mới do project owner gửi.",
+        href: "/quan-tri?view=pending-campaigns",
+        label: "Dự án chờ duyệt",
+        value: "pending-campaigns",
+    },
+    {
+        description: "Theo dõi đăng ký đồng hành của các đơn vị.",
+        href: "/quan-tri?view=support-offers",
+        label: "Đăng ký đồng hành",
+        value: "support-offers",
+    },
+    {
+        description: "Xử lý giải ngân, hóa đơn và chứng từ.",
+        href: "/quan-tri?view=disbursements",
+        label: "Giải ngân/chứng từ",
+        value: "disbursements",
+    },
+    {
+        description: "Duyệt hồ sơ nâng vai trò một lần của tài khoản.",
+        href: "/quan-tri?view=role-requests",
+        label: "Yêu cầu vai trò",
+        value: "role-requests",
+    },
+];
+
 const invoiceSignatureColumns = `
     invoice_signature_status,
     invoice_signature_signature_count,
@@ -1358,25 +1410,43 @@ async function markDisbursementProofOverdue(formData: FormData) {
 }
 const bankBinMap = new Map<string, string>();
 
-export default async function AdminPage() {
-    await assertAdmin();
-    await initBankBinMap();
+type AdminPageProps = {
+    searchParams: Promise<{
+        view?: string;
+    }>;
+};
 
+export default async function AdminPage({ searchParams }: AdminPageProps) {
+    await assertAdmin();
+
+    const params = await searchParams;
+    const activeView = getAdminView(params.view);
+
+    if (activeView === "disbursements") {
+        await initBankBinMap();
+    }
+
+    const summary = await getDashboardSummary();
     const [
-        summary,
         adminCampaigns,
         pendingRoleRequests,
         pendingCampaigns,
         supportOffersForAdmin,
         disbursementRoundsForAdmin,
     ] = await Promise.all([
-        
-        getDashboardSummary(),
-        getAdminCampaigns(),
-        getPendingRoleRequests(),
-        getPendingCampaigns(),
-        getSupportOffersForAdmin(),
-        getDisbursementRoundsForAdmin(),
+        activeView === "campaigns" ? getAdminCampaigns() : Promise.resolve([]),
+        activeView === "role-requests"
+            ? getPendingRoleRequests()
+            : Promise.resolve([]),
+        activeView === "pending-campaigns"
+            ? getPendingCampaigns()
+            : Promise.resolve([]),
+        activeView === "support-offers"
+            ? getSupportOffersForAdmin()
+            : Promise.resolve([]),
+        activeView === "disbursements"
+            ? getDisbursementRoundsForAdmin()
+            : Promise.resolve([]),
     ]);
 
     const supportCampaignOptions = getSupportCampaignOptions(supportOffersForAdmin);
@@ -1412,6 +1482,22 @@ export default async function AdminPage() {
                 />
             </section>
 
+            <AdminModuleNav activeView={activeView} />
+
+            {activeView === "overview" ? (
+                <section className="neo-panel p-6">
+                    <h2 className="font-display text-2xl font-bold text-ink">
+                        Chọn khu vực quản trị
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                        Các nghiệp vụ đã được tách thành từng navi riêng để tránh một
+                        trang quản trị quá dài. Mở đúng module cần xử lý để chỉ tải dữ
+                        liệu liên quan.
+                    </p>
+                </section>
+            ) : null}
+
+            {activeView === "campaigns" ? (
             <section className="neo-panel p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -1509,7 +1595,9 @@ export default async function AdminPage() {
                     </div>
                 )}
             </section>
+            ) : null}
 
+            {activeView === "pending-campaigns" ? (
             <section className="neo-panel p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -1727,6 +1815,9 @@ export default async function AdminPage() {
                     </div>
                 )}
             </section>
+            ) : null}
+
+            {activeView === "support-offers" ? (
             <section className="neo-panel p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -1907,6 +1998,9 @@ export default async function AdminPage() {
                     </div>
                 )}
             </section>
+            ) : null}
+
+            {activeView === "disbursements" ? (
             <section className="neo-panel p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -2163,7 +2257,9 @@ export default async function AdminPage() {
                     </div>
                 )}
             </section>
+            ) : null}
 
+            {activeView === "role-requests" ? (
             <section className="neo-panel p-6">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
@@ -2325,10 +2421,44 @@ export default async function AdminPage() {
                     </div>
                 )}
             </section>
+            ) : null}
 
             
         </div>
     );
+}
+
+function AdminModuleNav({ activeView }: { activeView: AdminView }) {
+    return (
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {adminViewItems.map((item) => {
+                const isActive = item.value === activeView;
+
+                return (
+                    <Link
+                        key={item.value}
+                        href={item.href}
+                        className={`surface-card p-4 transition hover:border-primary hover:shadow-card ${
+                            isActive ? "border-primary bg-primary-fixed/30" : ""
+                        }`}
+                    >
+                        <p className="font-display text-lg font-bold text-ink">
+                            {item.label}
+                        </p>
+                        <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+                            {item.description}
+                        </p>
+                    </Link>
+                );
+            })}
+        </section>
+    );
+}
+
+function getAdminView(value?: string): AdminView {
+    const matchedView = adminViewItems.find((item) => item.value === value);
+
+    return matchedView?.value ?? "overview";
 }
 
 function Metric({

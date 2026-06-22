@@ -57,6 +57,17 @@ const accountPageParams = {
     ownerDisbursements: "ownerDisbursementPage",
     partnerDisbursements: "partnerDisbursementPage",
 } as const;
+
+type AccountView =
+    | "overview"
+    | "role-request"
+    | "reels"
+    | "donations"
+    | "my-campaigns"
+    | "my-support-offers"
+    | "owner-support-offers"
+    | "owner-disbursements"
+    | "partner-disbursements";
 const campaignReviewFilterOptions = [
     { label: "Chờ duyệt", value: "pending" },
     { label: "Đã công khai", value: "published" },
@@ -203,6 +214,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     }
 
     const params = await searchParams;
+    const activeView = getAccountView(params.view);
+    const role = await getCurrentUserRole();
+    const isDonor = role === "donor";
+    const canCreateCampaign = role === "project_owner";
+    const canSupportCampaign = role === "partner_org";
     const pageNumbers = {
         myCampaigns: getPageNumber(params[accountPageParams.myCampaigns]),
         mySupportOffers: getPageNumber(params[accountPageParams.mySupportOffers]),
@@ -223,14 +239,42 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         partnerDisbursementRoundsPage,
     ] = await Promise.all([
         getDashboardSummary(),
-        getReelsByUser(user.id),
-        getMyRecentDonations(user.email ?? ""),
-        getMyCampaigns(user.id, pageNumbers.myCampaigns),
-        getMyRoleRequests(user.id),
-        getMySupportOffers(user.id, pageNumbers.mySupportOffers),
-        getOwnerSupportOffers(user.id, pageNumbers.ownerSupportOffers),
-        getOwnerDisbursementRounds(user.id, pageNumbers.ownerDisbursements),
-        getPartnerDisbursementRounds(user.id, pageNumbers.partnerDisbursements),
+        activeView === "reels" ? getReelsByUser(user.id) : Promise.resolve([]),
+        activeView === "donations"
+            ? getMyRecentDonations(user.email ?? "")
+            : Promise.resolve([]),
+        activeView === "my-campaigns" && canCreateCampaign
+            ? getMyCampaigns(user.id, pageNumbers.myCampaigns)
+            : Promise.resolve(toPageResult<MyCampaignRow>([], pageNumbers.myCampaigns)),
+        activeView === "role-request"
+            ? getMyRoleRequests(user.id)
+            : Promise.resolve([]),
+        activeView === "my-support-offers" && canSupportCampaign
+            ? getMySupportOffers(user.id, pageNumbers.mySupportOffers)
+            : Promise.resolve(
+                toPageResult<MySupportOfferRow>([], pageNumbers.mySupportOffers),
+            ),
+        activeView === "owner-support-offers" && canCreateCampaign
+            ? getOwnerSupportOffers(user.id, pageNumbers.ownerSupportOffers)
+            : Promise.resolve(
+                toPageResult<MySupportOfferRow>([], pageNumbers.ownerSupportOffers),
+            ),
+        activeView === "owner-disbursements" && canCreateCampaign
+            ? getOwnerDisbursementRounds(user.id, pageNumbers.ownerDisbursements)
+            : Promise.resolve(
+                toPageResult<AccountDisbursementRoundRow>(
+                    [],
+                    pageNumbers.ownerDisbursements,
+                ),
+            ),
+        activeView === "partner-disbursements" && canSupportCampaign
+            ? getPartnerDisbursementRounds(user.id, pageNumbers.partnerDisbursements)
+            : Promise.resolve(
+                toPageResult<AccountDisbursementRoundRow>(
+                    [],
+                    pageNumbers.partnerDisbursements,
+                ),
+            ),
     ]);
 
     const myCampaigns = myCampaignsPage.items;
@@ -242,10 +286,6 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
     const fullName =
         (user.user_metadata.full_name as string | undefined) ?? "Thành viên";
 
-    const role = await getCurrentUserRole();
-    const isDonor = role === "donor";
-    const canCreateCampaign = role === "project_owner";
-    const canSupportCampaign = role === "partner_org";
     const accountNavItems = getAccountNavItems({
         canCreateCampaign,
         canSupportCampaign,
@@ -304,11 +344,45 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 </div>
             </section>
 
-            {isDonor && myRoleRequests.length === 0 ? (
+            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                {accountNavItems.map((item) => {
+                    const isActive = item.value === activeView;
+
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={`surface-card p-4 transition hover:border-primary hover:shadow-card ${
+                                isActive ? "border-primary bg-primary-fixed/30" : ""
+                            }`}
+                        >
+                            <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+                                {item.group}
+                            </p>
+                            <p className="mt-2 font-display text-lg font-bold text-ink">
+                                {item.label}
+                            </p>
+                        </Link>
+                    );
+                })}
+            </section>
+
+            {activeView === "overview" ? (
+                <section className="surface-card p-6">
+                    <h2 className="font-display text-2xl font-semibold text-ink">
+                        Chọn khu vực tài khoản
+                    </h2>
+                    <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+                        Các chức năng theo vai trò đã được tách thành từng thẻ riêng để dễ kiểm soát: lịch sử đóng góp, reels, dự án, đăng ký đồng hành, giải ngân và hóa đơn/chứng từ.
+                    </p>
+                </section>
+            ) : null}
+
+            {activeView === "role-request" && isDonor && myRoleRequests.length === 0 ? (
                 <RoleRequestForm />
             ) : null}
 
-            {!isDonor ? (
+            {activeView === "role-request" && !isDonor ? (
                 <section id="dot-giai-ngan-cua-du-an" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <h2 className="font-display text-2xl font-semibold text-ink">
@@ -321,7 +395,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     </div>
                 </section>
             ) : null}
-            {myRoleRequests.length > 0 ? (
+            {activeView === "role-request" && myRoleRequests.length > 0 ? (
                 <section id="yeu-cau-vai-tro" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -417,24 +491,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 </section>
             ) : null}
 
-            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {accountNavItems.map((item) => (
-                    <Link
-                        key={item.href}
-                        href={item.href}
-                        className="surface-card p-4 transition hover:border-primary hover:shadow-card"
-                    >
-                        <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
-                            {item.group}
-                        </p>
-                        <p className="mt-2 font-display text-lg font-bold text-ink">
-                            {item.label}
-                        </p>
-                    </Link>
-                ))}
-            </section>
-
-            {canSupportCampaign ? (
+            {activeView === "my-support-offers" && canSupportCampaign ? (
                 <section id="dang-ky-dong-hanh-cua-toi" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -599,7 +656,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     )}
                 </section>
             ) : null}
-            {myCampaigns.length > 0 ? (
+            {activeView === "my-campaigns" && canCreateCampaign ? (
                 <section id="du-an-cua-toi" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -616,6 +673,11 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                         </span>
                     </div>
 
+                    {myCampaigns.length === 0 ? (
+                        <p className="mt-5 rounded-xl border border-outline-variant/40 bg-white p-4 text-sm text-on-surface-variant">
+                            Chưa có dự án nào. Bạn có thể tạo dự án mới từ thẻ tạo dự án.
+                        </p>
+                    ) : (
                     <div className="mt-5 grid gap-3">
                         <AdminListController
                             listId="account-my-campaigns"
@@ -726,9 +788,10 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                             searchParams={params}
                         />
                     </div>
+                    )}
                 </section>
             ) : null}
-            {canCreateCampaign ? (
+            {activeView === "owner-support-offers" && canCreateCampaign ? (
                 <section id="don-vi-dong-hanh-can-duyet" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -936,7 +999,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     )}
                 </section>
             ) : null}
-            {canCreateCampaign ? (
+            {activeView === "owner-disbursements" && canCreateCampaign ? (
                 <section id="yeu-cau-giai-ngan-hoa-don" className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -1082,7 +1145,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     )}
                 </section>
             ) : null}
-            {canSupportCampaign ? (
+            {activeView === "partner-disbursements" && canSupportCampaign ? (
                 <section className="surface-card rounded-xl p-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
@@ -1259,6 +1322,8 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     )}
                 </section>
             ) : null}
+            {activeView === "reels" ? (
+                <>
             <section className="border-b border-outline-variant/40">
                 <div className="no-scrollbar flex gap-8 overflow-x-auto pb-2">
                     <Link
@@ -1273,12 +1338,12 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     >
                         Reels tác động
                     </Link>
-                    <a
-                        href="#lich-su-dong-gop"
+                    <Link
+                        href="/tai-khoan?view=donations"
                         className="whitespace-nowrap pb-2 text-sm font-bold text-on-surface-variant transition hover:text-primary"
                     >
                         Lịch sử đóng góp
-                    </a>
+                    </Link>
                 </div>
             </section>
 
@@ -1325,6 +1390,10 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                 </Link>
             </section>
 
+                </>
+            ) : null}
+
+            {activeView === "donations" ? (
             <section id="lich-su-dong-gop" className="surface-card rounded-xl p-6">
                 <h2 className="font-display text-2xl font-semibold text-ink">
                     Lịch sử đóng góp
@@ -1383,6 +1452,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     </>
                 )}
             </section>
+            ) : null}
         </div>
     );
 }
@@ -1400,20 +1470,64 @@ function ProfileMetric({ label, value }: { label: string; value: string }) {
     );
 }
 
+type AccountNavItem = {
+    group: string;
+    href: string;
+    label: string;
+    value?: AccountView;
+};
+
 function getAccountNavItems({
     canCreateCampaign,
     canSupportCampaign,
 }: {
     canCreateCampaign: boolean;
     canSupportCampaign: boolean;
-}) {
-    const items = [
+}): AccountNavItem[] {
+    const items: AccountNavItem[] = [
+        { group: "Tài khoản", href: "/tai-khoan", label: "Tổng quan", value: "overview" },
+        {
+            group: "Vai trò",
+            href: "/tai-khoan?view=role-request",
+            label: "Yêu cầu vai trò",
+            value: "role-request",
+        },
+        {
+            group: "Cá nhân",
+            href: "/tai-khoan?view=donations",
+            label: "Lịch sử đóng góp",
+            value: "donations",
+        },
+        {
+            group: "Reels",
+            href: "/tai-khoan?view=reels",
+            label: "Reels của tôi",
+            value: "reels",
+        },
         { group: "Cá nhân", href: "#lich-su-dong-gop", label: "Lịch sử đóng góp" },
         { group: "Reels", href: "/reels/tao", label: "Tạo reel tác động" },
     ];
 
     if (canCreateCampaign) {
         items.push(
+            {
+                group: "Dự án",
+                href: "/tai-khoan?view=my-campaigns",
+                label: "Dự án của tôi",
+                value: "my-campaigns",
+            },
+            {
+                group: "Đồng hành",
+                href: "/tai-khoan?view=owner-support-offers",
+                label: "Đơn vị đồng hành",
+                value: "owner-support-offers",
+            },
+            {
+                group: "Giải ngân",
+                href: "/tai-khoan?view=owner-disbursements",
+                label: "Đợt giải ngân",
+                value: "owner-disbursements",
+            },
             { group: "Dự án", href: "/chien-dich/tao", label: "Tạo dự án" },
             { group: "Dự án", href: "#du-an-cua-toi", label: "Dự án của tôi" },
             {
@@ -1433,6 +1547,18 @@ function getAccountNavItems({
         items.push(
             {
                 group: "Đồng hành",
+                href: "/tai-khoan?view=my-support-offers",
+                label: "Đăng ký của tôi",
+                value: "my-support-offers",
+            },
+            {
+                group: "Chứng từ",
+                href: "/tai-khoan?view=partner-disbursements",
+                label: "Hóa đơn/chứng từ",
+                value: "partner-disbursements",
+            },
+            {
+                group: "Đồng hành",
                 href: "/chien-dich/ho-tro",
                 label: "Đăng ký đồng hành",
             },
@@ -1449,7 +1575,7 @@ function getAccountNavItems({
         );
     }
 
-    return items;
+    return items.filter((item) => !item.href.startsWith("#"));
 }
 
 function CampaignInfo({ label, value }: { label: string; value: string }) {
@@ -1532,6 +1658,28 @@ type DonationRow = {
     previous_hash: string;
     campaign_title: string;
 };
+
+const accountViewValues: AccountView[] = [
+    "overview",
+    "role-request",
+    "reels",
+    "donations",
+    "my-campaigns",
+    "my-support-offers",
+    "owner-support-offers",
+    "owner-disbursements",
+    "partner-disbursements",
+];
+
+function getAccountView(value: string | string[] | undefined): AccountView {
+    const rawValue = Array.isArray(value) ? value[0] : value;
+
+    if (accountViewValues.includes(rawValue as AccountView)) {
+        return rawValue as AccountView;
+    }
+
+    return "overview";
+}
 
 function getPageNumber(value: string | string[] | undefined) {
     const rawValue = Array.isArray(value) ? value[0] : value;

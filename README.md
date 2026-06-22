@@ -113,8 +113,8 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 | `/reels/tao` | Upload video va tao reel | Can login |
 | `/dang-nhap` | Dang nhap Supabase email/password | Public |
 | `/dang-ky` | Dang ky Supabase va tao profile donor | Public |
-| `/tai-khoan` | Profile, lich su donation, reels, campaign, role request, support offer, giai ngan; co the navi nghiep vu va server-side pagination cho cac list nang | Can login |
-| `/quan-tri` | Admin dashboard, co search/filter/pagination cho campaign, support offer, giai ngan; role request hien truc tiep khong filter | Can role `admin` |
+| `/tai-khoan` | Profile va cac module tai khoan tach bang query `view`: `role-request`, `reels`, `donations`, `my-campaigns`, `my-support-offers`, `owner-support-offers`, `owner-disbursements`, `partner-disbursements`; moi view chi tai du lieu lien quan | Can login |
+| `/quan-tri` | Admin dashboard tach module bang query `view`: `campaigns`, `pending-campaigns`, `support-offers`, `disbursements`, `role-requests`; moi view co search/filter/pagination rieng khi can | Can role `admin` |
 | `/ung-dung` | Trang tai APK Android | Public |
 
 ## 7. API routes
@@ -180,13 +180,13 @@ Trang `/minh-bach` doc `donation_blockchain` theo server-side pagination bang qu
 2. Admin duyet, profile luu thong tin ngan hang.
 3. Partner vao `/chien-dich/ho-tro`, chon campaign published active/paused va round chua bi khoa boi doi tac khac.
 4. `/api/support-offers` tao `support_offers.status = pending`.
-5. Project owner duyet hoac tu choi support offer trong `/tai-khoan`.
-6. Partner gui yeu cau giai ngan tren round `open`, co `requested_amount` va note.
-7. Project owner duyet round `requested` sang `owner_approved`.
-8. Admin duyet/giai ngan trong `/quan-tri`, co QR chuyen khoan VietQR neu tim duoc bank BIN tu `https://api.vietqr.io/v2/banks`.
-9. Sau khi disbursed, partner upload hoa don do PDF vao bucket `campaign-assets`; client goi `/api/invoice-signatures/extract` de doc chu ky so trong PDF, hien nguoi ky/ngay ky/chung thu truoc khi nop.
+5. Project owner duyet hoac tu choi support offer trong `/tai-khoan?view=owner-support-offers`.
+6. Partner gui yeu cau giai ngan tren round `open` tai `/tai-khoan?view=partner-disbursements`, co `requested_amount` va note.
+7. Project owner duyet round `requested` sang `owner_approved` trong `/tai-khoan?view=owner-disbursements`.
+8. Admin duyet/giai ngan trong `/quan-tri?view=disbursements`, co QR chuyen khoan VietQR neu tim duoc bank BIN tu `https://api.vietqr.io/v2/banks`.
+9. Sau khi disbursed, partner upload hoa don do PDF trong `/tai-khoan?view=partner-disbursements` vao bucket `campaign-assets`; client goi `/api/invoice-signatures/extract` de doc chu ky so trong PDF, hien nguoi ky/ngay ky/chung thu truoc khi nop.
 10. Server action tai `/tai-khoan` chi chap nhan storage path noi bo nam duoi folder user hien tai, tai PDF tu bucket, trich xuat lai chu ky so tren server, sua mojibake UTF-8 tu chung thu neu co, luu `proof_url`, `proof_note` va cac cot `invoice_signature_*` vao `disbursement_rounds`. Metadata chi luu nguoi ky, to chuc, ma so/ dinh danh, ngay ky, serial va thoi han chung thu; khong luu subject/issuer tho.
-11. Admin xem hoa don do bang signed URL rieng va thay thong tin nguoi ky/ngay ky/chung thu trong `/quan-tri`; admin duyet chung tu thanh `proof_status = approved` hoac danh dau qua han.
+11. Admin xem hoa don do bang signed URL rieng va thay thong tin nguoi ky/ngay ky/chung thu trong `/quan-tri?view=disbursements`; admin duyet chung tu thanh `proof_status = approved` hoac danh dau qua han.
 
 ### Reels
 
@@ -249,7 +249,8 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 - Tailwind theme duoc mo rong trong `tailwind.config.ts`.
 - Global utility classes: `neo-panel`, `neo-panel-strong`, `neo-badge`, `neo-btn`, `surface-card`, `soft-band`.
 - Header hien cac nut chuc nang theo role ben canh nav chinh: admin thay `Quan tri`, project owner thay `Tao du an`, partner_org thay `Dong hanh du an`.
-- Trang `/tai-khoan` co the navi nghiep vu rieng cho `project_owner` va `partner_org`, dua cac muc nhu dang ky dong hanh, dot giai ngan, hoa don/chung tu len thanh loi tat rieng thay vi de lan trong thong tin tai khoan.
+- Trang `/tai-khoan` co luoi navi nghiep vu bang query `view`. Donor thay tong quan, yeu cau vai tro, lich su dong gop, reels; `project_owner` co them tao/xem du an, don vi dong hanh can duyet, dot giai ngan; `partner_org` co them dang ky dong hanh va hoa don/chung tu. Moi module chi fetch/render du lieu cua view dang mo de tranh trang tai khoan qua dai.
+- Trang `/quan-tri` co luoi navi module bang query `view` cho tong quan, tat ca du an, du an cho duyet, dang ky dong hanh, giai ngan/chung tu va yeu cau vai tro; admin chi tai dataset cua module dang xem de giam lag khi du lieu tang.
 - `AdminListController` la client component dung chung cho search, status filter va campaign/approval filter tren cac list van hanh; co `showPagination=false` khi list da duoc phan trang bang query/server.
 
 ### PWA
