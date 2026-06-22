@@ -2,6 +2,7 @@ import type {
   PdfSignatureInfo,
   StoredInvoiceSignatureFields,
 } from "@/lib/invoice-signature-types";
+import { repairUtf8Mojibake } from "@/lib/mojibake";
 
 type InvoiceSignatureSummaryProps = {
   info?: PdfSignatureInfo | null;
@@ -24,9 +25,9 @@ export function storedInvoiceSignatureInfoFromRow(
         ? status
         : "parse_failed",
     signatureCount: row.invoice_signature_signature_count ?? 0,
-    signerName: row.invoice_signature_signer_name ?? null,
-    signerOrganization: row.invoice_signature_signer_organization ?? null,
-    signerTaxCode: row.invoice_signature_signer_tax_code ?? null,
+    signerName: normalizeStoredText(row.invoice_signature_signer_name),
+    signerOrganization: normalizeStoredText(row.invoice_signature_signer_organization),
+    signerTaxCode: normalizeStoredText(row.invoice_signature_signer_tax_code),
     signedAt: row.invoice_signature_signed_at ?? null,
     certificateSerial: row.invoice_signature_certificate_serial ?? null,
     certificateValidFrom: row.invoice_signature_certificate_valid_from ?? null,
@@ -34,6 +35,10 @@ export function storedInvoiceSignatureInfoFromRow(
     extractedAt: row.invoice_signature_extracted_at ?? "",
     error: row.invoice_signature_error ?? null,
   };
+}
+
+function normalizeStoredText(value?: string | null) {
+  return value ? repairUtf8Mojibake(value) : null;
 }
 
 export function InvoiceSignatureSummary({

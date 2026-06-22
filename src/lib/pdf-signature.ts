@@ -1,6 +1,7 @@
 import forge from "node-forge";
 
 import type { PdfSignatureInfo } from "@/lib/invoice-signature-types";
+import { repairUtf8Mojibake } from "@/lib/mojibake";
 
 const signingTimeOid = "1.2.840.113549.1.9.5";
 const maxErrorLength = 500;
@@ -467,7 +468,7 @@ function normalizeText(value: unknown): string | null {
     return null;
   }
 
-  const normalized = value.trim();
+  const normalized = repairUtf8Mojibake(value);
   return normalized ? normalized : null;
 }
 
