@@ -60,14 +60,14 @@ export default async function HomePage() {
             <div className="mt-8 flex flex-wrap gap-4">
               <Link
                 href="/quyen-gop"
-                className="neo-btn border border-white bg-white px-8 text-primary hover:border-emerald-200 hover:bg-emerald-200"
+                className="neo-btn neo-btn-primary px-8"
               >
                 Quyên góp ngay
                 <Icon name="heartHands" className="h-4 w-4" />
               </Link>
               <Link
                 href="/minh-bach"
-                className="neo-btn border border-white/70 bg-transparent px-8 text-white hover:border-emerald-200 hover:bg-emerald-300 hover:text-primary"
+                className="neo-btn neo-btn-primary px-8"
               >
                 Xem minh bạch
                 <Icon name="arrowRight" className="h-4 w-4" />

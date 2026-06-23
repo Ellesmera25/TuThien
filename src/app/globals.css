@@ -112,6 +112,23 @@ main {
 }
 
 .neo-btn-primary {
+  color: var(--primary);
+  border: 1px solid rgba(4, 120, 87, 0.42);
+  background:
+    linear-gradient(135deg, #ffffff 0%, #d1fae5 52%, #34d399 100%),
+    #d1fae5;
+  box-shadow: 0 8px 24px rgba(4, 120, 87, 0.2);
+}
+
+.neo-btn-primary:hover {
+  color: var(--primary);
+  border-color: rgba(5, 150, 105, 0.72);
+  background:
+    linear-gradient(135deg, #ffffff 0%, #a7f3d0 44%, #10b981 100%),
+    #a7f3d0;
+}
+
+.neo-btn-nav-primary {
   color: #fff;
   border: 1px solid rgba(16, 185, 129, 0.34);
   background:
@@ -120,7 +137,8 @@ main {
   box-shadow: 0 8px 24px rgba(4, 120, 87, 0.18);
 }
 
-.neo-btn-primary:hover {
+.neo-btn-nav-primary:hover {
+  color: #fff;
   background:
     linear-gradient(135deg, var(--primary-strong), var(--emerald-strong)),
     var(--primary-strong);
@@ -133,7 +151,10 @@ main {
 }
 
 .neo-btn-ghost:hover {
-  background: var(--surface-container);
+  border-color: rgba(5, 150, 105, 0.72);
+  background:
+    linear-gradient(135deg, #ffffff 0%, #d1fae5 52%, #34d399 100%),
+    #d1fae5;
 }
 
 .nav-tile {

@@ -79,14 +79,14 @@ export function SiteHeaderClient({
                             >
                                 Đăng nhập
                             </Link>
-                            <Link href="/dang-ky" className="neo-btn neo-btn-primary text-base">
+                            <Link href="/dang-ky" className="neo-btn neo-btn-nav-primary text-base">
                                 Đăng ký
                             </Link>
                         </>
                     )}
                 </div>
 
-                <Link href="/quyen-gop" className="neo-btn neo-btn-primary text-base md:hidden">
+                <Link href="/quyen-gop" className="neo-btn neo-btn-nav-primary text-base md:hidden">
                     Ủng hộ
                 </Link>
             </div>
