@@ -9,8 +9,8 @@ import {
 import { formatCompactNumber, formatVnd } from "@/lib/format";
 
 const homeHeroBackground = [
-  "linear-gradient(90deg, rgba(11, 31, 58, 0.96) 0%, rgba(11, 31, 58, 0.74) 48%, rgba(4, 120, 87, 0.46) 100%)",
-  "linear-gradient(180deg, rgba(11, 31, 58, 0.05) 0%, rgba(11, 31, 58, 0.54) 62%, rgba(11, 31, 58, 0.98) 100%)",
+  "linear-gradient(180deg, rgba(11, 31, 58, 0.98) 0%, rgba(34, 41, 87, 0.92) 18%, rgba(13, 148, 136, 0.68) 50%, rgba(34, 41, 87, 0.92) 82%, rgba(11, 31, 58, 0.98) 100%)",
+  "linear-gradient(180deg, rgba(11, 31, 58, 0.36) 0%, rgba(11, 31, 58, 0.18) 48%, rgba(11, 31, 58, 0.48) 100%)",
   'url("https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1800&q=85")',
 ].join(", ");
 
@@ -27,7 +27,7 @@ export default async function HomePage() {
   const featuredReels = reelList.slice(0, 4);
 
   return (
-    <div className="pb-8">
+    <div className="-mt-8 pb-8">
       <section
         className="relative left-1/2 min-h-[640px] w-screen -translate-x-1/2 overflow-hidden bg-primary text-white"
         style={{
@@ -142,7 +142,7 @@ export default async function HomePage() {
                 className="group relative aspect-[9/16] overflow-hidden rounded-xl bg-surface-highest shadow-ambient transition hover:-translate-y-1 hover:shadow-card"
               >
                 <div className="absolute inset-0 bg-[linear-gradient(135deg,#0b1f3a_0%,#123b66_54%,#020617_100%)] transition group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/84 via-black/10 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-4 text-white">
                   <div className="mb-2 flex items-center gap-1">
                     <Icon name="play" className="h-4 w-4" />
