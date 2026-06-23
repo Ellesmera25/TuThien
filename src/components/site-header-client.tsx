@@ -24,6 +24,7 @@ export function SiteHeaderClient({
     const pathname = usePathname();
     const isHome = pathname === "/";
     const allItems = [...navItems, ...roleItems];
+    const activeNavHref = getActiveHref(pathname, allItems);
 
     return (
         <header
@@ -47,7 +48,7 @@ export function SiteHeaderClient({
                     {allItems.map((item) => (
                         <HeaderLink
                             key={`${item.href}-${item.label}`}
-                            isActive={isActivePath(pathname, item.href)}
+                            isActive={item.href === activeNavHref}
                             isHome={isHome}
                             item={item}
                         />
@@ -96,10 +97,10 @@ export function SiteHeaderClient({
                     <Link
                         key={`${item.href}-${item.label}`}
                         href={item.href}
-                        aria-current={isActivePath(pathname, item.href) ? "page" : undefined}
+                        aria-current={item.href === activeNavHref ? "page" : undefined}
                         className={mobileLinkClassName(
                             isHome,
-                            isActivePath(pathname, item.href),
+                            item.href === activeNavHref,
                         )}
                     >
                         {item.label}
@@ -150,6 +151,12 @@ function isActivePath(pathname: string, href: string) {
     }
 
     return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function getActiveHref(pathname: string, items: HeaderItem[]) {
+    return [...items]
+        .sort((first, second) => second.href.length - first.href.length)
+        .find((item) => isActivePath(pathname, item.href))?.href;
 }
 
 function desktopLinkClassName(isHome: boolean, isActive: boolean) {
