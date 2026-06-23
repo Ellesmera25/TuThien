@@ -102,7 +102,7 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 
 | Route | Muc dich | Ghi chu quyen |
 | --- | --- | --- |
-| `/` | Trang chu, KPI tong quan, campaign noi bat, reels noi bat, quy trinh doi soat | Public |
+| `/` | Trang chu voi hero anh full-bleed phu gradient navy/luc bao, KPI tong quan, campaign noi bat, reels noi bat, quy trinh doi soat | Public |
 | `/chien-dich` | Danh sach campaign published va active, loc category/status, phan trang bang query `page` | Public |
 | `/chien-dich/[slug]` | Chi tiet campaign, tien do huy dong, tien do giai ngan, don vi dong hanh, nhat ky giai ngan | Public, chi doc campaign published/active |
 | `/chien-dich/tao` | Form tao du an moi | Can login va role `project_owner` |
@@ -266,6 +266,8 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 - Tailwind theme duoc mo rong trong `tailwind.config.ts`.
 - Global utility classes: `neo-panel`, `neo-panel-strong`, `neo-badge`, `neo-btn`, `surface-card`, `soft-band`.
 - Header hien cac nut chuc nang theo role ben canh nav chinh: admin thay `Quan tri`, project owner thay `Tao du an`, partner_org thay `Dong hanh du an`; nav header dung nen navy/emerald, khong dung nen trang tron.
+- Header va cac the navi doi sang nen luc bao khi hover/focus de trang thai tuong tac ro rang hon tren nen navy.
+- Trang chu dung hero anh full-bleed co gradient navy/luc bao, text va CTA nam truc tiep tren anh; khi cuon xuong thi noi dung tro ve nen trang/slate binh thuong de doc so lieu va campaign de hon. Hero khong con fetch donation gan nhat rieng, giup giam mot query luc load dau trang.
 - Trang `/tai-khoan` co luoi navi nghiep vu bang query `view`. Donor thay tong quan, yeu cau vai tro, lich su dong gop, reels; `project_owner` co them tao/xem du an, don vi dong hanh can duyet, dot giai ngan; `partner_org` co them dang ky dong hanh va hoa don/chung tu. Moi module chi fetch/render du lieu cua view dang mo de tranh trang tai khoan qua dai; the navi dung nen navy/emerald thay vi nen trang.
 - Trang `/quan-tri` co luoi navi module bang query `view` cho tong quan, tat ca du an, du an cho duyet, dang ky dong hanh, giai ngan/chung tu va yeu cau vai tro; admin chi tai dataset cua module dang xem de giam lag khi du lieu tang. Summary tong quan chi fetch o view tong quan, cac view nghiep vu khong keo theo query tong hop; signed URL cho minh chung/hoa don/anh chi duoc tao khi admin bam mo file de giam tai Supabase Storage va tranh load asset nang. The navi quan tri dung nen mau navy/emerald de tach khoi vung noi dung trang.
 - `AdminListController` la client component dung chung cho search, status filter va campaign/approval filter tren cac list van hanh; co `showPagination=false` khi list da duoc phan trang bang query/server.

@@ -143,13 +143,25 @@ main {
     var(--primary);
   color: #fff;
   box-shadow: 0 10px 26px rgba(11, 31, 58, 0.16);
+  transition:
+    transform 160ms ease,
+    border-color 200ms ease,
+    background 200ms ease,
+    box-shadow 200ms ease;
 }
 
 .nav-tile:hover {
-  border-color: rgba(52, 211, 153, 0.72);
+  transform: translateY(-2px);
+  border-color: rgba(167, 243, 208, 0.94);
   background:
-    linear-gradient(135deg, rgba(11, 31, 58, 0.96), rgba(4, 120, 87, 0.98)),
-    var(--primary);
+    linear-gradient(135deg, rgba(4, 120, 87, 0.98), rgba(16, 185, 129, 0.9)),
+    var(--emerald);
+  box-shadow: 0 16px 34px rgba(4, 120, 87, 0.24);
+}
+
+.nav-tile:focus-visible {
+  outline: 2px solid #a7f3d0;
+  outline-offset: 3px;
 }
 
 .nav-tile-active {

@@ -48,7 +48,7 @@ export async function SiteHeader() {
                         <>
                             <Link
                                 href="/tai-khoan"
-                                className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 font-display text-sm font-semibold text-white transition hover:border-emerald-300/50 hover:bg-emerald-400/20"
+                                className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 font-display text-sm font-semibold text-white transition hover:border-emerald-200 hover:bg-emerald-300 hover:text-primary"
                             >
                                 Tài khoản
                             </Link>
@@ -58,7 +58,7 @@ export async function SiteHeader() {
                         <>
                             <Link
                                 href="/dang-nhap"
-                                className="rounded-lg border border-emerald-300/40 bg-white/10 px-4 py-2 font-display text-sm font-semibold text-white transition hover:border-emerald-200 hover:bg-emerald-400/20 active:scale-95"
+                                className="rounded-lg border border-emerald-300/40 bg-white/10 px-4 py-2 font-display text-sm font-semibold text-white transition hover:border-emerald-200 hover:bg-emerald-300 hover:text-primary active:scale-95"
                             >
                                 Đăng nhập
                             </Link>
@@ -79,14 +79,14 @@ export async function SiteHeader() {
                     <Link
                         key={`${item.href}-${item.label}`}
                         href={item.href}
-                        className="shrink-0 rounded-lg border border-emerald-300/30 bg-emerald-400/15 px-3 py-1.5 text-xs font-bold text-white shadow-ambient"
+                        className="shrink-0 rounded-lg border border-emerald-300/30 bg-emerald-400/20 px-3 py-1.5 text-xs font-bold text-white shadow-ambient transition hover:border-emerald-200 hover:bg-emerald-300 hover:text-primary"
                     >
                         {item.label}
                     </Link>
                 ))}
                 <Link
                     href={user ? "/tai-khoan" : "/dang-nhap"}
-                    className="shrink-0 rounded-lg border border-emerald-300/30 bg-white/10 px-3 py-1.5 text-xs font-bold text-white shadow-ambient"
+                    className="shrink-0 rounded-lg border border-emerald-300/30 bg-white/10 px-3 py-1.5 text-xs font-bold text-white shadow-ambient transition hover:border-emerald-200 hover:bg-emerald-300 hover:text-primary"
                 >
                     {user ? "Tài khoản" : "Đăng nhập"}
                 </Link>
@@ -99,7 +99,7 @@ function HeaderLink({ item }: { item: HeaderItem }) {
     return (
         <Link
             href={item.href}
-            className="rounded-lg border border-transparent px-3 py-2 font-display text-sm font-semibold tracking-tight text-white/80 transition hover:border-emerald-300/40 hover:bg-emerald-400/15 hover:text-white active:scale-95"
+            className="rounded-lg border border-transparent px-3 py-2 font-display text-sm font-semibold tracking-tight text-white/80 transition hover:border-emerald-200 hover:bg-emerald-300 hover:text-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200 active:scale-95"
         >
             {item.label}
         </Link>

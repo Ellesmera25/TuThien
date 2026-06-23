@@ -4,109 +4,112 @@ import { CampaignCard } from "@/components/campaign-card";
 import {
   getCampaigns,
   getDashboardSummary,
-  getRecentDonations,
   getReels,
 } from "@/lib/data";
 import { formatCompactNumber, formatVnd } from "@/lib/format";
 
+const homeHeroBackground = [
+  "linear-gradient(90deg, rgba(11, 31, 58, 0.96) 0%, rgba(11, 31, 58, 0.74) 48%, rgba(4, 120, 87, 0.46) 100%)",
+  "linear-gradient(180deg, rgba(11, 31, 58, 0.05) 0%, rgba(11, 31, 58, 0.54) 62%, rgba(11, 31, 58, 0.98) 100%)",
+  'url("https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1800&q=85")',
+].join(", ");
+
 export default async function HomePage() {
-  const [campaigns, summary, recentDonations, reels] = await Promise.all([
+  const [campaigns, summary, reels] = await Promise.all([
     getCampaigns(),
     getDashboardSummary(),
-    getRecentDonations(),
     getReels(),
   ]);
 
   const campaignList = Array.isArray(campaigns) ? campaigns : [];
-  const donationList = Array.isArray(recentDonations) ? recentDonations : [];
   const reelList = Array.isArray(reels) ? reels : [];
   const featuredCampaigns = campaignList.slice(0, 3);
   const featuredReels = reelList.slice(0, 4);
-  const latestDonation = donationList[0];
 
   return (
     <div className="pb-8">
-      <section className="grid items-center gap-10 py-14 lg:grid-cols-12 lg:py-20">
-        <div className="flex flex-col gap-8 lg:col-span-6">
-          <div className="inline-flex w-max items-center gap-2 rounded-full border border-outline-variant/40 bg-surface-high px-4 py-2">
-            <Icon name="shield" className="h-4 w-4 text-primary" />
-            <span className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
-              Đối soát minh bạch từng khoản đóng góp
+      <section
+        className="relative left-1/2 min-h-[640px] w-screen -translate-x-1/2 overflow-hidden bg-primary text-white"
+        style={{
+          backgroundImage: homeHeroBackground,
+          backgroundPosition: "center",
+          backgroundSize: "cover",
+        }}
+      >
+        <div className="relative z-10 mx-auto flex min-h-[640px] max-w-7xl flex-col justify-end px-4 pb-14 pt-28 sm:px-6 lg:min-h-[calc(100vh-80px)] lg:pb-20">
+          <div className="max-w-4xl">
+            <div className="inline-flex w-max items-center gap-2 border border-emerald-200/60 bg-emerald-300/20 px-4 py-2 text-emerald-50 backdrop-blur">
+              <Icon name="shield" className="h-4 w-4 text-emerald-200" />
+              <span className="text-xs font-bold uppercase tracking-[0.08em]">
+                Đối soát minh bạch từng khoản đóng góp
+              </span>
+            </div>
+
+            <h1 className="mt-7 font-display text-5xl font-black leading-[1.02] tracking-tight text-white sm:text-7xl">
+              TuThien.vn
+            </h1>
+            <p className="mt-5 max-w-2xl text-xl font-semibold leading-8 text-white/90 sm:text-2xl">
+              Minh bạch tuyệt đối trong từng khoản quyên góp, từ lúc tiếp nhận
+              đến khi giải ngân.
+            </p>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-white/75 sm:text-lg">
+              Nền tảng giúp nhà hảo tâm theo dõi chiến dịch, dòng tiền và chứng
+              từ theo một luồng rõ ràng để cộng đồng dễ kiểm chứng.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-4">
+              <Link
+                href="/quyen-gop"
+                className="neo-btn border border-white bg-white px-8 text-primary hover:border-emerald-200 hover:bg-emerald-200"
+              >
+                Quyên góp ngay
+                <Icon name="heartHands" className="h-4 w-4" />
+              </Link>
+              <Link
+                href="/minh-bach"
+                className="neo-btn border border-white/70 bg-transparent px-8 text-white hover:border-emerald-200 hover:bg-emerald-300 hover:text-primary"
+              >
+                Xem minh bạch
+                <Icon name="arrowRight" className="h-4 w-4" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-12 flex flex-col gap-3 border-t border-white/20 pt-6 text-sm font-bold uppercase tracking-[0.08em] text-white/90 sm:flex-row sm:items-center sm:justify-between">
+            <span>Nền tảng thiện nguyện công khai, dễ đối soát</span>
+            <span className="text-emerald-200">
+              {formatVnd(summary.totalRaised)} đã được ghi nhận
             </span>
           </div>
-
-          <div>
-            <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight text-ink sm:text-6xl">
-              Minh bạch <span className="text-primary">tuyệt đối.</span>
-              <br />
-              Kết nối yêu thương.
-            </h1>
-            <p className="mt-6 max-w-xl text-lg leading-8 text-on-surface-variant">
-              TuThien.vn giúp nhà hảo tâm theo dõi hành trình đóng góp từ lúc
-              tiếp nhận đến khi giải ngân, với dữ liệu rõ ràng, chiến dịch có
-              câu chuyện thật và báo cáo dễ kiểm chứng.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-4">
-            <Link href="/chien-dich" className="neo-btn neo-btn-primary px-8">
-              Khám phá dự án
-              <Icon name="arrowRight" className="h-4 w-4" />
-            </Link>
-            <Link href="/minh-bach" className="neo-btn neo-btn-ghost px-8">
-              Xem báo cáo tài chính
-            </Link>
-          </div>
-        </div>
-
-        <div className="relative lg:col-span-6">
-          <div className="surface-card aspect-square overflow-hidden rounded-xl md:aspect-[4/3]">
-            <div className="relative h-full w-full bg-[radial-gradient(circle_at_24%_22%,rgba(219,234,254,0.9),transparent_30%),radial-gradient(circle_at_74%_30%,rgba(148,163,184,0.42),transparent_32%),linear-gradient(135deg,#ffffff_0%,#f1f5f9_52%,#dbeafe_100%)]">
-              <div className="absolute left-1/2 top-1/2 grid h-52 w-52 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-white/80 bg-white/60 shadow-ambient backdrop-blur">
-                <Icon name="heartHands" className="h-20 w-20 text-primary" />
-              </div>
-              <div className="absolute left-10 top-10 rounded-xl border border-outline-variant/30 bg-white/75 p-4 shadow-ambient backdrop-blur">
-                <p className="text-xs font-bold uppercase tracking-[0.1em] text-on-surface-variant">
-                  Đang gây quỹ
-                </p>
-                <p className="mt-1 font-display text-2xl font-bold text-primary">
-                  {summary.activeCampaignCount}
-                </p>
-              </div>
-              <div className="absolute bottom-10 right-10 rounded-xl border border-outline-variant/30 bg-white/80 p-4 shadow-ambient backdrop-blur">
-                <p className="text-xs font-bold uppercase tracking-[0.1em] text-on-surface-variant">
-                  Tổng tiếp nhận
-                </p>
-                <p className="mt-1 font-display text-xl font-bold text-ink">
-                  {formatVnd(summary.totalRaised)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {latestDonation ? (
-            <div className="surface-card absolute -bottom-8 left-6 hidden items-center gap-4 rounded-xl p-4 md:flex">
-              <div className="rounded-full bg-primary/10 p-3">
-                <Icon name="receipt" className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
-                  Đóng góp gần nhất
-                </p>
-                <p className="text-sm font-bold text-ink">
-                  {latestDonation.donorName} - {formatVnd(latestDonation.amount)}
-                </p>
-              </div>
-            </div>
-          ) : null}
         </div>
       </section>
 
-      <section className="pb-20">
-        <div className="surface-card grid gap-8 rounded-xl p-8 md:grid-cols-3 md:divide-x md:divide-outline-variant/40">
-          <Metric label="Tổng tiền quyên góp" value={formatVnd(summary.totalRaised)} />
-          <Metric label="Chiến dịch đang chạy" value={`${summary.activeCampaignCount}`} />
-          <Metric label="Nhà hảo tâm" value={`${summary.donorCount}+`} />
+      <section className="relative left-1/2 w-screen -translate-x-1/2 bg-white py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="mx-auto mb-10 max-w-4xl text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-700">
+              Nền tảng quyên góp minh bạch
+            </p>
+            <h2 className="mt-4 font-display text-4xl font-semibold leading-tight tracking-tight text-primary sm:text-5xl">
+              Góp một bàn tay cho nhiều cuộc đời nhỏ
+            </h2>
+            <p className="mt-4 text-base leading-7 text-on-surface-variant">
+              Số liệu, chiến dịch và chứng từ được tổ chức rõ ràng để người dùng
+              theo dõi đầy đủ mà không bị rối bởi phần trình bày.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-3">
+            <Metric
+              label="Tổng tiền quyên góp"
+              value={formatVnd(summary.totalRaised)}
+            />
+            <Metric
+              label="Chiến dịch đang chạy"
+              value={`${summary.activeCampaignCount}`}
+            />
+            <Metric label="Nhà hảo tâm" value={`${summary.donorCount}+`} />
+          </div>
         </div>
       </section>
 
@@ -227,7 +230,7 @@ export default async function HomePage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <article className="text-center">
+    <article className="surface-card p-8 text-center">
       <p className="mb-2 text-xs font-bold uppercase tracking-[0.1em] text-on-surface-variant">
         {label}
       </p>
