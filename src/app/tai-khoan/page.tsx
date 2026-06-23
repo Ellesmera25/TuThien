@@ -359,14 +359,14 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                         <Link
                             key={item.href}
                             href={item.href}
-                            className={`surface-card p-4 transition hover:border-primary hover:shadow-card ${
-                                isActive ? "border-primary bg-primary-fixed/30" : ""
+                            className={`nav-tile p-4 transition ${
+                                isActive ? "nav-tile-active" : ""
                             }`}
                         >
-                            <p className="text-xs font-bold uppercase tracking-[0.08em] text-on-surface-variant">
+                            <p className="nav-eyebrow text-xs font-bold uppercase tracking-[0.08em]">
                                 {item.group}
                             </p>
-                            <p className="mt-2 font-display text-lg font-bold text-ink">
+                            <p className="nav-title mt-2 font-display text-lg font-bold">
                                 {item.label}
                             </p>
                         </Link>

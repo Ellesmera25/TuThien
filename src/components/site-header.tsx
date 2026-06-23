@@ -28,13 +28,13 @@ export async function SiteHeader() {
     const roleItems = getRoleItems(role);
 
     return (
-        <header className="sticky top-0 z-50 border-b border-outline-variant/30 bg-white/90 backdrop-blur-md">
-            <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 shadow-ambient sm:px-8">
+        <header className="sticky top-0 z-50 border-b border-emerald-300/30 bg-primary/95 text-white shadow-[0_10px_30px_rgba(11,31,58,0.18)] backdrop-blur-md">
+            <div className="mx-auto flex h-20 max-w-7xl items-center justify-between gap-4 px-4 sm:px-8">
                 <Link
                     href="/"
-                    className="font-display text-2xl font-black tracking-tight text-primary"
+                    className="font-display text-2xl font-black tracking-tight text-white"
                 >
-                    TuThien.vn
+                    TuThien.vn<span className="text-emerald-300">.</span>
                 </Link>
 
                 <nav className="hidden items-center gap-2 md:flex">
@@ -48,7 +48,7 @@ export async function SiteHeader() {
                         <>
                             <Link
                                 href="/tai-khoan"
-                                className="rounded-lg px-4 py-2 font-display text-sm font-semibold text-slate-600 transition hover:bg-surface-low hover:text-primary"
+                                className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 font-display text-sm font-semibold text-white transition hover:border-emerald-300/50 hover:bg-emerald-400/20"
                             >
                                 Tài khoản
                             </Link>
@@ -58,7 +58,7 @@ export async function SiteHeader() {
                         <>
                             <Link
                                 href="/dang-nhap"
-                                className="rounded-lg border border-outline-variant/70 bg-white px-4 py-2 font-display text-sm font-semibold text-slate-600 transition hover:border-primary hover:text-primary active:scale-95"
+                                className="rounded-lg border border-emerald-300/40 bg-white/10 px-4 py-2 font-display text-sm font-semibold text-white transition hover:border-emerald-200 hover:bg-emerald-400/20 active:scale-95"
                             >
                                 Đăng nhập
                             </Link>
@@ -79,14 +79,14 @@ export async function SiteHeader() {
                     <Link
                         key={`${item.href}-${item.label}`}
                         href={item.href}
-                        className="shrink-0 rounded-lg border border-outline-variant/40 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-ambient"
+                        className="shrink-0 rounded-lg border border-emerald-300/30 bg-emerald-400/15 px-3 py-1.5 text-xs font-bold text-white shadow-ambient"
                     >
                         {item.label}
                     </Link>
                 ))}
                 <Link
                     href={user ? "/tai-khoan" : "/dang-nhap"}
-                    className="shrink-0 rounded-lg border border-outline-variant/40 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-ambient"
+                    className="shrink-0 rounded-lg border border-emerald-300/30 bg-white/10 px-3 py-1.5 text-xs font-bold text-white shadow-ambient"
                 >
                     {user ? "Tài khoản" : "Đăng nhập"}
                 </Link>
@@ -99,7 +99,7 @@ function HeaderLink({ item }: { item: HeaderItem }) {
     return (
         <Link
             href={item.href}
-            className="rounded-lg px-3 py-2 font-display text-sm font-semibold tracking-tight text-slate-600 transition hover:bg-surface-low hover:text-primary active:scale-95"
+            className="rounded-lg border border-transparent px-3 py-2 font-display text-sm font-semibold tracking-tight text-white/80 transition hover:border-emerald-300/40 hover:bg-emerald-400/15 hover:text-white active:scale-95"
         >
             {item.label}
         </Link>

@@ -2460,14 +2460,14 @@ function AdminModuleNav({ activeView }: { activeView: AdminView }) {
                     <Link
                         key={item.value}
                         href={item.href}
-                        className={`surface-card p-4 transition hover:border-primary hover:shadow-card ${
-                            isActive ? "border-primary bg-primary-fixed/30" : ""
+                        className={`nav-tile p-4 transition ${
+                            isActive ? "nav-tile-active" : ""
                         }`}
                     >
-                        <p className="font-display text-lg font-bold text-ink">
+                        <p className="nav-title font-display text-lg font-bold">
                             {item.label}
                         </p>
-                        <p className="mt-2 text-sm leading-6 text-on-surface-variant">
+                        <p className="nav-description mt-2 text-sm leading-6">
                             {item.description}
                         </p>
                     </Link>

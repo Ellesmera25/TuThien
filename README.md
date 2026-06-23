@@ -261,13 +261,13 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 ### UI
 
 - Font: Plus Jakarta Sans, Space Grotesk, IBM Plex Mono.
-- Mau chinh: navy `#0b1f3a` tren nen trang/slate sang; accent xanh `#2563eb` chi dung cho diem nhan can nhan biet.
+- Mau chinh: navy `#0b1f3a` tren nen trang/slate sang; phoi them xanh luc bao `#047857`/`#065f46` cho nut chinh, header va cac cum navi de tao cam giac minh bach, dang tin cay.
 - Quy uoc hinh khoi: panel, card, badge, nut bam va cac utility `rounded-*` duoc chuan hoa ve goc vuong trong `src/app/globals.css` de tao cam giac nghiem tuc, minh bach.
 - Tailwind theme duoc mo rong trong `tailwind.config.ts`.
 - Global utility classes: `neo-panel`, `neo-panel-strong`, `neo-badge`, `neo-btn`, `surface-card`, `soft-band`.
-- Header hien cac nut chuc nang theo role ben canh nav chinh: admin thay `Quan tri`, project owner thay `Tao du an`, partner_org thay `Dong hanh du an`.
-- Trang `/tai-khoan` co luoi navi nghiep vu bang query `view`. Donor thay tong quan, yeu cau vai tro, lich su dong gop, reels; `project_owner` co them tao/xem du an, don vi dong hanh can duyet, dot giai ngan; `partner_org` co them dang ky dong hanh va hoa don/chung tu. Moi module chi fetch/render du lieu cua view dang mo de tranh trang tai khoan qua dai.
-- Trang `/quan-tri` co luoi navi module bang query `view` cho tong quan, tat ca du an, du an cho duyet, dang ky dong hanh, giai ngan/chung tu va yeu cau vai tro; admin chi tai dataset cua module dang xem de giam lag khi du lieu tang. Summary tong quan chi fetch o view tong quan, cac view nghiep vu khong keo theo query tong hop; signed URL cho minh chung/hoa don/anh chi duoc tao khi admin bam mo file de giam tai Supabase Storage va tranh load asset nang.
+- Header hien cac nut chuc nang theo role ben canh nav chinh: admin thay `Quan tri`, project owner thay `Tao du an`, partner_org thay `Dong hanh du an`; nav header dung nen navy/emerald, khong dung nen trang tron.
+- Trang `/tai-khoan` co luoi navi nghiep vu bang query `view`. Donor thay tong quan, yeu cau vai tro, lich su dong gop, reels; `project_owner` co them tao/xem du an, don vi dong hanh can duyet, dot giai ngan; `partner_org` co them dang ky dong hanh va hoa don/chung tu. Moi module chi fetch/render du lieu cua view dang mo de tranh trang tai khoan qua dai; the navi dung nen navy/emerald thay vi nen trang.
+- Trang `/quan-tri` co luoi navi module bang query `view` cho tong quan, tat ca du an, du an cho duyet, dang ky dong hanh, giai ngan/chung tu va yeu cau vai tro; admin chi tai dataset cua module dang xem de giam lag khi du lieu tang. Summary tong quan chi fetch o view tong quan, cac view nghiep vu khong keo theo query tong hop; signed URL cho minh chung/hoa don/anh chi duoc tao khi admin bam mo file de giam tai Supabase Storage va tranh load asset nang. The navi quan tri dung nen mau navy/emerald de tach khoi vung noi dung trang.
 - `AdminListController` la client component dung chung cho search, status filter va campaign/approval filter tren cac list van hanh; co `showPagination=false` khi list da duoc phan trang bang query/server.
 
 ### PWA
