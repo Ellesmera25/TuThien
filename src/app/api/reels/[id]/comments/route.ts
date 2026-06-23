@@ -1,5 +1,7 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
+import { publicCacheTags } from "@/lib/cache-tags";
 import {
   createSupabaseServerAuthClient,
   getCurrentUserProfile,
@@ -105,6 +107,8 @@ export async function GET(
       { status: 500 },
     );
   }
+
+  revalidateTag(publicCacheTags.reels, { expire: 0 });
 
   return NextResponse.json({
     comments: (comments ?? []).map((comment) => mapComment(comment)),

@@ -2,17 +2,29 @@ import { NextResponse } from "next/server";
 
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
+export const dynamic = "force-dynamic";
+
+const noStoreHeaders = {
+  "cache-control": "no-store, max-age=0",
+};
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const paymentReference = url.searchParams.get("paymentReference");
 
   if (!paymentReference) {
-    return NextResponse.json({ error: "Missing paymentReference" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Missing paymentReference" },
+      { status: 400, headers: noStoreHeaders },
+    );
   }
 
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Supabase not configured" },
+      { status: 500, headers: noStoreHeaders },
+    );
   }
 
   const { data, error } = await supabase
@@ -22,12 +34,18 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (error) {
-    return NextResponse.json({ error: "DB error" }, { status: 500 });
+    return NextResponse.json(
+      { error: "DB error" },
+      { status: 500, headers: noStoreHeaders },
+    );
   }
 
   if (!data) {
-    return NextResponse.json({ status: "not_found" });
+    return NextResponse.json({ status: "not_found" }, { headers: noStoreHeaders });
   }
 
-  return NextResponse.json({ id: data.id, status: data.status, confirmedAt: data.confirmed_at });
+  return NextResponse.json(
+    { id: data.id, status: data.status, confirmedAt: data.confirmed_at },
+    { headers: noStoreHeaders },
+  );
 }

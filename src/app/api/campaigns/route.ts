@@ -1,9 +1,11 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import {
     getCurrentUserRole,
     createSupabaseServerAuthClient,
 } from "@/lib/supabase/auth-server";
+import { adminCacheTags } from "@/lib/cache-tags";
 import { isSameOriginMutation } from "@/lib/http-security";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
@@ -283,6 +285,9 @@ export async function POST(request: Request) {
             );
         }
     }
+
+    revalidateTag(adminCacheTags.campaigns, { expire: 0 });
+    revalidateTag(adminCacheTags.pendingCampaigns, { expire: 0 });
 
     return NextResponse.json({
         message: "Đã gửi dự án. Vui lòng chờ admin duyệt.",

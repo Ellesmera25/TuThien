@@ -1,5 +1,7 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
+import { publicCacheTags } from "@/lib/cache-tags";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
 import { isSameOriginMutation } from "@/lib/http-security";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
@@ -341,6 +343,8 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  revalidateTag(publicCacheTags.reels, { expire: 0 });
 
   return NextResponse.json({ id: data.id });
 }

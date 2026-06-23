@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { AdminListController } from "@/components/admin-list-controller";
@@ -9,6 +8,13 @@ import {
     InvoiceSignatureSummary,
     storedInvoiceSignatureInfoFromRow,
 } from "@/components/invoice-signature-summary";
+import { LazySignedFileLink } from "@/components/lazy-signed-file-link";
+import {
+    adminCacheTags,
+    allAdminCacheTags,
+    cacheDurations,
+    publicCacheTags,
+} from "@/lib/cache-tags";
 import { getDashboardSummary } from "@/lib/data";
 import { formatVnd } from "@/lib/format";
 import type { StoredInvoiceSignatureFields } from "@/lib/invoice-signature-types";
@@ -158,15 +164,14 @@ type RoleRequestRow = {
     accepted_commitment?: boolean | null;
 };
 
-type RoleRequestWithProof = RoleRequestRow & {
-    proofSignedUrl: string | null;
-}; type PendingCampaignImage = {
+type RoleRequestWithProof = RoleRequestRow;
+
+type PendingCampaignImage = {
     id: string;
     image_url: string;
     caption: string | null;
     sort_order: number;
     is_cover: boolean;
-    signedUrl: string | null;
 };
 type PendingCampaignOwner = {
     id: string;
@@ -181,7 +186,6 @@ type PendingCampaignPhase = {
     end_date: string | null;
     status: string;
     proof_url: string | null;
-    signedProofUrl: string | null;
 };
 
 type PendingCampaignRow = {
@@ -253,7 +257,6 @@ type SupportOfferRow = {
         full_name: string | null;
         role: string | null;
     } | null;
-    proofSignedUrl: string | null;
 };
 
 type AdminDisbursementRoundRow = StoredInvoiceSignatureFields & {
@@ -268,7 +271,6 @@ type AdminDisbursementRoundRow = StoredInvoiceSignatureFields & {
     proof_due_at: string | null;
     proof_submitted_at: string | null;
     proof_url: string | null;
-    proofSignedUrl: string | null;
     proof_note: string | null;
     partner_request_note: string | null;
     owner_confirmation_note: string | null;
@@ -454,19 +456,7 @@ async function getPendingRoleRequests(): Promise<RoleRequestWithProof[]> {
         return [];
     }
 
-    const requests = data as RoleRequestRow[];
-    const proofSignedUrlByPath = await getStorageSignedUrlMap(
-        supabase,
-        "role-proofs",
-        requests.map((request) => request.proof_url),
-    );
-
-    return requests.map((request) => ({
-        ...request,
-        proofSignedUrl: request.proof_url
-            ? proofSignedUrlByPath.get(request.proof_url) ?? null
-            : null,
-    }));
+    return data as RoleRequestWithProof[];
 }
 async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
     const supabase = getSupabaseServiceClient();
@@ -529,15 +519,6 @@ async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
         });
     }
 
-    const campaignAssetSignedUrlByPath = await getStorageSignedUrlMap(
-        supabase,
-        "campaign-assets",
-        [
-            ...(imageRows ?? []).map((image) => image.image_url),
-            ...(phaseRows ?? []).map((phase) => phase.proof_url),
-        ],
-    );
-
     for (const image of imageRows ?? []) {
         const list = imagesByCampaign.get(image.campaign_id) ?? [];
 
@@ -547,7 +528,6 @@ async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
             caption: image.caption,
             sort_order: image.sort_order,
             is_cover: image.is_cover,
-            signedUrl: campaignAssetSignedUrlByPath.get(image.image_url) ?? null,
         });
 
         imagesByCampaign.set(image.campaign_id, list);
@@ -564,9 +544,6 @@ async function getPendingCampaigns(): Promise<PendingCampaignRow[]> {
             end_date: phase.end_date,
             status: phase.status,
             proof_url: phase.proof_url,
-            signedProofUrl: phase.proof_url
-                ? campaignAssetSignedUrlByPath.get(phase.proof_url) ?? null
-                : null,
         });
 
         phasesByCampaign.set(phase.campaign_id, list);
@@ -797,12 +774,6 @@ async function getSupportOffersForAdmin(): Promise<SupportOfferRow[]> {
         });
     }
 
-    const proofSignedUrlByPath = await getStorageSignedUrlMap(
-        supabase,
-        "campaign-assets",
-        offers.map((offer) => offer.proof_url),
-    );
-
     return offers.map((offer) => ({
         id: offer.id,
         campaign_id: offer.campaign_id,
@@ -827,9 +798,6 @@ async function getSupportOffersForAdmin(): Promise<SupportOfferRow[]> {
             ? roundById.get(offer.disbursement_round_id) ?? null
             : null,
         partner: partnerById.get(offer.partner_id) ?? null,
-        proofSignedUrl: offer.proof_url
-            ? proofSignedUrlByPath.get(offer.proof_url) ?? null
-            : null,
     }));
 }
 
@@ -937,20 +905,11 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
             },
         ]),
     );
-    const proofSignedUrlByPath = await getStorageSignedUrlMap(
-        supabase,
-        "campaign-assets",
-        rounds.map((round) => round.proof_url),
-    );
-
     return rounds.map((round) => {
         const campaign = campaignById.get(round.campaign_id) ?? null;
 
         return {
             ...round,
-            proofSignedUrl: round.proof_url
-                ? proofSignedUrlByPath.get(round.proof_url) ?? null
-                : null,
             campaign,
             owner: campaign?.owner_id
                 ? profileById.get(campaign.owner_id) ?? null
@@ -960,42 +919,71 @@ async function getDisbursementRoundsForAdmin(): Promise<AdminDisbursementRoundRo
     });
 }
 
-async function getStorageSignedUrlMap(
-    client: NonNullable<ReturnType<typeof getSupabaseServiceClient>>,
-    bucketName: string,
-    values: Array<null | string | undefined>,
-) {
-    const signedUrlByPath = new Map<string, string | null>();
-    const storagePaths = Array.from(
-        new Set(
-            values.filter(
-                (value): value is string =>
-                    typeof value === "string" &&
-                    value.length > 0 &&
-                    !/^https?:\/\//i.test(value),
-            ),
-        ),
-    );
-
-    for (const value of values) {
-        if (typeof value === "string" && /^https?:\/\//i.test(value)) {
-            signedUrlByPath.set(value, value);
-        }
+function revalidateTags(tags: readonly string[]) {
+    for (const tag of tags) {
+        revalidateTag(tag, { expire: 0 });
     }
-
-    for (let start = 0; start < storagePaths.length; start += 100) {
-        const chunk = storagePaths.slice(start, start + 100);
-        const { data } = await client.storage
-            .from(bucketName)
-            .createSignedUrls(chunk, 60 * 10);
-
-        for (const [index, item] of (data ?? []).entries()) {
-            signedUrlByPath.set(chunk[index], item.signedUrl ?? null);
-        }
-    }
-
-    return signedUrlByPath;
 }
+
+function revalidateAdminCache(tags: readonly string[] = allAdminCacheTags) {
+    revalidateTags(tags);
+    revalidatePath("/quan-tri");
+}
+
+const getCachedAdminDashboardSummary = unstable_cache(
+    getDashboardSummary,
+    ["admin-dashboard-summary-v1"],
+    {
+        revalidate: cacheDurations.adminShort,
+        tags: [adminCacheTags.dashboard],
+    },
+);
+
+const getCachedAdminCampaigns = unstable_cache(
+    getAdminCampaigns,
+    ["admin-campaigns-v1"],
+    {
+        revalidate: cacheDurations.adminShort,
+        tags: [adminCacheTags.campaigns],
+    },
+);
+
+const getCachedPendingRoleRequests = unstable_cache(
+    getPendingRoleRequests,
+    ["admin-pending-role-requests-v1"],
+    {
+        revalidate: cacheDurations.adminShort,
+        tags: [adminCacheTags.roleRequests],
+    },
+);
+
+const getCachedPendingCampaigns = unstable_cache(
+    getPendingCampaigns,
+    ["admin-pending-campaigns-v1"],
+    {
+        revalidate: cacheDurations.adminShort,
+        tags: [adminCacheTags.pendingCampaigns],
+    },
+);
+
+const getCachedSupportOffersForAdmin = unstable_cache(
+    getSupportOffersForAdmin,
+    ["admin-support-offers-v1"],
+    {
+        revalidate: cacheDurations.adminShort,
+        tags: [adminCacheTags.supportOffers],
+    },
+);
+
+const getCachedDisbursementRoundsForAdmin = unstable_cache(
+    getDisbursementRoundsForAdmin,
+    ["admin-disbursement-rounds-v1"],
+    {
+        revalidate: cacheDurations.adminShort,
+        tags: [adminCacheTags.disbursements],
+    },
+);
+
 async function approveRoleRequest(formData: FormData) {
     "use server";
 
@@ -1062,7 +1050,7 @@ async function approveRoleRequest(formData: FormData) {
         })
         .eq("id", requestId);
 
-    revalidatePath("/quan-tri");
+    revalidateAdminCache([adminCacheTags.roleRequests]);
     redirect("/quan-tri");
 }
 
@@ -1095,7 +1083,7 @@ async function rejectRoleRequest(formData: FormData) {
         .eq("id", requestId)
         .eq("status", "pending");
 
-    revalidatePath("/quan-tri");
+    revalidateAdminCache([adminCacheTags.roleRequests]);
     redirect("/quan-tri");
 }
 async function approveCampaign(formData: FormData) {
@@ -1147,7 +1135,17 @@ async function approveCampaign(formData: FormData) {
             .upsert(rounds, { onConflict: "campaign_id,round_number" });
     }
 
-    revalidatePath("/quan-tri");
+    revalidateAdminCache([
+        adminCacheTags.campaigns,
+        adminCacheTags.dashboard,
+        adminCacheTags.disbursements,
+        adminCacheTags.pendingCampaigns,
+    ]);
+    revalidateTags([
+        publicCacheTags.campaignDetails,
+        publicCacheTags.campaigns,
+        publicCacheTags.dashboard,
+    ]);
     revalidatePath("/");
     revalidatePath("/chien-dich");
     redirect("/quan-tri");
@@ -1183,7 +1181,10 @@ async function rejectCampaign(formData: FormData) {
         .eq("id", campaignId)
         .eq("review_status", "pending");
 
-    revalidatePath("/quan-tri");
+    revalidateAdminCache([
+        adminCacheTags.campaigns,
+        adminCacheTags.pendingCampaigns,
+    ]);
     redirect("/quan-tri");
 }
 
@@ -1280,7 +1281,15 @@ async function approveDisbursementRound(formData: FormData) {
         proof_url: null,
     });
 
-    revalidatePath("/quan-tri");
+    revalidateAdminCache([
+        adminCacheTags.dashboard,
+        adminCacheTags.disbursements,
+        adminCacheTags.supportOffers,
+    ]);
+    revalidateTags([
+        publicCacheTags.dashboard,
+        publicCacheTags.transparency,
+    ]);
     revalidatePath("/tai-khoan");
     revalidatePath(`/chien-dich/${campaign.slug}`);
     redirect("/quan-tri");
@@ -1356,7 +1365,17 @@ async function approveDisbursementProof(formData: FormData) {
         .eq("id", round.campaign_id)
         .maybeSingle();
 
-    revalidatePath("/quan-tri");
+    revalidateAdminCache([
+        adminCacheTags.campaigns,
+        adminCacheTags.dashboard,
+        adminCacheTags.disbursements,
+    ]);
+    revalidateTags([
+        publicCacheTags.campaignDetails,
+        publicCacheTags.campaigns,
+        publicCacheTags.dashboard,
+        publicCacheTags.transparency,
+    ]);
     revalidatePath("/tai-khoan");
 
     if (campaign?.slug) {
@@ -1407,7 +1426,7 @@ async function markDisbursementProofOverdue(formData: FormData) {
         .eq("id", round.campaign_id)
         .maybeSingle();
 
-    revalidatePath("/quan-tri");
+    revalidateAdminCache([adminCacheTags.disbursements]);
     revalidatePath("/tai-khoan");
 
     if (campaign?.slug) {
@@ -1442,19 +1461,23 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         supportOffersForAdmin,
         disbursementRoundsForAdmin,
     ] = await Promise.all([
-        activeView === "overview" ? getDashboardSummary() : Promise.resolve(null),
-        activeView === "campaigns" ? getAdminCampaigns() : Promise.resolve([]),
+        activeView === "overview"
+            ? getCachedAdminDashboardSummary()
+            : Promise.resolve(null),
+        activeView === "campaigns"
+            ? getCachedAdminCampaigns()
+            : Promise.resolve([]),
         activeView === "role-requests"
-            ? getPendingRoleRequests()
+            ? getCachedPendingRoleRequests()
             : Promise.resolve([]),
         activeView === "pending-campaigns"
-            ? getPendingCampaigns()
+            ? getCachedPendingCampaigns()
             : Promise.resolve([]),
         activeView === "support-offers"
-            ? getSupportOffersForAdmin()
+            ? getCachedSupportOffersForAdmin()
             : Promise.resolve([]),
         activeView === "disbursements"
-            ? getDisbursementRoundsForAdmin()
+            ? getCachedDisbursementRoundsForAdmin()
             : Promise.resolve([]),
     ]);
 
@@ -1697,27 +1720,19 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
                                         <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                             {campaign.images.map((image) => (
-                                                <a
+                                                <div
                                                     key={image.id}
-                                                    href={image.signedUrl ?? "#"}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="group overflow-hidden rounded-xl border border-slate-100 bg-slate-50"
+                                                    className="overflow-hidden rounded-xl border border-slate-100 bg-slate-50"
                                                 >
-                                                    {image.signedUrl ? (
-                                                        <Image
-                                                            src={image.signedUrl}
-                                                            alt={image.caption ?? campaign.title}
-                                                            width={320}
-                                                            height={144}
-                                                            unoptimized
-                                                            className="h-36 w-full object-cover transition group-hover:scale-105"
+                                                    <div className="flex h-36 items-center justify-center bg-white px-3 text-center text-sm text-slate-600">
+                                                        <LazySignedFileLink
+                                                            bucket="campaign-assets"
+                                                            path={image.image_url}
+                                                            label={`Mở ảnh ${image.sort_order}`}
+                                                            className="inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                                            unavailableLabel="Không có ảnh"
                                                         />
-                                                    ) : (
-                                                        <div className="flex h-36 items-center justify-center text-sm text-slate-500">
-                                                            Không mở được ảnh
-                                                        </div>
-                                                    )}
+                                                    </div>
 
                                                     <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-600">
                                                         <span>Ảnh {image.sort_order}</span>
@@ -1727,7 +1742,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                                             </span>
                                                         ) : null}
                                                     </div>
-                                                </a>
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
@@ -1772,15 +1787,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                                     <Info label="Ngày kết thúc" value={phase.end_date} />
                                                 </div>
 
-                                                {phase.signedProofUrl ? (
-                                                    <a
-                                                        href={phase.signedProofUrl}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="mt-4 inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
-                                                    >
-                                                        Xem minh chứng kế hoạch
-                                                    </a>
+                                                {phase.proof_url ? (
+                                                    <LazySignedFileLink
+                                                        bucket="campaign-assets"
+                                                        path={phase.proof_url}
+                                                        label="Xem minh chứng kế hoạch"
+                                                        className="mt-4 inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                                    />
                                                 ) : (
                                                     <p className="mt-4 text-sm font-semibold text-slate-500">
                                                         Chưa có minh chứng kế hoạch.
@@ -1953,15 +1966,13 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                 </div>
 
                                 <div className="mt-4">
-                                    {offer.proofSignedUrl ? (
-                                        <a
-                                            href={offer.proofSignedUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
-                                        >
-                                            Xem hồ sơ đính kèm
-                                        </a>
+                                    {offer.proof_url ? (
+                                        <LazySignedFileLink
+                                            bucket="campaign-assets"
+                                            path={offer.proof_url}
+                                            label="Xem hồ sơ đính kèm"
+                                            className="inline-flex rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                        />
                                     ) : (
                                         <p className="text-sm font-semibold text-slate-500">
                                             Chưa có minh chứng đính kèm.
@@ -2099,14 +2110,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                 {round.proof_url ? (
                                     <div className="mt-4 rounded-xl border border-slate-100 bg-surface-low p-3 text-sm text-slate-700">
                                         <p className="font-bold text-ink">Hóa đơn/chứng từ đã nộp</p>
-                                        <a
-                                            href={round.proofSignedUrl ?? round.proof_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="mt-1 inline-flex break-all font-semibold text-primary hover:underline"
-                                        >
+                                        <LazySignedFileLink
+                                            bucket="campaign-assets"
+                                            path={round.proof_url}
+                                            label="Mở hóa đơn/chứng từ"
+                                            className="mt-1 inline-flex font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:opacity-60"
+                                        />
+                                        <p className="mt-1 break-all text-xs text-slate-500">
                                             {round.proof_url}
-                                        </a>
+                                        </p>
                                         {round.proof_note ? (
                                             <p className="mt-2 whitespace-pre-wrap">{round.proof_note}</p>
                                         ) : null}
@@ -2379,15 +2391,15 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                 </div>
 
                                 <div className="mt-4 flex flex-wrap items-center gap-3">
-                                    {request.proofSignedUrl ? (
-                                        <a
-                                            href={request.proofSignedUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white"
-                                        >
-                                            Xem tài liệu minh chứng
-                                        </a>
+                                    {request.proof_url ? (
+                                        <LazySignedFileLink
+                                            bucket="role-proofs"
+                                            path={request.proof_url}
+                                            label="Xem tài liệu minh chứng"
+                                            className="rounded-lg border border-primary px-4 py-2 text-sm font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                            unavailableClassName="text-sm font-semibold text-red-600"
+                                            unavailableLabel="Chưa có tài liệu minh chứng"
+                                        />
                                     ) : (
                                         <span className="text-sm font-semibold text-red-600">
                                             Chưa có tài liệu minh chứng

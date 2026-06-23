@@ -1,5 +1,7 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
+import { publicCacheTags } from "@/lib/cache-tags";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import {
   createBlockchainRecord,
@@ -10,6 +12,16 @@ import {
   isWebhookSignatureValid,
   parseSepayWebhookPayload,
 } from "@/lib/sepay";
+
+export const dynamic = "force-dynamic";
+
+function revalidateDonationCaches() {
+  revalidateTag(publicCacheTags.campaignDetails, { expire: 0 });
+  revalidateTag(publicCacheTags.campaigns, { expire: 0 });
+  revalidateTag(publicCacheTags.dashboard, { expire: 0 });
+  revalidateTag(publicCacheTags.donationChain, { expire: 0 });
+  revalidateTag(publicCacheTags.donations, { expire: 0 });
+}
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -106,6 +118,8 @@ export async function POST(request: Request) {
       .update({ blockchain_hash: restoredBlock.hash })
       .eq("id", donation.id);
 
+    revalidateDonationCaches();
+
     return NextResponse.json({
       received: true,
       updated: false,
@@ -182,6 +196,8 @@ export async function POST(request: Request) {
       { status: 500 },
     );
   }
+
+  revalidateDonationCaches();
 
   return NextResponse.json({
     received: true,

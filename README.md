@@ -122,11 +122,12 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 | API | Method | Muc dich | Quyen/kiem tra |
 | --- | --- | --- | --- |
 | `/api/donations` | `POST` | Tao donation pending, sinh `TUTHIEN-XXXXXXXX`, QR content va URL QR | Same-origin, payload hop le, amount >= 10.000, campaign neu co phai published/active |
-| `/api/donations/status` | `GET` | Tra trang thai donation theo `paymentReference` | Can service role configured |
-| `/api/sepay/webhook` | `POST` | Nhan webhook Sepay, xac minh signature, confirm donation, update campaign raised amount, insert donation_blockchain | Kiem tra secret/HMAC neu co `SEPAY_WEBHOOK_SECRET` |
+| `/api/donations/status` | `GET` | Tra trang thai donation theo `paymentReference`, `no-store` de realtime sau QR | Can service role configured |
+| `/api/sepay/webhook` | `POST` | Nhan webhook Sepay, xac minh signature, confirm donation, update campaign raised amount, insert donation_blockchain; khong cache response, chi revalidate cache doc | Kiem tra secret/HMAC neu co `SEPAY_WEBHOOK_SECRET` |
 | `/api/campaigns` | `POST` | Tao campaign pending va luu image metadata | Same-origin, login, role `project_owner`, 1-8 image path hop le |
 | `/api/support-offers` | `POST` | Partner gui de xuat dong hanh cho disbursement round | Same-origin, login, role `partner_org`, campaign published active/paused, khong phai owner |
-| `/api/invoice-signatures/extract` | `POST` | Doc file PDF hoa don do, trich xuat thong tin chu ky so nhung trong PDF de hien thi truoc khi upload | Same-origin, login, file PDF <= 20MB |
+| `/api/invoice-signatures/extract` | `POST` | Doc file PDF hoa don do, trich xuat thong tin chu ky so nhung trong PDF de hien thi truoc khi upload; `no-store`, server action van verify lai khi luu | Same-origin, login, file PDF <= 20MB |
+| `/api/admin/signed-url` | `POST` | Tao signed URL ngan han cho tai lieu/anh private khi admin bam mo file, tranh ky URL hang loat luc load trang | Same-origin, login, role `admin`, bucket allowlist `campaign-assets`/`role-proofs` |
 | `/api/role-requests` | `POST` | Gui yeu cau nang role mot lan duy nhat moi tai khoan | Same-origin, login, proof path hop le, cam ket minh bach |
 | `/api/reels` | `POST` | Upload video vao bucket `reel-videos` va tao row `reels` | Same-origin, login, Supabase service role, campaign published |
 | `/api/reels/[id]/like` | `POST` | Toggle like reel, `id` la reel UUID | Same-origin, login |
@@ -230,6 +231,14 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 - Cac bang nghiep vu co the chua ton tai trong schema local duoc index bang guard table/column: `role_requests`, `campaign_images`, `campaign_phases`, `support_offers`, `disbursement_rounds`. Cac index nay tap trung vao `owner_id`, `partner_id`, `campaign_id`, `status`, `review_status`, `round_number`, `created_at`, `proof_due_at`.
 - Khong nen danh index tran lan moi cot: index tang toc doc/loc/sap xep nhung lam insert/update cham hon va ton dung luong. Neu `/minh-bach` van cham khi blockchain rat lon, diem tiep theo can toi uu la `count: "exact"` bang cached counter hoac estimated count.
 
+### Cache va lazy loading
+
+- Cache tag dung chung nam trong `src/lib/cache-tags.ts`. Du lieu public doc nhieu trong `src/lib/data.ts` dung `unstable_cache`: campaigns, campaign detail, minh bach/disbursement, recent donations, donation chain theo page, reels feed va dashboard summary. TTL public ngan/vua: 15 giay cho reels, 30 giay cho du lieu hay doi, 120 giay cho danh sach campaign.
+- `/quan-tri` cache rieng theo tung module bang tag admin: dashboard, tat ca du an, du an cho duyet, yeu cau vai tro, dang ky dong hanh va giai ngan/chung tu. TTL admin mac dinh 30 giay va cac server action/API co lien quan se `revalidateTag` ngay sau mutation.
+- `/tai-khoan` khong cache global du lieu auth/current user/role. Cac module user van chi fetch theo `view` dang mo; action owner/partner se revalidate tag admin khi lam doi du lieu ma admin dang xem.
+- Khong cache hoac chi de realtime/no-store cho cac diem nhay cam: `/api/donations/status`, `/api/sepay/webhook`, `/api/invoice-signatures/extract`, cac POST like/comment/follow reels, va moi du lieu auth/current user/role.
+- Signed URL cho file private trong trang admin duoc lazy theo click qua `/api/admin/signed-url`. Danh sach admin chi tai metadata/path, khong tao signed URL hang loat va khong render preview anh/chung tu ngay luc load view.
+
 ### Storage buckets
 
 - `reel-videos`: bucket public cho video reels, toi da 100MB, MIME mp4/webm/quicktime/x-m4v.
@@ -257,7 +266,7 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 - Global utility classes: `neo-panel`, `neo-panel-strong`, `neo-badge`, `neo-btn`, `surface-card`, `soft-band`.
 - Header hien cac nut chuc nang theo role ben canh nav chinh: admin thay `Quan tri`, project owner thay `Tao du an`, partner_org thay `Dong hanh du an`.
 - Trang `/tai-khoan` co luoi navi nghiep vu bang query `view`. Donor thay tong quan, yeu cau vai tro, lich su dong gop, reels; `project_owner` co them tao/xem du an, don vi dong hanh can duyet, dot giai ngan; `partner_org` co them dang ky dong hanh va hoa don/chung tu. Moi module chi fetch/render du lieu cua view dang mo de tranh trang tai khoan qua dai.
-- Trang `/quan-tri` co luoi navi module bang query `view` cho tong quan, tat ca du an, du an cho duyet, dang ky dong hanh, giai ngan/chung tu va yeu cau vai tro; admin chi tai dataset cua module dang xem de giam lag khi du lieu tang. Summary tong quan chi fetch o view tong quan, cac view nghiep vu khong keo theo query tong hop; signed URL cho minh chung/hoa don/anh duoc batch theo bucket de giam round-trip toi Supabase Storage.
+- Trang `/quan-tri` co luoi navi module bang query `view` cho tong quan, tat ca du an, du an cho duyet, dang ky dong hanh, giai ngan/chung tu va yeu cau vai tro; admin chi tai dataset cua module dang xem de giam lag khi du lieu tang. Summary tong quan chi fetch o view tong quan, cac view nghiep vu khong keo theo query tong hop; signed URL cho minh chung/hoa don/anh chi duoc tao khi admin bam mo file de giam tai Supabase Storage va tranh load asset nang.
 - `AdminListController` la client component dung chung cho search, status filter va campaign/approval filter tren cac list van hanh; co `showPagination=false` khi list da duoc phan trang bang query/server.
 
 ### PWA

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { AdminListController } from "@/components/admin-list-controller";
@@ -15,6 +15,7 @@ import {
     ServerPagination,
     type PageSearchParams,
 } from "@/components/server-pagination";
+import { adminCacheTags } from "@/lib/cache-tags";
 import { getDashboardSummary, getReelsByUser } from "@/lib/data";
 import { formatCompactNumber, formatDate, formatVnd } from "@/lib/format";
 import type { StoredInvoiceSignatureFields } from "@/lib/invoice-signature-types";
@@ -50,6 +51,13 @@ const invoiceSignatureColumns = `
 `;
 
 const accountPageSize = 6;
+
+function revalidateTags(tags: readonly string[]) {
+    for (const tag of tags) {
+        revalidateTag(tag, { expire: 0 });
+    }
+}
+
 const accountPageParams = {
     myCampaigns: "campaignPage",
     mySupportOffers: "supportPage",
@@ -2398,6 +2406,7 @@ async function requestDisbursementRound(formData: FormData) {
         .eq("id", round.id)
         .eq("status", "open");
 
+    revalidateTags([adminCacheTags.disbursements]);
     revalidatePath("/tai-khoan");
     revalidatePath("/quan-tri");
 
@@ -2464,6 +2473,7 @@ async function approveOwnerDisbursementRequest(formData: FormData) {
         .eq("id", round.id)
         .eq("status", "requested");
 
+    revalidateTags([adminCacheTags.disbursements]);
     revalidatePath("/tai-khoan");
     revalidatePath("/quan-tri");
 
@@ -2552,6 +2562,7 @@ async function submitDisbursementProof(formData: FormData) {
         .eq("id", round.campaign_id)
         .maybeSingle();
 
+    revalidateTags([adminCacheTags.disbursements]);
     revalidatePath("/tai-khoan");
     revalidatePath("/quan-tri");
 
@@ -2700,6 +2711,10 @@ async function approveOwnerSupportOffer(formData: FormData) {
         .eq("id", offer.campaign_id)
         .maybeSingle();
 
+    revalidateTags([
+        adminCacheTags.disbursements,
+        adminCacheTags.supportOffers,
+    ]);
     revalidatePath("/tai-khoan");
     revalidatePath("/quan-tri");
 
@@ -2775,6 +2790,7 @@ async function rejectOwnerSupportOffer(formData: FormData) {
         .eq("id", offer.campaign_id)
         .maybeSingle();
 
+    revalidateTags([adminCacheTags.supportOffers]);
     revalidatePath("/tai-khoan");
 
     if (campaignForRevalidate?.slug) {

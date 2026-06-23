@@ -3,6 +3,9 @@ import {
   getSupabaseServiceClient,
 } from "@/lib/supabase/server";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
+import { unstable_cache } from "next/cache";
+
+import { cacheDurations, publicCacheTags } from "@/lib/cache-tags";
 import type {
   Campaign,
   DashboardSummary,
@@ -12,6 +15,10 @@ import type {
   ReelItem,
   TransparencyItem,
 } from "@/lib/types";
+
+function getPublicSupabaseClient() {
+  return getSupabaseServiceClient() ?? getSupabaseServerClient();
+}
 
 function toNumber(value: unknown, fallback = 0): number {
   if (typeof value === "number") {
@@ -121,8 +128,8 @@ function mapReel(row: Record<string, unknown>): ReelItem {
   };
 }
 
-export async function getCampaigns(): Promise<Campaign[]> {
-  const supabase = getSupabaseServerClient();
+async function getCampaignsUncached(): Promise<Campaign[]> {
+  const supabase = getPublicSupabaseClient();
   if (!supabase) {
     return [];
   }
@@ -142,8 +149,21 @@ export async function getCampaigns(): Promise<Campaign[]> {
   return (data ?? []).map(mapCampaign);
 }
 
-export async function getCampaignBySlug(slug: string): Promise<Campaign | null> {
-  const supabase = getSupabaseServerClient();
+const getCachedCampaigns = unstable_cache(
+  getCampaignsUncached,
+  ["public-campaigns-v1"],
+  {
+    revalidate: cacheDurations.publicMedium,
+    tags: [publicCacheTags.campaigns],
+  },
+);
+
+export async function getCampaigns(): Promise<Campaign[]> {
+  return getCachedCampaigns();
+}
+
+async function getCampaignBySlugUncached(slug: string): Promise<Campaign | null> {
+  const supabase = getPublicSupabaseClient();
   if (!supabase) {
     return null;
   }
@@ -164,10 +184,23 @@ export async function getCampaignBySlug(slug: string): Promise<Campaign | null> 
   return data ? mapCampaign(data) : null;
 }
 
-export async function getTransparencyItems(
+const getCachedCampaignBySlug = unstable_cache(
+  getCampaignBySlugUncached,
+  ["public-campaign-by-slug-v1"],
+  {
+    revalidate: cacheDurations.publicFast,
+    tags: [publicCacheTags.campaignDetails, publicCacheTags.campaigns],
+  },
+);
+
+export async function getCampaignBySlug(slug: string): Promise<Campaign | null> {
+  return getCachedCampaignBySlug(slug);
+}
+
+async function getTransparencyItemsUncached(
   campaignSlug?: string,
 ): Promise<TransparencyItem[]> {
-  const supabase = getSupabaseServerClient();
+  const supabase = getPublicSupabaseClient();
   if (!supabase) {
     return [];
   }
@@ -192,7 +225,23 @@ export async function getTransparencyItems(
   return (data ?? []).map(mapTransparency);
 }
 
-export async function getRecentDonations(): Promise<DonationItem[]> {
+const getCachedTransparencyItems = unstable_cache(
+  async (campaignSlug: string | null) =>
+    getTransparencyItemsUncached(campaignSlug ?? undefined),
+  ["public-transparency-items-v1"],
+  {
+    revalidate: cacheDurations.publicFast,
+    tags: [publicCacheTags.transparency],
+  },
+);
+
+export async function getTransparencyItems(
+  campaignSlug?: string,
+): Promise<TransparencyItem[]> {
+  return getCachedTransparencyItems(campaignSlug ?? null);
+}
+
+async function getRecentDonationsUncached(): Promise<DonationItem[]> {
   const supabase = getSupabaseServiceClient();
   if (!supabase) {
     return [];
@@ -213,7 +262,20 @@ export async function getRecentDonations(): Promise<DonationItem[]> {
   return (data ?? []).map(mapDonation);
 }
 
-export async function getDonationChain({
+const getCachedRecentDonations = unstable_cache(
+  getRecentDonationsUncached,
+  ["public-recent-donations-v1"],
+  {
+    revalidate: cacheDurations.publicFast,
+    tags: [publicCacheTags.donations],
+  },
+);
+
+export async function getRecentDonations(): Promise<DonationItem[]> {
+  return getCachedRecentDonations();
+}
+
+async function getDonationChainUncached({
   page = 1,
   pageSize = 20,
 }: {
@@ -256,7 +318,7 @@ export async function getDonationChain({
       console.error(chainError);
     }
     if (!chainError && totalItems > 0 && safePage > totalPages) {
-      return getDonationChain({ page: totalPages, pageSize: safePageSize });
+      return getDonationChainUncached({ page: totalPages, pageSize: safePageSize });
     }
     return {
       items: [],
@@ -306,8 +368,34 @@ export async function getDonationChain({
   };
 }
 
-export async function getReels(): Promise<ReelItem[]> {
-  const supabase = getSupabaseServerClient();
+const getCachedDonationChain = unstable_cache(
+  (page: number, pageSize: number) =>
+    getDonationChainUncached({ page, pageSize }),
+  ["public-donation-chain-v1"],
+  {
+    revalidate: cacheDurations.publicFast,
+    tags: [publicCacheTags.donationChain, publicCacheTags.donations],
+  },
+);
+
+export async function getDonationChain({
+  page = 1,
+  pageSize = 20,
+}: {
+  page?: number;
+  pageSize?: number;
+} = {}): Promise<DonationChainPage> {
+  const safePage = Math.max(Number.isFinite(page) ? Math.floor(page) : 1, 1);
+  const safePageSize = Math.min(
+    Math.max(Number.isFinite(pageSize) ? Math.floor(pageSize) : 20, 1),
+    50,
+  );
+
+  return getCachedDonationChain(safePage, safePageSize);
+}
+
+async function getReelsUncached(): Promise<ReelItem[]> {
+  const supabase = getPublicSupabaseClient();
   if (!supabase) {
     return [];
   }
@@ -324,6 +412,15 @@ export async function getReels(): Promise<ReelItem[]> {
   }
 
   return (data ?? []).map(mapReel);
+}
+
+const getCachedReels = unstable_cache(getReelsUncached, ["public-reels-v1"], {
+  revalidate: cacheDurations.reelFast,
+  tags: [publicCacheTags.reels],
+});
+
+export async function getReels(): Promise<ReelItem[]> {
+  return getCachedReels();
 }
 
 export async function getReelsWithUserState(userId?: string): Promise<ReelItem[]> {
@@ -405,12 +502,12 @@ export async function getReelsWithUserState(userId?: string): Promise<ReelItem[]
   }));
 }
 
-export async function getReelsByUser(userId: string): Promise<ReelItem[]> {
+async function getReelsByUserUncached(userId: string): Promise<ReelItem[]> {
   if (!userId) {
     return [];
   }
 
-  const supabase = getSupabaseServerClient();
+  const supabase = getPublicSupabaseClient();
   if (!supabase) {
     return [];
   }
@@ -430,7 +527,20 @@ export async function getReelsByUser(userId: string): Promise<ReelItem[]> {
   return (data ?? []).map(mapReel);
 }
 
-export async function getDashboardSummary(): Promise<DashboardSummary> {
+const getCachedReelsByUser = unstable_cache(
+  getReelsByUserUncached,
+  ["account-reels-by-user-v1"],
+  {
+    revalidate: cacheDurations.reelFast,
+    tags: [publicCacheTags.reels],
+  },
+);
+
+export async function getReelsByUser(userId: string): Promise<ReelItem[]> {
+  return getCachedReelsByUser(userId);
+}
+
+async function getDashboardSummaryUncached(): Promise<DashboardSummary> {
   const campaigns = await getCampaigns();
 
   const totalRaised = campaigns.reduce(
@@ -466,4 +576,21 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       .length,
     donorCount: error ? 0 : (count ?? 0),
   };
+}
+
+const getCachedDashboardSummary = unstable_cache(
+  getDashboardSummaryUncached,
+  ["public-dashboard-summary-v1"],
+  {
+    revalidate: cacheDurations.publicFast,
+    tags: [
+      publicCacheTags.dashboard,
+      publicCacheTags.campaigns,
+      publicCacheTags.donations,
+    ],
+  },
+);
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  return getCachedDashboardSummary();
 }
