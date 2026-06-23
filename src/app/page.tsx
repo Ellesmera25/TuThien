@@ -9,7 +9,7 @@ import {
 import { formatCompactNumber, formatVnd } from "@/lib/format";
 
 const homeHeroBackground = [
-  "linear-gradient(180deg, rgba(11, 31, 58, 0.98) 0%, rgba(34, 41, 87, 0.92) 18%, rgba(13, 148, 136, 0.68) 50%, rgba(34, 41, 87, 0.92) 82%, rgba(11, 31, 58, 0.98) 100%)",
+  "linear-gradient(180deg, rgba(11, 31, 58, 0.98) 0%, rgba(34, 41, 87, 0.82) 10%, rgba(13, 148, 136, 0.68) 30%, rgba(13, 148, 136, 0.74) 58%, rgba(34, 41, 87, 0.82) 90%, rgba(11, 31, 58, 0.98) 100%)",
   "linear-gradient(180deg, rgba(11, 31, 58, 0.36) 0%, rgba(11, 31, 58, 0.18) 48%, rgba(11, 31, 58, 0.48) 100%)",
   'url("https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=1800&q=85")',
 ].join(", ");
