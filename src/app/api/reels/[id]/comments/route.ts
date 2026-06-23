@@ -1,13 +1,15 @@
-import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { publicCacheTags } from "@/lib/cache-tags";
+import { noStoreHeaders, revalidateCacheTag } from "@/lib/cache-revalidation";
 import {
   createSupabaseServerAuthClient,
   getCurrentUserProfile,
 } from "@/lib/supabase/auth-server";
 import { isSameOriginMutation } from "@/lib/http-security";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 type ReelCommentRow = {
   id: string;
@@ -91,11 +93,14 @@ export async function GET(
   if (queryError) {
     console.error(queryError);
     if (isMissingInteractionTable(queryError)) {
-      return NextResponse.json({
-        comments: [],
-        count: 0,
-        needsMigration: true,
-      });
+      return NextResponse.json(
+        {
+          comments: [],
+          count: 0,
+          needsMigration: true,
+        },
+        { headers: noStoreHeaders },
+      );
     }
 
     return NextResponse.json(
@@ -104,16 +109,17 @@ export async function GET(
         comments: [],
         count: count ?? 0,
       },
-      { status: 500 },
+      { status: 500, headers: noStoreHeaders },
     );
   }
 
-  revalidateTag(publicCacheTags.reels, { expire: 0 });
-
-  return NextResponse.json({
-    comments: (comments ?? []).map((comment) => mapComment(comment)),
-    count: count ?? 0,
-  });
+  return NextResponse.json(
+    {
+      comments: (comments ?? []).map((comment) => mapComment(comment)),
+      count: count ?? 0,
+    },
+    { headers: noStoreHeaders },
+  );
 }
 
 function sanitizeCommentInput(content: string): string {
@@ -274,9 +280,14 @@ export async function POST(
     }
   }
 
-  return NextResponse.json({
-    comments: insertedComment ? [mapComment(insertedComment)] : [],
-    count: count ?? 0,
-    canInteract: true,
-  });
+  revalidateCacheTag(publicCacheTags.reels);
+
+  return NextResponse.json(
+    {
+      comments: insertedComment ? [mapComment(insertedComment)] : [],
+      count: count ?? 0,
+      canInteract: true,
+    },
+    { headers: noStoreHeaders },
+  );
 }

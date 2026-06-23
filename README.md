@@ -234,7 +234,8 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 ### Cache va lazy loading
 
 - Cache tag dung chung nam trong `src/lib/cache-tags.ts`. Du lieu public doc nhieu trong `src/lib/data.ts` dung `unstable_cache`: campaigns, campaign detail, minh bach/disbursement, recent donations, donation chain theo page, reels feed va dashboard summary. TTL public ngan/vua: 15 giay cho reels, 30 giay cho du lieu hay doi, 120 giay cho danh sach campaign.
-- `/quan-tri` cache rieng theo tung module bang tag admin: dashboard, tat ca du an, du an cho duyet, yeu cau vai tro, dang ky dong hanh va giai ngan/chung tu. TTL admin mac dinh 30 giay va cac server action/API co lien quan se `revalidateTag` ngay sau mutation.
+- Revalidate cho du lieu dong dung helper `src/lib/cache-revalidation.ts`: `revalidateCacheTag(s)` luon expire ngay bang `{ expire: 0 }`; static/it doi khong can gan revalidate rieng neu khong co mutation lam thay doi data.
+- `/quan-tri` cache rieng theo tung module bang tag admin: dashboard, tat ca du an, du an cho duyet, yeu cau vai tro, dang ky dong hanh va giai ngan/chung tu. TTL admin mac dinh 30 giay va cac server action/API co lien quan se goi `revalidateCacheTag(s)` ngay sau mutation.
 - `/tai-khoan` khong cache global du lieu auth/current user/role. Cac module user van chi fetch theo `view` dang mo; action owner/partner se revalidate tag admin khi lam doi du lieu ma admin dang xem.
 - Khong cache hoac chi de realtime/no-store cho cac diem nhay cam: `/api/donations/status`, `/api/sepay/webhook`, `/api/invoice-signatures/extract`, cac POST like/comment/follow reels, va moi du lieu auth/current user/role.
 - Signed URL cho file private trong trang admin duoc lazy theo click qua `/api/admin/signed-url`. Danh sach admin chi tai metadata/path, khong tao signed URL hang loat va khong render preview anh/chung tu ngay luc load view.

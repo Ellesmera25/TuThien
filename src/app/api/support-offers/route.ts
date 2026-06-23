@@ -1,4 +1,3 @@
-import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import {
@@ -6,6 +5,7 @@ import {
   getCurrentUserRole,
 } from "@/lib/supabase/auth-server";
 import { adminCacheTags } from "@/lib/cache-tags";
+import { revalidateCacheTags } from "@/lib/cache-revalidation";
 import { isSameOriginMutation } from "@/lib/http-security";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
@@ -293,8 +293,10 @@ export async function POST(request: Request) {
     );
   }
 
-  revalidateTag(adminCacheTags.disbursements, { expire: 0 });
-  revalidateTag(adminCacheTags.supportOffers, { expire: 0 });
+  revalidateCacheTags([
+    adminCacheTags.disbursements,
+    adminCacheTags.supportOffers,
+  ]);
 
   return NextResponse.json({
     message:

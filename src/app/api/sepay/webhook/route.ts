@@ -1,7 +1,7 @@
-import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { publicCacheTags } from "@/lib/cache-tags";
+import { revalidateCacheTags } from "@/lib/cache-revalidation";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 import {
   createBlockchainRecord,
@@ -16,11 +16,13 @@ import {
 export const dynamic = "force-dynamic";
 
 function revalidateDonationCaches() {
-  revalidateTag(publicCacheTags.campaignDetails, { expire: 0 });
-  revalidateTag(publicCacheTags.campaigns, { expire: 0 });
-  revalidateTag(publicCacheTags.dashboard, { expire: 0 });
-  revalidateTag(publicCacheTags.donationChain, { expire: 0 });
-  revalidateTag(publicCacheTags.donations, { expire: 0 });
+  revalidateCacheTags([
+    publicCacheTags.campaignDetails,
+    publicCacheTags.campaigns,
+    publicCacheTags.dashboard,
+    publicCacheTags.donationChain,
+    publicCacheTags.donations,
+  ]);
 }
 
 export async function POST(request: Request) {

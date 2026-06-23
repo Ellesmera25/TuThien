@@ -1,7 +1,7 @@
-import { revalidateTag } from "next/cache";
 import { NextResponse } from "next/server";
 
 import { adminCacheTags } from "@/lib/cache-tags";
+import { revalidateCacheTag } from "@/lib/cache-revalidation";
 import { isSameOriginMutation } from "@/lib/http-security";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
@@ -230,7 +230,7 @@ export async function POST(request: Request) {
         );
     }
 
-    revalidateTag(adminCacheTags.roleRequests, { expire: 0 });
+    revalidateCacheTag(adminCacheTags.roleRequests);
 
     return NextResponse.json({
         message: "Đã gửi yêu cầu nâng vai trò. Vui lòng chờ admin duyệt.",

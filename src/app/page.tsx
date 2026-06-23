@@ -17,9 +17,12 @@ export default async function HomePage() {
     getReels(),
   ]);
 
-  const featuredCampaigns = campaigns.slice(0, 3);
-  const featuredReels = reels.slice(0, 4);
-  const latestDonation = recentDonations[0];
+  const campaignList = Array.isArray(campaigns) ? campaigns : [];
+  const donationList = Array.isArray(recentDonations) ? recentDonations : [];
+  const reelList = Array.isArray(reels) ? reels : [];
+  const featuredCampaigns = campaignList.slice(0, 3);
+  const featuredReels = reelList.slice(0, 4);
+  const latestDonation = donationList[0];
 
   return (
     <div className="pb-8">

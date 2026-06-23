@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 
+import { noStoreHeaders } from "@/lib/cache-revalidation";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
 import { isSameOriginMutation } from "@/lib/http-security";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
 
 const maxCampaignSlugLength = 120;
 
@@ -208,8 +211,11 @@ export async function POST(
     console.error(latestFollowError);
   }
 
-  return NextResponse.json({
-    followed: Boolean(latestFollow?.id),
-    canInteract: true,
-  });
+  return NextResponse.json(
+    {
+      followed: Boolean(latestFollow?.id),
+      canInteract: true,
+    },
+    { headers: noStoreHeaders },
+  );
 }

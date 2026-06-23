@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { noStoreHeaders } from "@/lib/cache-revalidation";
 import { extractPdfSignatureInfoFromBuffer } from "@/lib/pdf-signature";
 import { isSameOriginMutation } from "@/lib/http-security";
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
@@ -8,9 +9,6 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const maxInvoicePdfSize = 20 * 1024 * 1024;
-const noStoreHeaders = {
-  "cache-control": "no-store, max-age=0",
-};
 
 export async function POST(request: Request) {
   if (!isSameOriginMutation(request)) {

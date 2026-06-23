@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { noStoreHeaders } from "@/lib/cache-revalidation";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
-
-const noStoreHeaders = {
-  "cache-control": "no-store, max-age=0",
-};
 
 export async function GET(request: Request) {
   const url = new URL(request.url);

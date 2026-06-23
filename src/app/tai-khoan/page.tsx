@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { revalidatePath, revalidateTag } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { AdminListController } from "@/components/admin-list-controller";
@@ -16,6 +16,7 @@ import {
     type PageSearchParams,
 } from "@/components/server-pagination";
 import { adminCacheTags } from "@/lib/cache-tags";
+import { revalidateCacheTags } from "@/lib/cache-revalidation";
 import { getDashboardSummary, getReelsByUser } from "@/lib/data";
 import { formatCompactNumber, formatDate, formatVnd } from "@/lib/format";
 import type { StoredInvoiceSignatureFields } from "@/lib/invoice-signature-types";
@@ -53,9 +54,7 @@ const invoiceSignatureColumns = `
 const accountPageSize = 6;
 
 function revalidateTags(tags: readonly string[]) {
-    for (const tag of tags) {
-        revalidateTag(tag, { expire: 0 });
-    }
+    revalidateCacheTags(tags);
 }
 
 const accountPageParams = {

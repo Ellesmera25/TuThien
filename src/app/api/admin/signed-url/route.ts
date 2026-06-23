@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { noStoreHeaders } from "@/lib/cache-revalidation";
 import { isSameOriginMutation } from "@/lib/http-security";
 import {
   canAccessAdmin,
@@ -12,9 +13,6 @@ export const dynamic = "force-dynamic";
 
 const allowedBuckets = new Set(["campaign-assets", "role-proofs"]);
 const signedUrlTtlSeconds = 60 * 10;
-const noStoreHeaders = {
-  "cache-control": "no-store, max-age=0",
-};
 
 function isSafeStoragePath(value: unknown): value is string {
   if (typeof value !== "string") {
