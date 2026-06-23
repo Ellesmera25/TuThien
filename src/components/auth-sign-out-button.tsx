@@ -25,7 +25,7 @@ export function AuthSignOutButton() {
             type="button"
             onClick={handleSignOut}
             disabled={loading}
-            className="rounded-lg border border-outline-variant/70 bg-white px-4 py-2 text-base font-bold text-slate-700 transition hover:border-emerald-500 hover:bg-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
+            className="inline-flex h-10 items-center justify-center rounded-lg border border-outline-variant/70 bg-white px-5 py-0 text-lg font-bold leading-none text-slate-700 transition hover:border-emerald-500 hover:bg-emerald-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-70"
         >
             {loading ? "Đang thoát..." : "Đăng xuất"}
         </button>

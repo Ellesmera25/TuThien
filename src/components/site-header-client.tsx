@@ -40,7 +40,7 @@ export function SiteHeaderClient({
                         isHome ? "text-white" : "text-primary"
                     }`}
                 >
-                    TuThien.vn<span className="text-emerald-400">.</span>
+                    TuThien.vn
                 </Link>
 
                 <nav className="hidden items-center gap-2 md:flex">
@@ -154,7 +154,7 @@ function isActivePath(pathname: string, href: string) {
 
 function desktopLinkClassName(isHome: boolean, isActive: boolean) {
     const base =
-        "rounded-lg border px-3.5 py-2 font-display text-base font-bold tracking-tight transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 active:scale-95";
+        "inline-flex h-10 items-center justify-center rounded-lg border px-5 py-0 font-display text-lg font-bold leading-none tracking-tight transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-300 active:scale-95";
 
     if (isHome) {
         return `${base} ${
@@ -173,7 +173,7 @@ function desktopLinkClassName(isHome: boolean, isActive: boolean) {
 
 function mobileLinkClassName(isHome: boolean, isActive: boolean) {
     const base =
-        "shrink-0 rounded-lg border px-3.5 py-1.5 text-sm font-bold shadow-ambient transition active:scale-95";
+        "inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-4 py-0 text-base font-bold leading-none shadow-ambient transition active:scale-95";
 
     if (isHome) {
         return `${base} ${
@@ -192,7 +192,7 @@ function mobileLinkClassName(isHome: boolean, isActive: boolean) {
 
 function accountLinkClassName(isHome: boolean, isActive: boolean) {
     const base =
-        "rounded-lg border px-4 py-2 font-display text-base font-bold transition active:scale-95";
+        "inline-flex h-10 items-center justify-center rounded-lg border px-5 py-0 font-display text-lg font-bold leading-none transition active:scale-95";
 
     if (isHome) {
         return `${base} ${
