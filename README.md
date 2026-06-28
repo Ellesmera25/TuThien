@@ -5,5 +5,6 @@
   -Nguyễn Phương Phúc Hậu: 25%
   -Trần Xuân Phước Hoàng: 10%
 ## Source video (demo + khảo sát)
-[text](https://drive.google.com/drive/folders/12Bpnghr5lxnCfxQyTrt-cJePCRgZBUDj?usp=drive_link)
+[Videos](https://drive.google.com/drive/folders/12Bpnghr5lxnCfxQyTrt-cJePCRgZBUDj?usp=drive_link)
+
 Chúng em đã biết làm web và hiểu hệ thống web hoạt động như thế nào.
