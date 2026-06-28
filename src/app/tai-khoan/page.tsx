@@ -107,6 +107,18 @@ const accountActionFeedback = {
         message:
             "Chỉ người tạo dự án mới có thể chấp nhận đăng ký đồng hành cho dự án này.",
     },
+    disbursementOwnerApproved: {
+        type: "success",
+        title: "Đã duyệt yêu cầu giải ngân",
+        message:
+            "Yêu cầu đã được chuyển sang trạng thái chờ admin giải ngân. Admin sẽ thấy QR chuyển khoản trong trang quản trị.",
+    },
+    disbursementOwnerApproveFailed: {
+        type: "error",
+        title: "Không thể duyệt yêu cầu giải ngân",
+        message:
+            "Database chưa chuyển được trạng thái sang chờ admin giải ngân. Hãy kiểm tra migration trạng thái giải ngân rồi thử lại.",
+    },
 } as const satisfies Record<
     string,
     { type: "success" | "error"; title: string; message: string }
@@ -2507,38 +2519,46 @@ async function approveOwnerDisbursementRequest(formData: FormData) {
     const accepted = String(formData.get("acceptedOwnerApproval") ?? "") === "on";
 
     if (!roundId || !accepted) {
-        return;
+        redirectToAccountView("owner-disbursements", {
+            accountError: "disbursementOwnerApproveFailed",
+        });
     }
 
     const client = getSupabaseServiceClient();
 
     if (!client) {
-        return;
+        redirectToAccountView("owner-disbursements", {
+            accountError: "disbursementOwnerApproveFailed",
+        });
     }
 
-    const { data: round } = await client
+    const { data: round, error: roundError } = await client
         .from("disbursement_rounds")
         .select("id, campaign_id, status")
         .eq("id", roundId)
         .eq("status", "requested")
         .maybeSingle();
 
-    if (!round) {
-        return;
+    if (roundError || !round) {
+        redirectToAccountView("owner-disbursements", {
+            accountError: "disbursementOwnerApproveFailed",
+        });
     }
 
-    const { data: campaign } = await client
+    const { data: campaign, error: campaignError } = await client
         .from("campaigns")
         .select("slug, owner_id")
         .eq("id", round.campaign_id)
         .eq("owner_id", user.id)
         .maybeSingle();
 
-    if (!campaign) {
-        return;
+    if (campaignError || !campaign) {
+        redirectToAccountView("owner-disbursements", {
+            accountError: "disbursementOwnerApproveFailed",
+        });
     }
 
-    await client
+    const { data: approvedRound, error: approveError } = await client
         .from("disbursement_rounds")
         .update({
             status: "owner_approved",
@@ -2547,7 +2567,15 @@ async function approveOwnerDisbursementRequest(formData: FormData) {
             owner_approval_note: approvalNote || null,
         })
         .eq("id", round.id)
-        .eq("status", "requested");
+        .eq("status", "requested")
+        .select("id, status")
+        .maybeSingle();
+
+    if (approveError || approvedRound?.status !== "owner_approved") {
+        redirectToAccountView("owner-disbursements", {
+            accountError: "disbursementOwnerApproveFailed",
+        });
+    }
 
     revalidateTags([adminCacheTags.disbursements]);
     revalidatePath("/tai-khoan");
@@ -2557,7 +2585,9 @@ async function approveOwnerDisbursementRequest(formData: FormData) {
         revalidatePath(`/chien-dich/${campaign.slug}`);
     }
 
-    redirect("/tai-khoan");
+    redirectToAccountView("owner-disbursements", {
+        accountNotice: "disbursementOwnerApproved",
+    });
 }
 
 async function submitDisbursementProof(formData: FormData) {

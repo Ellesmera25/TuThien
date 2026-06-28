@@ -372,12 +372,20 @@ begin
       percent integer not null check (percent > 0 and percent <= 100),
       planned_amount bigint not null default 0 check (planned_amount >= 0),
       status text not null default 'locked'
-        check (status in ('locked', 'open', 'requested', 'disbursed', 'completed', 'needs_admin_review')),
+        check (status in ('locked', 'open', 'requested', 'manager_confirmed', 'owner_approved', 'disbursed', 'completed', 'needs_admin_review')),
       requested_by uuid references auth.users(id),
       requested_at timestamp with time zone,
       approved_by uuid references auth.users(id),
       approved_at timestamp with time zone,
       disbursed_at date,
+      partner_request_note text,
+      owner_confirmation_note text,
+      owner_approved_by uuid references auth.users(id),
+      owner_approved_at timestamp with time zone,
+      owner_approval_note text,
+      manager_confirmed_by uuid references auth.users(id),
+      manager_confirmed_at timestamp with time zone,
+      manager_confirmation_note text,
       proof_status text not null default 'pending'
         check (proof_status in ('pending', 'approved', 'overdue')),
       proof_due_at timestamp with time zone,
@@ -438,6 +446,48 @@ begin
     create unique index if not exists idx_support_offers_one_locked_per_round
       on public.support_offers (disbursement_round_id)
       where status in ('owner_pending', 'approved') and disbursement_round_id is not null;
+  end if;
+end;
+$$;
+
+do $$
+declare
+  constraint_record record;
+begin
+  if to_regclass('public.disbursement_rounds') is not null then
+    for constraint_record in
+      select con.conname
+      from pg_constraint con
+      join pg_class rel on rel.oid = con.conrelid
+      join pg_namespace nsp on nsp.oid = rel.relnamespace
+      join pg_attribute att
+        on att.attrelid = rel.oid
+        and att.attnum = any(con.conkey)
+      where nsp.nspname = 'public'
+        and rel.relname = 'disbursement_rounds'
+        and con.contype = 'c'
+        and att.attname = 'status'
+    loop
+      execute format(
+        'alter table public.disbursement_rounds drop constraint %I',
+        constraint_record.conname
+      );
+    end loop;
+
+    alter table public.disbursement_rounds
+      add constraint disbursement_rounds_status_check
+      check (
+        status in (
+          'locked',
+          'open',
+          'requested',
+          'manager_confirmed',
+          'owner_approved',
+          'disbursed',
+          'completed',
+          'needs_admin_review'
+        )
+      );
   end if;
 end;
 $$;

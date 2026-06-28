@@ -184,8 +184,8 @@ Trang `/minh-bach?view=donate-chain` doc `donation_blockchain` theo server-side 
 4. `/api/support-offers` tao `support_offers.status = pending`.
 5. Project owner duyet hoac tu choi support offer trong `/tai-khoan?view=owner-support-offers`. Khi chap nhan, server action kiem tra owner, round `open`, don vi chua bi trung, cap nhat `support_offers.status = approved`, active campaign neu campaign dang `paused`, revalidate cac cache lien quan va redirect ve dung tab kem thong bao thanh cong/loi.
 6. Partner gui yeu cau giai ngan tren round `open` tai `/tai-khoan?view=partner-disbursements`, co `requested_amount` va note.
-7. Project owner duyet round `requested` sang `owner_approved` trong `/tai-khoan?view=owner-disbursements`.
-8. Admin duyet/giai ngan trong `/quan-tri?view=disbursements`, co QR chuyen khoan VietQR neu tim duoc bank BIN tu `https://api.vietqr.io/v2/banks`.
+7. Project owner duyet round `requested` sang `owner_approved` trong `/tai-khoan?view=owner-disbursements`; server action select lai dong vua update va bao loi neu database chua cho phep status `owner_approved`.
+8. Admin duyet/giai ngan trong `/quan-tri?view=disbursements` khi round o `owner_approved`/`manager_confirmed`, co QR chuyen khoan VietQR neu tim duoc bank BIN tu `https://api.vietqr.io/v2/banks`.
 9. Sau khi disbursed, partner upload hoa don do PDF trong `/tai-khoan?view=partner-disbursements` vao bucket `campaign-assets`; client goi `/api/invoice-signatures/extract` de doc chu ky so trong PDF, hien nguoi ky/ngay ky/chung thu truoc khi nop.
 10. Server action tai `/tai-khoan` chi chap nhan storage path noi bo nam duoi folder user hien tai, tai PDF tu bucket, trich xuat lai chu ky so tren server, sua mojibake UTF-8 tu chung thu neu co, luu `proof_url`, `proof_note` va cac cot `invoice_signature_*` vao `disbursement_rounds`. Metadata chi luu nguoi ky, to chuc, ma so/ dinh danh, ngay ky, serial va thoi han chung thu; khong luu subject/issuer tho. Sau khi luu, action co gang dong bo `proof_url` sang `disbursements` bang `disbursement_round_id` hoac fallback campaign + `Giai ngan dot N`; neu dong public cu chua duoc backfill, trang minh bach van co fallback doc truc tiep tu `disbursement_rounds`.
 11. Admin xem hoa don do bang signed URL rieng va thay thong tin nguoi ky/ngay ky/chung thu trong `/quan-tri?view=disbursements`; admin duyet chung tu thanh `proof_status = approved` hoac danh dau qua han.
@@ -211,6 +211,8 @@ Trang `/minh-bach?view=donate-chain` doc `donation_blockchain` theo server-side 
 - `disbursement_rounds`: chi duoc tao trong `schema.sql` neu `support_offers` va `campaign_phases` da ton tai; co cac cot `invoice_signature_*` de luu metadata chu ky so cua hoa don do PDF.
 
 Migration `20260628001000_disbursement_public_invoice_links.sql` them `disbursements.disbursement_round_id`, index lien quan va backfill lien ket/proof tu `disbursement_rounds` de nhat ky giai ngan cong khai co the hien nut tai hoa don do dung dong. Code hien co them fallback runtime cho cac dong cu chua duoc backfill: neu title co so dot va campaign khop, `disbursement_rounds.proof_url` se duoc dung de hien nut tai va tao signed URL cong khai hop le.
+
+Migration `20260628002000_fix_owner_approved_disbursement_status.sql` chot lai constraint `disbursement_rounds.status` de bao gom `owner_approved` va `manager_confirmed`. Neu Supabase con constraint cu, nut owner duyet yeu cau giai ngan se bi database tu choi va admin van thay trang thai `requested`, khong thay QR giai ngan.
 
 ### Bang code dang phu thuoc
 

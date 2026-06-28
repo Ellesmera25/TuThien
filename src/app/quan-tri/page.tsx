@@ -976,7 +976,7 @@ const getCachedSupportOffersForAdmin = unstable_cache(
 
 const getCachedDisbursementRoundsForAdmin = unstable_cache(
     getDisbursementRoundsForAdmin,
-    ["admin-disbursement-rounds-v1"],
+    ["admin-disbursement-rounds-v2"],
     {
         revalidate: cacheDurations.adminShort,
         tags: [adminCacheTags.disbursements],
@@ -1292,7 +1292,7 @@ async function approveDisbursementRound(formData: FormData) {
     ]);
     revalidatePath("/tai-khoan");
     revalidatePath(`/chien-dich/${campaign.slug}`);
-    redirect("/quan-tri");
+    redirect("/quan-tri?view=disbursements");
 }
 
 async function approveDisbursementProof(formData: FormData) {
@@ -2144,7 +2144,8 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
                                     </div>
                                 ) : null}
 
-                                {round.status === "owner_approved" || round.status === "manager_confirmed" ? (
+                                {round.status === "owner_approved" ||
+                                    round.status === "manager_confirmed" ? (
                                     <form action={approveDisbursementRound} className="mt-5">
                                         <input type="hidden" name="roundId" value={round.id} />
 
