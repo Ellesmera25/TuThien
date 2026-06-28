@@ -70,6 +70,13 @@ function mapTransparency(row: Record<string, unknown>): TransparencyItem {
   };
 }
 
+function getDisbursementRoundNumber(title: string): number | null {
+  const match = title.match(/(?:đợt|dot)\s*(\d+)/iu) ?? title.match(/(\d+)/);
+  const value = Number(match?.[1]);
+
+  return Number.isFinite(value) && value > 0 ? value : null;
+}
+
 function mapDonation(row: Record<string, unknown>): DonationItem {
   return {
     id: toStringValue(row.id, crypto.randomUUID()),
@@ -223,7 +230,7 @@ async function getTransparencyItemsUncached(
     return [];
   }
 
-  const items = (data ?? []).map(mapTransparency);
+  let items = (data ?? []).map(mapTransparency);
   const missingProofRoundIds = Array.from(
     new Set(
       items
@@ -233,7 +240,7 @@ async function getTransparencyItemsUncached(
   );
 
   if (missingProofRoundIds.length === 0) {
-    return items;
+    return enrichTransparencyItemsFromLegacyRounds(supabase, items);
   }
 
   const { data: rounds } = await supabase
@@ -247,19 +254,103 @@ async function getTransparencyItemsUncached(
     ]),
   );
 
-  return items.map((item) => ({
+  items = items.map((item) => ({
     ...item,
     proofUrl:
       item.proofUrl ||
       proofByRoundId.get(item.disbursementRoundId ?? "") ||
       item.proofUrl,
   }));
+
+  return enrichTransparencyItemsFromLegacyRounds(supabase, items);
+}
+
+async function enrichTransparencyItemsFromLegacyRounds(
+  supabase: NonNullable<ReturnType<typeof getPublicSupabaseClient>>,
+  items: TransparencyItem[],
+) {
+  const legacyItems = items
+    .map((item) => ({
+      ...item,
+      inferredRoundNumber: getDisbursementRoundNumber(item.title),
+    }))
+    .filter(
+      (item) =>
+        !item.proofUrl &&
+        !item.disbursementRoundId &&
+        item.campaignSlug &&
+        item.inferredRoundNumber,
+    );
+
+  if (legacyItems.length === 0) {
+    return items;
+  }
+
+  const campaignSlugs = Array.from(
+    new Set(legacyItems.map((item) => item.campaignSlug)),
+  );
+  const { data: campaigns } = await supabase
+    .from("campaigns")
+    .select("id, slug")
+    .in("slug", campaignSlugs);
+  const campaignBySlug = new Map(
+    (campaigns ?? []).map((campaign) => [String(campaign.slug), String(campaign.id)]),
+  );
+  const campaignIds = Array.from(new Set(Array.from(campaignBySlug.values())));
+  const roundNumbers = Array.from(
+    new Set(
+      legacyItems
+        .map((item) => item.inferredRoundNumber)
+        .filter((value): value is number => Boolean(value)),
+    ),
+  );
+
+  if (campaignIds.length === 0 || roundNumbers.length === 0) {
+    return items;
+  }
+
+  const { data: rounds } = await supabase
+    .from("disbursement_rounds")
+    .select("id, campaign_id, round_number, proof_url")
+    .in("campaign_id", campaignIds)
+    .in("round_number", roundNumbers);
+  const roundByCampaignAndNumber = new Map(
+    (rounds ?? []).map((round) => [
+      `${String(round.campaign_id)}:${Number(round.round_number)}`,
+      {
+        id: toStringValue(round.id, ""),
+        proofUrl: toStringValue(round.proof_url, ""),
+      },
+    ]),
+  );
+
+  return items.map((item) => {
+    if (item.proofUrl || item.disbursementRoundId) {
+      return item;
+    }
+
+    const campaignId = campaignBySlug.get(item.campaignSlug);
+    const roundNumber = getDisbursementRoundNumber(item.title);
+    const round = campaignId
+      ? roundByCampaignAndNumber.get(`${campaignId}:${roundNumber}`)
+      : null;
+
+    if (!round?.proofUrl) {
+      return item;
+    }
+
+    return {
+      ...item,
+      disbursementRoundId: round.id,
+      proofUrl: round.proofUrl,
+    };
+  });
 }
 
 const getCachedTransparencyItems = unstable_cache(
   async (campaignSlug: string | null) =>
     getTransparencyItemsUncached(campaignSlug ?? undefined),
-  ["public-transparency-items-v1"],
+  ["public-transparency-items-v2"],
   {
     revalidate: cacheDurations.publicFast,
     tags: [publicCacheTags.transparency],

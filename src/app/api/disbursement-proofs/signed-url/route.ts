@@ -8,6 +8,14 @@ export const dynamic = "force-dynamic";
 
 const signedUrlTtlSeconds = 60 * 10;
 
+function getDisbursementTitle(roundNumber: unknown): string | null {
+  const value = Number(roundNumber);
+
+  return Number.isFinite(value) && value > 0
+    ? `Giải ngân đợt ${value}`
+    : null;
+}
+
 function isSafeStoragePath(value: unknown): value is string {
   if (typeof value !== "string") {
     return false;
@@ -63,7 +71,7 @@ export async function POST(request: Request) {
   if (!isPublicDisbursementProof) {
     const { data: roundProof } = await supabase
       .from("disbursement_rounds")
-      .select("id")
+      .select("id, campaign_id, round_number")
       .eq("proof_url", path)
       .limit(10);
     const roundIds = (roundProof ?? []).map((round) => round.id).filter(Boolean);
@@ -76,6 +84,64 @@ export async function POST(request: Request) {
         .limit(1);
 
       isPublicDisbursementProof = Boolean(linkedDisbursementProof?.length);
+    }
+
+    if (!isPublicDisbursementProof && roundProof?.length) {
+      const campaignIds = Array.from(
+        new Set(
+          roundProof
+            .map((round) =>
+              typeof round.campaign_id === "string" ? round.campaign_id : "",
+            )
+            .filter(Boolean),
+        ),
+      );
+      const roundTitles = Array.from(
+        new Set(
+          roundProof
+            .map((round) => getDisbursementTitle(round.round_number))
+            .filter((title): title is string => Boolean(title)),
+        ),
+      );
+
+      if (campaignIds.length > 0 && roundTitles.length > 0) {
+        const { data: campaigns } = await supabase
+          .from("campaigns")
+          .select("id, slug")
+          .in("id", campaignIds);
+        const slugByCampaignId = new Map(
+          (campaigns ?? []).map((campaign) => [
+            String(campaign.id),
+            String(campaign.slug),
+          ]),
+        );
+        const campaignSlugs = Array.from(
+          new Set(Array.from(slugByCampaignId.values()).filter(Boolean)),
+        );
+
+        if (campaignSlugs.length > 0) {
+          const { data: legacyDisbursementProof } = await supabase
+            .from("disbursements")
+            .select("id, campaign_slug, title")
+            .in("campaign_slug", campaignSlugs)
+            .in("title", roundTitles)
+            .limit(50);
+
+          isPublicDisbursementProof = Boolean(
+            legacyDisbursementProof?.some((disbursement) =>
+              roundProof.some((round) => {
+                const slug = slugByCampaignId.get(String(round.campaign_id));
+                const title = getDisbursementTitle(round.round_number);
+
+                return (
+                  slug === disbursement.campaign_slug &&
+                  title === disbursement.title
+                );
+              }),
+            ),
+          );
+        }
+      }
     }
   }
 
