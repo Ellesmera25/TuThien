@@ -442,6 +442,19 @@ begin
 end;
 $$;
 
+do $$
+begin
+  if to_regclass('public.disbursements') is not null
+    and to_regclass('public.disbursement_rounds') is not null then
+    alter table public.disbursements
+      add column if not exists disbursement_round_id uuid references public.disbursement_rounds(id) on delete set null;
+
+    create index if not exists idx_disbursements_round_id
+      on public.disbursements (disbursement_round_id);
+  end if;
+end;
+$$;
+
 create or replace function public.enforce_max_three_campaign_phases()
 returns trigger
 language plpgsql

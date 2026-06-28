@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { LazySignedFileLink } from "@/components/lazy-signed-file-link";
 import { getDonationChain, getTransparencyItems } from "@/lib/data";
 import { formatDate, formatVnd } from "@/lib/format";
 
@@ -12,8 +13,11 @@ export const metadata: Metadata = {
 type TransparencyPageProps = {
   searchParams: Promise<{
     chainPage?: string;
+    view?: string;
   }>;
 };
+
+type TransparencyView = "donate-chain" | "disbursements";
 
 const chainPageSize = 20;
 
@@ -21,11 +25,23 @@ export default async function TransparencyPage({
   searchParams,
 }: TransparencyPageProps) {
   const params = await searchParams;
+  const activeView = getTransparencyView(params.view);
   const currentChainPage = Math.max(Number(params.chainPage ?? "1") || 1, 1);
-  const [logs, donationChainPage] = await Promise.all([
-    getTransparencyItems(),
-    getDonationChain({ page: currentChainPage, pageSize: chainPageSize }),
-  ]);
+  const logs =
+    activeView === "disbursements" ? await getTransparencyItems() : [];
+  const donationChainPage =
+    activeView === "donate-chain"
+      ? await getDonationChain({
+          page: currentChainPage,
+          pageSize: chainPageSize,
+        })
+      : {
+          items: [],
+          page: 1,
+          pageSize: chainPageSize,
+          totalItems: 0,
+          totalPages: 1,
+        };
   const donationChain = donationChainPage.items;
 
   const totalDisbursement = logs.reduce((sum, item) => sum + item.amount, 0);
@@ -33,6 +49,7 @@ export default async function TransparencyPage({
     (sum, item) => sum + item.amount,
     0,
   );
+  const invoiceCount = logs.filter((item) => item.proofUrl).length;
 
   return (
     <div className="space-y-8 pb-8">
@@ -49,21 +66,50 @@ export default async function TransparencyPage({
         </p>
       </header>
 
+      <nav className="grid gap-4 md:grid-cols-2">
+        <TransparencyNavCard
+          active={activeView === "donate-chain"}
+          description="Theo dõi từng block đóng góp đã xác minh."
+          href="/minh-bach?view=donate-chain"
+          label="Donate chain"
+        />
+        <TransparencyNavCard
+          active={activeView === "disbursements"}
+          description="Theo dõi khoản chi và hóa đơn đỏ đi kèm."
+          href="/minh-bach?view=disbursements"
+          label="Nhật ký giải ngân"
+        />
+      </nav>
+
       <section className="grid gap-4 md:grid-cols-3">
-        <SmallMetric
-          label="Tổng khoản chi"
-          value={formatVnd(totalDisbursement)}
-        />
-        <SmallMetric
-          label="Donate chain trang này"
-          value={formatVnd(currentPageDonation)}
-        />
-        <SmallMetric
-          label="Tổng block đối soát"
-          value={`${donationChainPage.totalItems}`}
-        />
+        {activeView === "donate-chain" ? (
+          <>
+            <SmallMetric
+              label="Donate chain trang này"
+              value={formatVnd(currentPageDonation)}
+            />
+            <SmallMetric
+              label="Tổng block đối soát"
+              value={`${donationChainPage.totalItems}`}
+            />
+            <SmallMetric
+              label="Trang hiện tại"
+              value={`${donationChainPage.page}/${donationChainPage.totalPages}`}
+            />
+          </>
+        ) : (
+          <>
+            <SmallMetric
+              label="Tổng khoản chi"
+              value={formatVnd(totalDisbursement)}
+            />
+            <SmallMetric label="Dòng nhật ký" value={`${logs.length}`} />
+            <SmallMetric label="Có hóa đơn đỏ" value={`${invoiceCount}`} />
+          </>
+        )}
       </section>
 
+      {activeView === "donate-chain" ? (
       <section className="neo-panel overflow-hidden p-0">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-6 py-4">
           <div>
@@ -209,7 +255,9 @@ export default async function TransparencyPage({
           totalPages={donationChainPage.totalPages}
         />
       </section>
+      ) : null}
 
+      {activeView === "disbursements" ? (
       <section className="neo-panel overflow-hidden p-0">
         <div className="border-b border-slate-100 px-6 py-4">
           <h2 className="font-display text-2xl font-bold text-ink">
@@ -225,13 +273,14 @@ export default async function TransparencyPage({
                 <th className="px-5 py-3">Nội dung</th>
                 <th className="px-5 py-3">Chiến dịch</th>
                 <th className="px-5 py-3 text-right">Số tiền</th>
+                <th className="px-5 py-3 text-right">Hóa đơn đỏ</th>
               </tr>
             </thead>
             <tbody>
               {logs.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-5 py-6 text-center text-sm text-slate-500"
                   >
                     Chưa có nhật ký giải ngân.
@@ -258,6 +307,21 @@ export default async function TransparencyPage({
                     <td className="px-5 py-4 text-right font-bold text-primary">
                       {formatVnd(log.amount)}
                     </td>
+                    <td className="px-5 py-4 text-right">
+                      {log.proofUrl ? (
+                        <LazySignedFileLink
+                          bucket="campaign-assets"
+                          endpoint="/api/disbursement-proofs/signed-url"
+                          path={log.proofUrl}
+                          label="Tải hóa đơn đỏ"
+                          className="inline-flex border border-primary px-4 py-2 text-xs font-bold text-primary transition hover:bg-primary hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                        />
+                      ) : (
+                        <span className="inline-flex border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-500">
+                          Chưa có
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -265,6 +329,7 @@ export default async function TransparencyPage({
           </table>
         </div>
       </section>
+      ) : null}
     </div>
   );
 }
@@ -313,6 +378,40 @@ function Pagination({
   );
 }
 
+function TransparencyNavCard({
+  active,
+  description,
+  href,
+  label,
+}: {
+  active: boolean;
+  description: string;
+  href: string;
+  label: string;
+}) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? "page" : undefined}
+      className={`nav-tile p-5 transition ${active ? "nav-tile-active" : ""}`}
+    >
+      <span className="nav-eyebrow text-xs font-bold uppercase tracking-[0.1em]">
+        Minh bạch
+      </span>
+      <span className="nav-title mt-2 block font-display text-2xl font-bold">
+        {label}
+      </span>
+      <span className="nav-description mt-2 block text-sm leading-6">
+        {description}
+      </span>
+    </Link>
+  );
+}
+
+function getTransparencyView(value?: string): TransparencyView {
+  return value === "disbursements" ? "disbursements" : "donate-chain";
+}
+
 function LedgerInfo({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-2 last:border-b-0 last:pb-0">
@@ -325,7 +424,13 @@ function LedgerInfo({ label, value }: { label: string; value: string }) {
 }
 
 function buildTransparencyHref(chainPage: number) {
-  return chainPage <= 1 ? "/minh-bach" : `/minh-bach?chainPage=${chainPage}`;
+  const params = new URLSearchParams({ view: "donate-chain" });
+
+  if (chainPage > 1) {
+    params.set("chainPage", String(chainPage));
+  }
+
+  return `/minh-bach?${params.toString()}`;
 }
 
 function shortHash(value?: string | null) {

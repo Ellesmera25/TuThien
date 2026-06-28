@@ -1273,6 +1273,7 @@ async function approveDisbursementRound(formData: FormData) {
 
     await supabase.from("disbursements").insert({
         campaign_slug: campaign.slug,
+        disbursement_round_id: round.id,
         title: `Giải ngân đợt ${round.round_number}`,
         description: `Yêu cầu giải ngân ${round.round_number} được chuyển thủ công cho đơn vị đồng hành đã được duyệt.`,
         amount: getRequestedDisbursementAmount(round),

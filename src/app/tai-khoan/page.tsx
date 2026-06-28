@@ -15,7 +15,7 @@ import {
     ServerPagination,
     type PageSearchParams,
 } from "@/components/server-pagination";
-import { adminCacheTags } from "@/lib/cache-tags";
+import { adminCacheTags, publicCacheTags } from "@/lib/cache-tags";
 import { revalidateCacheTags } from "@/lib/cache-revalidation";
 import { getDashboardSummary, getReelsByUser } from "@/lib/data";
 import { formatCompactNumber, formatDate, formatVnd } from "@/lib/format";
@@ -2534,7 +2534,7 @@ async function submitDisbursementProof(formData: FormData) {
 
     const { data: round } = await client
         .from("disbursement_rounds")
-        .select("id, campaign_id, status")
+        .select("id, campaign_id, round_number, status")
         .eq("id", roundId)
         .in("status", ["disbursed", "needs_admin_review"])
         .maybeSingle();
@@ -2561,9 +2561,25 @@ async function submitDisbursementProof(formData: FormData) {
         .eq("id", round.campaign_id)
         .maybeSingle();
 
+    if (campaign?.slug) {
+        await client
+            .from("disbursements")
+            .update({ proof_url: proofUrl })
+            .eq("disbursement_round_id", round.id);
+
+        await client
+            .from("disbursements")
+            .update({ proof_url: proofUrl, disbursement_round_id: round.id })
+            .eq("campaign_slug", campaign.slug)
+            .eq("title", `Giải ngân đợt ${round.round_number}`)
+            .is("disbursement_round_id", null);
+    }
+
     revalidateTags([adminCacheTags.disbursements]);
+    revalidateTags([publicCacheTags.transparency]);
     revalidatePath("/tai-khoan");
     revalidatePath("/quan-tri");
+    revalidatePath("/minh-bach");
 
     if (campaign?.slug) {
         revalidatePath(`/chien-dich/${campaign.slug}`);

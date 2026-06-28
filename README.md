@@ -108,7 +108,7 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 | `/chien-dich/tao` | Form tao du an moi | Can login va role `project_owner` |
 | `/chien-dich/ho-tro` | Form don vi dong hanh chon campaign/round | Can login va role `partner_org` |
 | `/quyen-gop` | Form tao donation Sepay QR, co query `campaign` | Public, user dang nhap se duoc prefill |
-| `/minh-bach` | Bang donation chain va disbursement log | Public view, doc bang qua server/service client |
+| `/minh-bach` | Bang minh bach tach 2 navi bang query `view`: `donate-chain` cho donation blockchain va `disbursements` cho nhat ky giai ngan/hoa don do | Public view, doc bang qua server/service client |
 | `/reels` | Feed video doc 9:16, like/comment/follow/share/donate | Public xem, login de tuong tac |
 | `/reels/tao` | Upload video va tao reel | Can login |
 | `/dang-nhap` | Dang nhap Supabase email/password | Public |
@@ -127,6 +127,7 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 | `/api/campaigns` | `POST` | Tao campaign pending va luu image metadata | Same-origin, login, role `project_owner`, 1-8 image path hop le |
 | `/api/support-offers` | `POST` | Partner gui de xuat dong hanh cho disbursement round | Same-origin, login, role `partner_org`, campaign published active/paused, khong phai owner |
 | `/api/invoice-signatures/extract` | `POST` | Doc file PDF hoa don do, trich xuat thong tin chu ky so nhung trong PDF de hien thi truoc khi upload; `no-store`, server action van verify lai khi luu | Same-origin, login, file PDF <= 20MB |
+| `/api/disbursement-proofs/signed-url` | `POST` | Tao signed URL ngan han cho hoa don do trong nhat ky giai ngan cong khai, chi khi path da nam trong `disbursements.proof_url` hoac lien ket voi `disbursement_rounds.proof_url` co dong public | Same-origin, public, bucket chi `campaign-assets` |
 | `/api/admin/signed-url` | `POST` | Tao signed URL ngan han cho tai lieu/anh private khi admin bam mo file, tranh ky URL hang loat luc load trang | Same-origin, login, role `admin`, bucket allowlist `campaign-assets`/`role-proofs` |
 | `/api/role-requests` | `POST` | Gui yeu cau nang role mot lan duy nhat moi tai khoan | Same-origin, login, proof path hop le, cam ket minh bach |
 | `/api/reels` | `POST` | Upload video vao bucket `reel-videos` va tao row `reels` | Same-origin, login, Supabase service role, campaign published |
@@ -164,7 +165,7 @@ Tat ca mutation web quan trong dung `isSameOriginMutation()` de chan origin/refe
 SHA256(paymentReference | amount | email | donorName | timestamp | previousHash)
 ```
 
-Trang `/minh-bach` doc `donation_blockchain` theo server-side pagination bang query `chainPage`, moi trang toi da 20 block, va ghep `donations` de hien block number, Sepay ref, transaction id, hash va previous hash. Donate chain dung card ledger tren mobile va bang navy-trang tren desktop de de doi soat, tranh render/tai toan bo chain khi du lieu tang lon.
+Trang `/minh-bach?view=donate-chain` doc `donation_blockchain` theo server-side pagination bang query `chainPage`, moi trang toi da 20 block, va ghep `donations` de hien block number, Sepay ref, transaction id, hash va previous hash. Donate chain dung card ledger tren mobile va bang navy-trang tren desktop de de doi soat, tranh render/tai toan bo chain khi du lieu tang lon. Trang `/minh-bach?view=disbursements` chi tai nhat ky giai ngan, hien trang thai hoa don do: `Chua co` neu chua co file va nut `Tai hoa don do` neu `proof_url` da duoc dong bo.
 
 ### Campaign creation va approval
 
@@ -208,6 +209,8 @@ Trang `/minh-bach` doc `donation_blockchain` theo server-side pagination bang qu
 - `reels`: reel metadata, video URL, counters va `cover_tone`.
 - `profiles`: profile user va role.
 - `disbursement_rounds`: chi duoc tao trong `schema.sql` neu `support_offers` va `campaign_phases` da ton tai; co cac cot `invoice_signature_*` de luu metadata chu ky so cua hoa don do PDF.
+
+Migration `20260628001000_disbursement_public_invoice_links.sql` them `disbursements.disbursement_round_id`, index lien quan va backfill lien ket/proof tu `disbursement_rounds` de nhat ky giai ngan cong khai co the hien nut tai hoa don do dung dong.
 
 ### Bang code dang phu thuoc
 
@@ -270,6 +273,7 @@ Trong do `reel_likes`, `reel_comments`, `campaign_follows` co migration tao bang
 - Trang chu dung hero anh full-bleed co gradient doc: mep tren/duoi xanh duong navy ngan, vung giua xanh ngoc duoc mo rong de tao cam giac sang va ro hon, text va CTA nam truc tiep tren anh; CTA hero giu cap nut rieng voi nut trai nen trang va nut phai trong suot vien trang. Hero ke sat header khong con khoang trang dau trang. Khi cuon xuong thi noi dung tro ve nen trang/slate binh thuong de doc so lieu va campaign de hon. Hero khong con fetch donation gan nhat rieng, giup giam mot query luc load dau trang.
 - Trang `/tai-khoan` co luoi navi nghiep vu bang query `view`. Donor thay tong quan, yeu cau vai tro, lich su dong gop, reels; `project_owner` co them tao/xem du an, don vi dong hanh can duyet, dot giai ngan; `partner_org` co them dang ky dong hanh va hoa don/chung tu. Moi module chi fetch/render du lieu cua view dang mo de tranh trang tai khoan qua dai; the navi trong noi dung dung nen trang, chu navy va nhan active bang xanh duong.
 - Trang `/quan-tri` co luoi navi module bang query `view` cho tong quan, tat ca du an, du an cho duyet, dang ky dong hanh, giai ngan/chung tu va yeu cau vai tro; admin chi tai dataset cua module dang xem de giam lag khi du lieu tang. Summary tong quan chi fetch o view tong quan, cac view nghiep vu khong keo theo query tong hop; signed URL cho minh chung/hoa don/anh chi duoc tao khi admin bam mo file de giam tai Supabase Storage va tranh load asset nang. The navi quan tri dung nen trang, chu navy va nhan active bang xanh duong de dong bo voi khu tai khoan.
+- Trang `/minh-bach` co navi rieng cho `Donate chain` va `Nhat ky giai ngan`. Moi view chi fetch/render dataset dang xem; nut tai hoa don do dung lazy signed URL qua `/api/disbursement-proofs/signed-url`, con dong chua co file hien trang thai `Chua co`.
 - `AdminListController` la client component dung chung cho search, status filter va campaign/approval filter tren cac list van hanh; co `showPagination=false` khi list da duoc phan trang bang query/server.
 
 ### PWA

@@ -61,6 +61,7 @@ function mapTransparency(row: Record<string, unknown>): TransparencyItem {
   return {
     id: toStringValue(row.id, crypto.randomUUID()),
     campaignSlug: toStringValue(row.campaign_slug, ""),
+    disbursementRoundId: toStringValue(row.disbursement_round_id, ""),
     title: toStringValue(row.title, "Khoản chi chưa đặt tên"),
     description: toStringValue(row.description, ""),
     amount: toNumber(row.amount),
@@ -222,7 +223,37 @@ async function getTransparencyItemsUncached(
     return [];
   }
 
-  return (data ?? []).map(mapTransparency);
+  const items = (data ?? []).map(mapTransparency);
+  const missingProofRoundIds = Array.from(
+    new Set(
+      items
+        .filter((item) => !item.proofUrl && item.disbursementRoundId)
+        .map((item) => item.disbursementRoundId as string),
+    ),
+  );
+
+  if (missingProofRoundIds.length === 0) {
+    return items;
+  }
+
+  const { data: rounds } = await supabase
+    .from("disbursement_rounds")
+    .select("id, proof_url")
+    .in("id", missingProofRoundIds);
+  const proofByRoundId = new Map(
+    (rounds ?? []).map((round) => [
+      String(round.id),
+      toStringValue(round.proof_url, ""),
+    ]),
+  );
+
+  return items.map((item) => ({
+    ...item,
+    proofUrl:
+      item.proofUrl ||
+      proofByRoundId.get(item.disbursementRoundId ?? "") ||
+      item.proofUrl,
+  }));
 }
 
 const getCachedTransparencyItems = unstable_cache(

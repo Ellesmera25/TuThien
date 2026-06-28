@@ -6,6 +6,7 @@ type LazySignedFileLinkProps = {
   bucket: "campaign-assets" | "role-proofs";
   children?: ReactNode;
   className?: string;
+  endpoint?: string;
   label: string;
   path?: string | null;
   unavailableClassName?: string;
@@ -20,6 +21,7 @@ export function LazySignedFileLink({
   bucket,
   children,
   className,
+  endpoint = "/api/admin/signed-url",
   label,
   path,
   unavailableClassName,
@@ -60,7 +62,7 @@ export function LazySignedFileLink({
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/admin/signed-url", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "content-type": "application/json",

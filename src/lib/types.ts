@@ -15,6 +15,7 @@ export type Campaign = {
 export type TransparencyItem = {
   id: string;
   campaignSlug: string;
+  disbursementRoundId?: string | null;
   title: string;
   description: string;
   amount: number;
