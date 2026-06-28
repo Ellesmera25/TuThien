@@ -75,6 +75,42 @@ type AccountView =
     | "owner-support-offers"
     | "owner-disbursements"
     | "partner-disbursements";
+
+const accountActionFeedback = {
+    supportApproved: {
+        type: "success",
+        title: "Đã chấp nhận đơn vị đồng hành",
+        message:
+            "Đơn vị đồng hành đã được gắn với đợt giải ngân. Nếu đợt đang mở, đơn vị có thể gửi yêu cầu giải ngân trong trang tài khoản.",
+    },
+    supportApproveFailed: {
+        type: "error",
+        title: "Không thể chấp nhận đồng hành",
+        message:
+            "Yêu cầu không còn hợp lệ hoặc database từ chối cập nhật. Vui lòng tải lại trang và thử lại.",
+    },
+    supportAlreadyLocked: {
+        type: "error",
+        title: "Đợt này đã có đơn vị đồng hành",
+        message:
+            "Một đơn vị khác đã được chấp nhận cho đợt giải ngân này, nên không thể gắn thêm đơn vị mới.",
+    },
+    supportRoundUnavailable: {
+        type: "error",
+        title: "Đợt giải ngân không sẵn sàng",
+        message:
+            "Đợt giải ngân của đăng ký này không tồn tại hoặc đã qua trạng thái có thể chấp nhận đồng hành.",
+    },
+    supportOwnerMismatch: {
+        type: "error",
+        title: "Không có quyền xử lý",
+        message:
+            "Chỉ người tạo dự án mới có thể chấp nhận đăng ký đồng hành cho dự án này.",
+    },
+} as const satisfies Record<
+    string,
+    { type: "success" | "error"; title: string; message: string }
+>;
 const campaignReviewFilterOptions = [
     { label: "Chờ duyệt", value: "pending" },
     { label: "Đã công khai", value: "published" },
@@ -297,6 +333,7 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
         canCreateCampaign,
         canSupportCampaign,
     });
+    const actionFeedback = getAccountActionFeedback(params);
 
     return (
         <div className="flex flex-col gap-12 pb-8">
@@ -350,6 +387,19 @@ export default async function AccountPage({ searchParams }: AccountPageProps) {
                     <AuthSignOutButton />
                 </div>
             </section>
+
+            {actionFeedback ? (
+                <section
+                    className={`border p-4 text-sm shadow-soft ${
+                        actionFeedback.type === "success"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+                            : "border-red-200 bg-red-50 text-red-800"
+                    }`}
+                >
+                    <p className="font-bold">{actionFeedback.title}</p>
+                    <p className="mt-1 leading-6">{actionFeedback.message}</p>
+                </section>
+            ) : null}
 
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {accountNavItems.map((item) => {
@@ -1688,6 +1738,33 @@ function getAccountView(value: string | string[] | undefined): AccountView {
     return "overview";
 }
 
+function getSingleParam(value: string | string[] | undefined) {
+    return Array.isArray(value) ? value[0] : value;
+}
+
+function getAccountActionFeedback(params: PageSearchParams) {
+    const code = getSingleParam(params.accountNotice) ?? getSingleParam(params.accountError);
+
+    if (!code) {
+        return null;
+    }
+
+    return accountActionFeedback[code as keyof typeof accountActionFeedback] ?? null;
+}
+
+function redirectToAccountView(
+    view: AccountView,
+    extraParams?: Record<string, string>,
+): never {
+    const params = new URLSearchParams({ view });
+
+    Object.entries(extraParams ?? {}).forEach(([key, value]) => {
+        params.set(key, value);
+    });
+
+    redirect(`/tai-khoan?${params.toString()}`);
+}
+
 function getPageNumber(value: string | string[] | undefined) {
     const rawValue = Array.isArray(value) ? value[0] : value;
     const page = Number(rawValue ?? "1");
@@ -2647,52 +2724,84 @@ async function approveOwnerSupportOffer(formData: FormData) {
     const offerId = String(formData.get("offerId") ?? "");
 
     if (!offerId) {
-        return;
+        redirectToAccountView("owner-support-offers", {
+            accountError: "supportApproveFailed",
+        });
     }
 
     const client = getSupabaseServiceClient();
 
     if (!client) {
-        return;
+        redirectToAccountView("owner-support-offers", {
+            accountError: "supportApproveFailed",
+        });
     }
 
-    const { data: offer } = await client
+    const { data: offer, error: offerError } = await client
         .from("support_offers")
-        .select("id, campaign_id, disbursement_round_id")
+        .select("id, campaign_id, disbursement_round_id, status")
         .eq("id", offerId)
-        .eq("status", "pending")
         .maybeSingle();
 
-    if (!offer) {
-        return;
+    if (offerError || !offer || offer.status !== "pending") {
+        redirectToAccountView("owner-support-offers", {
+            accountError: "supportApproveFailed",
+        });
     }
 
-    const { data: campaign } = await client
+    const { data: campaign, error: campaignError } = await client
         .from("campaigns")
-        .select("id, owner_id")
+        .select("id, owner_id, review_status, status, slug")
         .eq("id", offer.campaign_id)
         .eq("owner_id", user.id)
         .maybeSingle();
 
-    if (!campaign) {
-        return;
+    if (campaignError || !campaign) {
+        redirectToAccountView("owner-support-offers", {
+            accountError: "supportOwnerMismatch",
+        });
     }
 
     if (offer.disbursement_round_id) {
-        const { data: lockedOffer } = await client
+        const { data: round, error: roundError } = await client
+            .from("disbursement_rounds")
+            .select("id, status")
+            .eq("id", offer.disbursement_round_id)
+            .eq("campaign_id", offer.campaign_id)
+            .maybeSingle();
+
+        if (
+            roundError ||
+            !round ||
+            round.status !== "open"
+        ) {
+            redirectToAccountView("owner-support-offers", {
+                accountError: "supportRoundUnavailable",
+            });
+        }
+
+        const { data: lockedOffers, error: lockedOfferError } = await client
             .from("support_offers")
             .select("id")
             .eq("disbursement_round_id", offer.disbursement_round_id)
             .in("status", ["owner_pending", "approved"])
             .neq("id", offerId)
-            .maybeSingle();
+            .limit(1);
 
-        if (lockedOffer) {
-            return;
+        if (lockedOfferError) {
+            redirectToAccountView("owner-support-offers", {
+                accountError: "supportApproveFailed",
+            });
+        }
+
+        if (lockedOffers?.length) {
+            redirectToAccountView("owner-support-offers", {
+                accountError: "supportAlreadyLocked",
+            });
         }
     }
 
-    await client
+    const { data: approvedOffer, error: approveError } = await client
         .from("support_offers")
         .update({
             status: "approved",
@@ -2701,7 +2810,15 @@ async function approveOwnerSupportOffer(formData: FormData) {
             owner_rejection_reason: null,
         })
         .eq("id", offerId)
-        .eq("status", "pending");
+        .eq("status", "pending")
+        .select("id")
+        .maybeSingle();
+
+    if (approveError || !approvedOffer) {
+        redirectToAccountView("owner-support-offers", {
+            accountError: "supportApproveFailed",
+        });
+    }
 
     if (offer.disbursement_round_id) {
         await client
@@ -2720,24 +2837,33 @@ async function approveOwnerSupportOffer(formData: FormData) {
             .neq("id", offerId);
     }
 
-    const { data: campaignForRevalidate } = await client
-        .from("campaigns")
-        .select("slug")
-        .eq("id", offer.campaign_id)
-        .maybeSingle();
+    if (campaign.review_status === "published" && campaign.status === "paused") {
+        await client
+            .from("campaigns")
+            .update({ status: "active" })
+            .eq("id", campaign.id)
+            .eq("status", "paused");
+    }
 
     revalidateTags([
         adminCacheTags.disbursements,
         adminCacheTags.supportOffers,
     ]);
+    revalidateTags([
+        publicCacheTags.campaignDetails,
+        publicCacheTags.campaigns,
+        publicCacheTags.dashboard,
+    ]);
     revalidatePath("/tai-khoan");
     revalidatePath("/quan-tri");
 
-    if (campaignForRevalidate?.slug) {
-        revalidatePath(`/chien-dich/${campaignForRevalidate.slug}`);
+    if (campaign.slug) {
+        revalidatePath(`/chien-dich/${campaign.slug}`);
     }
 
-    redirect("/tai-khoan");
+    redirectToAccountView("owner-support-offers", {
+        accountNotice: "supportApproved",
+    });
 }
 
 async function rejectOwnerSupportOffer(formData: FormData) {

@@ -222,7 +222,7 @@ export async function POST(request: Request) {
 
   const { data: round, error: roundError } = await supabase
     .from("disbursement_rounds")
-    .select("id")
+    .select("id, status")
     .eq("id", disbursementRoundId)
     .eq("campaign_id", campaignId)
     .maybeSingle();
@@ -230,6 +230,16 @@ export async function POST(request: Request) {
   if (roundError || !round) {
     return NextResponse.json(
       { error: "Phạm vi đồng hành không tồn tại trong dự án đã chọn." },
+      { status: 400 },
+    );
+  }
+
+  if (round.status !== "open") {
+    return NextResponse.json(
+      {
+        error:
+          "Phạm vi đồng hành này chưa mở giải ngân. Vui lòng chọn đợt đang mở.",
+      },
       { status: 400 },
     );
   }

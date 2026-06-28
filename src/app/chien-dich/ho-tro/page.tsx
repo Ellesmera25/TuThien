@@ -102,8 +102,7 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
         .map((campaign) => ({
             ...campaign,
             rounds: (roundsByCampaign.get(campaign.id) ?? []).filter(
-                (round) =>
-                    ["open", "locked"].includes(round.status),
+                (round) => round.status === "open" && !round.hasApprovedPartner,
             ),
         }))
         .filter((campaign) => campaign.rounds.length > 0) as SupportCampaignOption[];

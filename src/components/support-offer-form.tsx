@@ -47,9 +47,9 @@ function getFirstSelectableRoundId(campaign?: SupportCampaignOption) {
     }
 
     return (
-        campaign.rounds.find((round) => !round.hasApprovedPartner)?.id ??
-        campaign.rounds[0]?.id ??
-        ""
+        campaign.rounds.find(
+            (round) => round.status === "open" && !round.hasApprovedPartner,
+        )?.id ?? ""
     );
 }
 
@@ -104,6 +104,11 @@ export function SupportOfferForm({
 
         if (selectedRound?.hasApprovedPartner) {
             setError("Phạm vi này đã có đơn vị đồng hành được duyệt.");
+            return;
+        }
+
+        if (selectedRound?.status !== "open") {
+            setError("Phạm vi này chưa mở giải ngân, vui lòng chọn đợt đang mở.");
             return;
         }
 
@@ -271,7 +276,7 @@ export function SupportOfferForm({
                             <option
                                 key={round.id}
                                 value={round.id}
-                                disabled={round.hasApprovedPartner}
+                                disabled={round.hasApprovedPartner || round.status !== "open"}
                             >
                                 Phạm vi {round.round_number}: ngân sách tối đa {formatVnd(round.planned_amount)} - {formatRoundStatusLabel(round.status)} - {formatRoundApprovalLabel(round.hasApprovedPartner)}
                             </option>

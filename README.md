@@ -125,7 +125,7 @@ Quyen server duoc xac dinh trong `src/lib/supabase/auth-server.ts`.
 | `/api/donations/status` | `GET` | Tra trang thai donation theo `paymentReference`, `no-store` de realtime sau QR | Can service role configured |
 | `/api/sepay/webhook` | `POST` | Nhan webhook Sepay, xac minh signature, confirm donation, update campaign raised amount, insert donation_blockchain; khong cache response, chi revalidate cache doc | Kiem tra secret/HMAC neu co `SEPAY_WEBHOOK_SECRET` |
 | `/api/campaigns` | `POST` | Tao campaign pending va luu image metadata | Same-origin, login, role `project_owner`, 1-8 image path hop le |
-| `/api/support-offers` | `POST` | Partner gui de xuat dong hanh cho disbursement round | Same-origin, login, role `partner_org`, campaign published active/paused, khong phai owner |
+| `/api/support-offers` | `POST` | Partner gui de xuat dong hanh cho disbursement round dang `open` | Same-origin, login, role `partner_org`, campaign published active/paused, khong phai owner, round phai dang mo va chua co don vi duoc chap nhan |
 | `/api/invoice-signatures/extract` | `POST` | Doc file PDF hoa don do, trich xuat thong tin chu ky so nhung trong PDF de hien thi truoc khi upload; `no-store`, server action van verify lai khi luu | Same-origin, login, file PDF <= 20MB |
 | `/api/disbursement-proofs/signed-url` | `POST` | Tao signed URL ngan han cho hoa don do trong nhat ky giai ngan cong khai, chi khi path da nam trong `disbursements.proof_url`, da lien ket bang `disbursement_round_id`, hoac suy luan duoc tu `disbursement_rounds.proof_url` theo campaign + so dot voi dong public cu | Same-origin, public, bucket chi `campaign-assets` |
 | `/api/admin/signed-url` | `POST` | Tao signed URL ngan han cho tai lieu/anh private khi admin bam mo file, tranh ky URL hang loat luc load trang | Same-origin, login, role `admin`, bucket allowlist `campaign-assets`/`role-proofs` |
@@ -180,9 +180,9 @@ Trang `/minh-bach?view=donate-chain` doc `donation_blockchain` theo server-side 
 
 1. Donor gui role request `partner_org`, bat buoc co thong tin ngan hang nhan giai ngan.
 2. Admin duyet, profile luu thong tin ngan hang.
-3. Partner vao `/chien-dich/ho-tro`, chon campaign published active/paused va round chua bi khoa boi doi tac khac.
+3. Partner vao `/chien-dich/ho-tro`, chon campaign published active/paused va round dang `open` chua bi khoa boi doi tac khac. Form va API deu chan round `locked`/da qua trang thai mo de tranh owner chap nhan xong nhung partner khong gui duoc yeu cau giai ngan.
 4. `/api/support-offers` tao `support_offers.status = pending`.
-5. Project owner duyet hoac tu choi support offer trong `/tai-khoan?view=owner-support-offers`.
+5. Project owner duyet hoac tu choi support offer trong `/tai-khoan?view=owner-support-offers`. Khi chap nhan, server action kiem tra owner, round `open`, don vi chua bi trung, cap nhat `support_offers.status = approved`, active campaign neu campaign dang `paused`, revalidate cac cache lien quan va redirect ve dung tab kem thong bao thanh cong/loi.
 6. Partner gui yeu cau giai ngan tren round `open` tai `/tai-khoan?view=partner-disbursements`, co `requested_amount` va note.
 7. Project owner duyet round `requested` sang `owner_approved` trong `/tai-khoan?view=owner-disbursements`.
 8. Admin duyet/giai ngan trong `/quan-tri?view=disbursements`, co QR chuyen khoan VietQR neu tim duoc bank BIN tu `https://api.vietqr.io/v2/banks`.
