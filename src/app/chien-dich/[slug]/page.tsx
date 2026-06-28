@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getCampaignBySlug, getTransparencyItems } from "@/lib/data";
+import { isCampaignExpired } from "@/lib/campaign-expiry";
 import { formatDate, formatVnd } from "@/lib/format";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
 
@@ -245,6 +246,7 @@ export default async function CampaignDetailPage({
         campaign.targetAmount > 0
             ? Math.min((campaign.raisedAmount / campaign.targetAmount) * 100, 100)
             : 0;
+    const expired = isCampaignExpired(campaign.endDate);
 
     return (
         <div className="space-y-8 pb-8">
@@ -291,12 +293,18 @@ export default async function CampaignDetailPage({
                     </div>
                 </div>
 
-                <Link
-                    href={`/quyen-gop?campaign=${campaign.slug}`}
-                    className="neo-btn neo-btn-primary mt-7"
-                >
-                    Ủng hộ chiến dịch này
-                </Link>
+                {expired ? (
+                    <span className="neo-btn neo-btn-ghost mt-7 cursor-not-allowed border-slate-200 text-slate-500">
+                        Chiến dịch đã hết hạn nhận quyên góp
+                    </span>
+                ) : (
+                    <Link
+                        href={`/quyen-gop?campaign=${campaign.slug}`}
+                        className="neo-btn neo-btn-primary mt-7"
+                    >
+                        Ủng hộ chiến dịch này
+                    </Link>
+                )}
             </section>
 
             <section className="neo-panel p-6">

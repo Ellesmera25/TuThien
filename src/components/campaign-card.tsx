@@ -5,6 +5,7 @@ import {
   getCampaignCategoryLabel,
   type CampaignCategory,
 } from "@/lib/campaign-category";
+import { isCampaignExpired } from "@/lib/campaign-expiry";
 import { formatVnd } from "@/lib/format";
 import type { Campaign } from "@/lib/types";
 
@@ -47,6 +48,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
       : 0;
   const category = getCampaignCategory(campaign);
   const meta = categoryMeta[category];
+  const expired = isCampaignExpired(campaign.endDate);
   const statusText = getCampaignStatusText(campaign, progress);
 
   return (
@@ -107,23 +109,31 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           <div className="flex items-center justify-between gap-3">
             <span
               className={`flex items-center gap-1 text-xs font-semibold ${
-                progress >= 85 || campaign.status === "completed"
+                expired || progress >= 85 || campaign.status === "completed"
                   ? "text-primary"
                   : "text-on-surface-variant"
               }`}
             >
               <StatusIcon
-                done={progress >= 85 || campaign.status === "completed"}
+                done={
+                  expired || progress >= 85 || campaign.status === "completed"
+                }
                 className="h-3.5 w-3.5"
               />
               {statusText}
             </span>
-            <Link
-              href={`/quyen-gop?campaign=${campaign.slug}`}
-              className="rounded-lg bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-primary-container active:scale-95"
-            >
-              Ủng hộ ngay
-            </Link>
+            {expired ? (
+              <span className="rounded-lg border border-slate-200 bg-slate-50 px-6 py-2.5 text-sm font-bold text-slate-500">
+                Hết hạn
+              </span>
+            ) : (
+              <Link
+                href={`/quyen-gop?campaign=${campaign.slug}`}
+                className="rounded-lg bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-primary-container active:scale-95"
+              >
+                Ủng hộ ngay
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -136,19 +146,19 @@ function getCampaignStatusText(campaign: Campaign, progress: number): string {
     return "Đã hoàn thành";
   }
 
+  if (isCampaignExpired(campaign.endDate)) {
+    return "Đã kết thúc";
+  }
+
   if (progress >= 85) {
     return "Sắp hoàn thành";
   }
 
   const endDate = new Date(campaign.endDate);
   const now = new Date();
-  const diffDays = Math.ceil(
+  const diffDays = Math.max(1, Math.ceil(
     (endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
-  );
-
-  if (diffDays <= 0) {
-    return "Đã kết thúc";
-  }
+  ));
 
   return `Còn ${diffDays} ngày`;
 }

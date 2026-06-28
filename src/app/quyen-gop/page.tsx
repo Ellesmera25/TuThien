@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { DonationForm } from "@/components/donation-form";
+import { isCampaignExpired } from "@/lib/campaign-expiry";
 import { getCampaigns } from "@/lib/data";
 
 type DonatePageProps = {
@@ -15,7 +16,15 @@ export const metadata: Metadata = {
 export default async function DonatePage({ searchParams }: DonatePageProps) {
   const campaigns = await getCampaigns();
   const params = await searchParams;
-  const initialCampaignSlug = params.campaign ?? "";
+  const acceptingDonationCampaigns = campaigns.filter(
+    (campaign) => !isCampaignExpired(campaign.endDate),
+  );
+  const requestedCampaignSlug = params.campaign ?? "";
+  const initialCampaignSlug = acceptingDonationCampaigns.some(
+    (campaign) => campaign.slug === requestedCampaignSlug,
+  )
+    ? requestedCampaignSlug
+    : "";
 
   return (
     <div className="grid gap-8 pb-8 lg:grid-cols-[1fr_1fr]">
@@ -49,7 +58,7 @@ export default async function DonatePage({ searchParams }: DonatePageProps) {
       </section>
 
       <DonationForm
-        campaigns={campaigns.map((campaign) => ({
+        campaigns={acceptingDonationCampaigns.map((campaign) => ({
           slug: campaign.slug,
           title: campaign.title,
         }))}

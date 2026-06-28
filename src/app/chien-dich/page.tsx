@@ -8,6 +8,7 @@ import {
   type CampaignCategory,
 } from "@/lib/campaign-category";
 import { getCampaigns } from "@/lib/data";
+import { isCampaignExpired } from "@/lib/campaign-expiry";
 import type { Campaign } from "@/lib/types";
 
 export const metadata: Metadata = {
@@ -193,12 +194,14 @@ function buildCampaignHref({
 }
 
 function matchesStatus(campaign: Campaign, status: CampaignStatusFilter) {
+  const expired = isCampaignExpired(campaign.endDate);
+
   if (status === "all") {
     return true;
   }
 
   if (status === "completed") {
-    return campaign.status === "completed";
+    return campaign.status === "completed" || expired;
   }
 
   const progress =
@@ -207,10 +210,10 @@ function matchesStatus(campaign: Campaign, status: CampaignStatusFilter) {
       : 0;
 
   if (status === "near_done") {
-    return campaign.status !== "completed" && progress >= 85;
+    return campaign.status !== "completed" && !expired && progress >= 85;
   }
 
-  return campaign.status === "active";
+  return campaign.status === "active" && !expired;
 }
 
 function normalizeCategory(value?: string): CampaignCategory | undefined {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { createSupabaseServerAuthClient } from "@/lib/supabase/auth-server";
+import { isCampaignExpired } from "@/lib/campaign-expiry";
 import { isSameOriginMutation } from "@/lib/http-security";
 import {
   buildSepayQrImageUrl,
@@ -87,7 +88,7 @@ export async function POST(request: Request) {
   if (body.campaignSlug) {
     const { data: campaign } = await supabase
       .from("campaigns")
-      .select("id")
+      .select("id, end_date")
       .eq("slug", body.campaignSlug)
       .eq("review_status", "published")
       .eq("status", "active")
@@ -96,6 +97,13 @@ export async function POST(request: Request) {
     if (!campaign) {
       return NextResponse.json(
         { error: "Dự án chưa mở quyên góp hoặc không tồn tại." },
+        { status: 400 },
+      );
+    }
+
+    if (isCampaignExpired(campaign.end_date)) {
+      return NextResponse.json(
+        { error: "Dự án đã hết hạn nhận quyên góp." },
         { status: 400 },
       );
     }

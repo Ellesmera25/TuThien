@@ -5,6 +5,7 @@ import {
   getCurrentUserRole,
 } from "@/lib/supabase/auth-server";
 import { adminCacheTags } from "@/lib/cache-tags";
+import { isCampaignExpired } from "@/lib/campaign-expiry";
 import { revalidateCacheTags } from "@/lib/cache-revalidation";
 import { isSameOriginMutation } from "@/lib/http-security";
 import { getSupabaseServiceClient } from "@/lib/supabase/server";
@@ -173,7 +174,7 @@ export async function POST(request: Request) {
 
   const { data: campaign, error: campaignError } = await supabase
     .from("campaigns")
-    .select("id, review_status, status, owner_id")
+    .select("id, review_status, status, owner_id, end_date")
     .eq("id", campaignId)
     .eq("review_status", "published")
     .in("status", ["active", "paused"])
@@ -184,6 +185,16 @@ export async function POST(request: Request) {
       {
         error:
           "Dự án không tồn tại hoặc chưa được mở nhận đồng hành.",
+      },
+      { status: 400 },
+    );
+  }
+
+  if (isCampaignExpired(campaign.end_date)) {
+    return NextResponse.json(
+      {
+        error:
+          "Dự án đã hết hạn nhận đăng ký đồng hành.",
       },
       { status: 400 },
     );

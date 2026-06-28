@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { SupportOfferForm } from "@/components/support-offer-form";
+import { isCampaignExpired } from "@/lib/campaign-expiry";
 import {
     getCurrentUser,
     getCurrentUserRole,
@@ -57,7 +58,10 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
         return [];
     }
 
-    const campaignIds = data.map((campaign) => campaign.id);
+    const acceptingCampaigns = data.filter(
+        (campaign) => !isCampaignExpired(campaign.end_date),
+    );
+    const campaignIds = acceptingCampaigns.map((campaign) => campaign.id);
 
     const [{ data: roundRows }, { data: lockedOfferRows }] =
         campaignIds.length > 0
@@ -98,7 +102,7 @@ async function getPublishedCampaigns(): Promise<SupportCampaignOption[]> {
         roundsByCampaign.set(round.campaign_id, list);
     }
 
-    return data
+    return acceptingCampaigns
         .map((campaign) => ({
             ...campaign,
             rounds: (roundsByCampaign.get(campaign.id) ?? []).filter(
